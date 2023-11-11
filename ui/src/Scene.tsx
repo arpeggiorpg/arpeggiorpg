@@ -1,15 +1,31 @@
+import { Map, Set } from "immutable";
+import capitalize from "lodash/capitalize";
+import sortBy from "lodash/sortBy";
 import * as React from "react";
-import { Button, Checkbox, Dropdown, Form, Header, Icon, Item, Label, List, Loader, Menu, Popup, Segment, Tab, Table } from "semantic-ui-react";
+import { TwitterPicker } from "react-color";
+import {
+  Button,
+  Checkbox,
+  Dropdown,
+  Form,
+  Header,
+  Icon,
+  Item,
+  Label,
+  List,
+  Loader,
+  Menu,
+  Popup,
+  Segment,
+  Tab,
+  Table,
+} from "semantic-ui-react";
 import * as A from "./Actions";
+import * as Campaign from "./Campaign";
 import * as CV from "./CommonView";
+import { CoolForm, NumericInput, PlaintextInput, Submit } from "./CoolForm";
 import * as M from "./Model";
 import * as T from "./PTTypes";
-import { CoolForm, NumericInput, PlaintextInput, Submit } from "./CoolForm";
-import { TwitterPicker } from "react-color";
-import sortBy from "lodash/sortBy";
-import { Map, Set } from "immutable";
-import * as Campaign from "./Campaign";
-import capitalize from "lodash/capitalize";
 import { EditableNumericLabel, TextInput } from "./TextInput";
 
 export function GMScene({ scene }: { scene: T.Scene }) {
@@ -612,192 +628,187 @@ export function GMSceneInventory({ scene }: { scene: T.Scene }) {
   );
 }
 
-
 export function GMSceneCreatures(props: { scene: T.Scene }) {
-    const { scene } = props;
+  const { scene } = props;
 
-    const creatures = M.useState(s =>
-      s.getSceneCreatures(scene).map(c => ({ creature: c, inCombat: s.creatureIsInCombat(c.id) }))
-    );
-    const isCombatScene = M.useState(s => s.getCombat()?.scene === scene.id);
+  const creatures = M.useState(s =>
+    s.getSceneCreatures(scene).map(c => ({ creature: c, inCombat: s.creatureIsInCombat(c.id) }))
+  );
+  const isCombatScene = M.useState(s => s.getCombat()?.scene === scene.id);
 
-    console.log("[EXPENSIVE:GMSceneCreatures]");
-    return (
-      <List relaxed={true}>
-        <List.Item key="add">
-          <List.Content>
-            <CV.ModalMaker
-              button={toggler => <Button onClick={toggler}>Add or Remove</Button>}
-              header={<span>Change creatures in {scene.name}</span>}
-              content={toggler => (
-                <Campaign.MultiCreatureSelector
-                  already_selected={scene.creatures.keySeq().toSet()}
-                  on_cancel={toggler}
-                  on_selected={cids => {
-                    const existing_cids = Set(scene.creatures.keySeq());
-                    const new_cids = cids.subtract(existing_cids).toArray();
-                    const removed_cids = existing_cids.subtract(cids).toArray();
-                    const add_commands = new_cids.map(
-                      (creature_id): T.GMCommand => ({
-                        t: "AddCreatureToScene",
-                        scene_id: scene.id,
-                        creature_id,
-                        visibility: "AllPlayers",
-                      }),
-                    );
-                    const rem_commands = removed_cids.map(
-                      (creature_id): T.GMCommand => ({
-                        t: "RemoveCreatureFromScene",
-                        scene_id: scene.id,
-                        creature_id,
-                      }),
-                    );
-                    A.sendGMCommands(add_commands.concat(rem_commands));
-                    toggler();
-                  }}
-                />
-              )}
-            />
-          </List.Content>
-        </List.Item>
-        {creatures.map(({ creature, inCombat }) => {
-          const vis = scene.creatures.get(creature.id)![1]; // !: must exist in map()
-          const vis_desc = vis === "GMOnly"
-            ? "Only visible to the GM"
-            : "Visible to all players";
-          return (
-            <List.Item key={`cid:${creature.id}`}>
-              <List.Content floated="left">
-                <CV.ClassIcon class_id={creature.class} />
-              </List.Content>
-              {creature.name}
-              <List.Content floated="right">
-                <Popup
-                  trigger={
-                    <Icon
-                      name="eye"
-                      style={{ cursor: "pointer", color: vis === "GMOnly" ? "grey" : "black" }}
-                      onClick={() => {
-                        const new_vis: T.Visibility = vis === "GMOnly" ? "AllPlayers" : "GMOnly";
-                        console.log("CLICK", new_vis);
-                        A.sendGMCommand({
-                          t: "SetSceneCreatureVisibility",
-                          scene_id: scene.id,
-                          creature_id: creature.id,
-                          visibility: new_vis,
-                        });
-                      }}
-                    />
-                  }
-                  content={vis_desc}
-                />
-                <Dropdown icon="caret down" className="right" floating={true} pointing={true}>
-                  <Dropdown.Menu>
-                    <Dropdown.Header content={creature.name} />
-                    {isCombatScene && inCombat
-                      ? (
-                        <Dropdown.Item
-                          content="Add to Combat"
-                          onClick={() => addToCombat(creature)}
-                        />
-                      )
-                      : null}
-                  </Dropdown.Menu>
-                </Dropdown>
-              </List.Content>
-            </List.Item>
-          );
-        })}
-      </List>
-    );
-
-    function addToCombat(creature: T.Creature) {
-      A.sendGMCommand({ t: "AddCreatureToCombat", creature_id: creature.id });
-    }
-  }
-
-
-  interface SelectSceneCreaturesProps {
-    scene: T.Scene;
-    add: (cid: T.CreatureID) => void;
-    remove: (cid: T.CreatureID) => void;
-    selections: Set<T.CreatureID>;
-  }
-  export function SelectSceneCreatures(props: SelectSceneCreaturesProps) {
-    const { scene, add, remove, selections } = props;
-    const creatures = M.useState(s => s.getSceneCreatures(scene));
-    return (
-      <List relaxed={true}>
-        {creatures.map(creature => (
-          <List.Item key={creature.id} style={{ display: "flex", flexDirection: "row" }}>
-            <input
-              type="checkbox"
-              checked={selections.includes(creature.id)}
-              onChange={nv =>
-                nv.currentTarget.checked ? add(creature.id) : remove(creature.id)}
-            />
-            <CV.ClassIcon class_id={creature.class} />
+  console.log("[EXPENSIVE:GMSceneCreatures]");
+  return (
+    <List relaxed={true}>
+      <List.Item key="add">
+        <List.Content>
+          <CV.ModalMaker
+            button={toggler => <Button onClick={toggler}>Add or Remove</Button>}
+            header={<span>Change creatures in {scene.name}</span>}
+            content={toggler => (
+              <Campaign.MultiCreatureSelector
+                already_selected={scene.creatures.keySeq().toSet()}
+                on_cancel={toggler}
+                on_selected={cids => {
+                  const existing_cids = Set(scene.creatures.keySeq());
+                  const new_cids = cids.subtract(existing_cids).toArray();
+                  const removed_cids = existing_cids.subtract(cids).toArray();
+                  const add_commands = new_cids.map(
+                    (creature_id): T.GMCommand => ({
+                      t: "AddCreatureToScene",
+                      scene_id: scene.id,
+                      creature_id,
+                      visibility: "AllPlayers",
+                    }),
+                  );
+                  const rem_commands = removed_cids.map(
+                    (creature_id): T.GMCommand => ({
+                      t: "RemoveCreatureFromScene",
+                      scene_id: scene.id,
+                      creature_id,
+                    }),
+                  );
+                  A.sendGMCommands(add_commands.concat(rem_commands));
+                  toggler();
+                }}
+              />
+            )}
+          />
+        </List.Content>
+      </List.Item>
+      {creatures.map(({ creature, inCombat }) => {
+        const vis = scene.creatures.get(creature.id)![1]; // !: must exist in map()
+        const vis_desc = vis === "GMOnly"
+          ? "Only visible to the GM"
+          : "Visible to all players";
+        return (
+          <List.Item key={`cid:${creature.id}`}>
+            <List.Content floated="left">
+              <CV.ClassIcon class_id={creature.class} />
+            </List.Content>
             {creature.name}
+            <List.Content floated="right">
+              <Popup
+                trigger={
+                  <Icon
+                    name="eye"
+                    style={{ cursor: "pointer", color: vis === "GMOnly" ? "grey" : "black" }}
+                    onClick={() => {
+                      const new_vis: T.Visibility = vis === "GMOnly" ? "AllPlayers" : "GMOnly";
+                      console.log("CLICK", new_vis);
+                      A.sendGMCommand({
+                        t: "SetSceneCreatureVisibility",
+                        scene_id: scene.id,
+                        creature_id: creature.id,
+                        visibility: new_vis,
+                      });
+                    }}
+                  />
+                }
+                content={vis_desc}
+              />
+              <Dropdown icon="caret down" className="right" floating={true} pointing={true}>
+                <Dropdown.Menu>
+                  <Dropdown.Header content={creature.name} />
+                  {isCombatScene && inCombat
+                    ? (
+                      <Dropdown.Item
+                        content="Add to Combat"
+                        onClick={() => addToCombat(creature)}
+                      />
+                    )
+                    : null}
+                </Dropdown.Menu>
+              </Dropdown>
+            </List.Content>
           </List.Item>
-        ))}
-      </List>
-    );
+        );
+      })}
+    </List>
+  );
+
+  function addToCombat(creature: T.Creature) {
+    A.sendGMCommand({ t: "AddCreatureToCombat", creature_id: creature.id });
   }
+}
 
-
+interface SelectSceneCreaturesProps {
+  scene: T.Scene;
+  add: (cid: T.CreatureID) => void;
+  remove: (cid: T.CreatureID) => void;
+  selections: Set<T.CreatureID>;
+}
+export function SelectSceneCreatures(props: SelectSceneCreaturesProps) {
+  const { scene, add, remove, selections } = props;
+  const creatures = M.useState(s => s.getSceneCreatures(scene));
+  return (
+    <List relaxed={true}>
+      {creatures.map(creature => (
+        <List.Item key={creature.id} style={{ display: "flex", flexDirection: "row" }}>
+          <input
+            type="checkbox"
+            checked={selections.includes(creature.id)}
+            onChange={nv =>
+              nv.currentTarget.checked ? add(creature.id) : remove(creature.id)}
+          />
+          <CV.ClassIcon class_id={creature.class} />
+          {creature.name}
+        </List.Item>
+      ))}
+    </List>
+  );
+}
 
 function GiveItemFromScene(props: { scene: T.Scene; item: T.Item; onClose: () => void }) {
-    const { scene, item, onClose } = props;
-    const available_count = scene.inventory.get(item.id);
-    if (!available_count) return <div>Lost item {item.name}!</div>;
-    const availableRecipients = M.useState(s => s.getSceneCreatures(scene));
-    return (
-      <CV.TransferItemsToRecipientForm
-        available_count={available_count}
-        available_recipients={availableRecipients}
-        onGive={give}
-        onClose={onClose}
-      />
-    );
-    function give(recip: T.Creature, count: number) {
-      A.sendGMCommand({
-        t: "TransferItem",
-        from: { Scene: scene.id },
-        to: { Creature: recip.id },
-        item_id: item.id,
-        count: BigInt(count),
-      });
-      onClose();
-    }
+  const { scene, item, onClose } = props;
+  const available_count = scene.inventory.get(item.id);
+  if (!available_count) return <div>Lost item {item.name}!</div>;
+  const availableRecipients = M.useState(s => s.getSceneCreatures(scene));
+  return (
+    <CV.TransferItemsToRecipientForm
+      available_count={available_count}
+      available_recipients={availableRecipients}
+      onGive={give}
+      onClose={onClose}
+    />
+  );
+  function give(recip: T.Creature, count: number) {
+    A.sendGMCommand({
+      t: "TransferItem",
+      from: { Scene: scene.id },
+      to: { Creature: recip.id },
+      item_id: item.id,
+      count: BigInt(count),
+    });
+    onClose();
   }
+}
 
-  function AddItemsToScene(props: { scene: T.Scene; onClose: () => void }) {
-    const { scene, onClose } = props;
-    return (
-      <Campaign.MultiItemSelector
-        require_selected={scene.inventory.keySeq().toSet()}
-        on_selected={item_ids => {
-          const new_items = item_ids.subtract(scene.inventory.keySeq().toSet());
-          for (const item_id of new_items.toArray()) {
-            A.sendGMCommand(
-              { t: "SetItemCount", owner: { Scene: scene.id }, item_id, count: 1n },
-            );
-          }
-          onClose();
-        }}
-        on_cancel={onClose}
-      />
-    );
-  }
-
+function AddItemsToScene(props: { scene: T.Scene; onClose: () => void }) {
+  const { scene, onClose } = props;
+  return (
+    <Campaign.MultiItemSelector
+      require_selected={scene.inventory.keySeq().toSet()}
+      on_selected={item_ids => {
+        const new_items = item_ids.subtract(scene.inventory.keySeq().toSet());
+        for (const item_id of new_items.toArray()) {
+          A.sendGMCommand(
+            { t: "SetItemCount", owner: { Scene: scene.id }, item_id, count: 1n },
+          );
+        }
+        onClose();
+      }}
+      on_cancel={onClose}
+    />
+  );
+}
 
 function SceneItemCountEditor(props: { scene: T.Scene; item: T.Item; count: number }) {
-    const { scene, item, count } = props;
-    return <EditableNumericLabel value={count} save={save} />;
+  const { scene, item, count } = props;
+  return <EditableNumericLabel value={count} save={save} />;
 
-    function save(num: number) {
-      A.sendGMCommand(
-        { t: "SetItemCount", owner: { Scene: scene.id }, item_id: item.id, count: BigInt(num) },
-      );
-    }
+  function save(num: number) {
+    A.sendGMCommand(
+      { t: "SetItemCount", owner: { Scene: scene.id }, item_id: item.id, count: BigInt(num) },
+    );
   }
+}
