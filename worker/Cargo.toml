@@ -19,7 +19,7 @@ futures-util = { version = "0.3.28", default-features = false }
 # arpeggio depend on rand, which depends on getrandom, which by default does not work on WASM. We need to enable the "js" feature.
 getrandom = { version = "0.2.9", features = ["js"] }
 gloo-timers = "0.3.0"
-google-oauth = { git = "https://github.com/radix/google-oauth/", rev = "e85809ad00683e4382a282b515fa67a46b76d4ae", features = ["wasm"] }
+google-oauth = { version = "1.6.0", features = ["wasm"] }
 mtarp = { version = "*", path = "../mtarp" }
 percent-encoding = { workspace = true }
 serde = { workspace = true }

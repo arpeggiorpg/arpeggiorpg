@@ -794,8 +794,9 @@ dependencies = [
 
 [[package]]
 name = "google-oauth"
-version = "1.5.0"
-source = "git+https://github.com/radix/google-oauth/?rev=e85809ad00683e4382a282b515fa67a46b76d4ae#e85809ad00683e4382a282b515fa67a46b76d4ae"
+version = "1.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e7e164cd786dbeb0de371eddcf845fc93649fe678dd57c43c03bca79376bc3bc"
 dependencies = [
  "anyhow",
  "async-rwlock",
