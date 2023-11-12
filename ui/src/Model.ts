@@ -188,6 +188,13 @@ const secondaryFocusSlice: Slice<SecondaryFocusState> = set => ({
 interface GridState {
   grid: GridModel;
   gridFocus?: GridFocus;
+
+  pendingBackgroundScale: [number, number] | undefined;
+  pendingBackgroundOffset: [number, number] | undefined;
+
+  setPendingBackgroundScale: (scale: [number, number] | undefined) => void;
+  setPendingBackgroundOffset: (offset: [number, number] | undefined) => void;
+
   // resetGrid is used in New Game
   resetGrid: () => void;
   setGridFocus: (s: T.SceneID | undefined, l?: SceneLayerType) => void;
@@ -217,6 +224,13 @@ type Slice<T> = StateCreator<AllStates, [], [], T>;
 const gridSlice: Slice<GridState> = (set, get) => ({
   grid: defaultGrid,
   gridFocus: undefined,
+
+  pendingBackgroundScale: undefined,
+  pendingBackgroundOffset: undefined,
+
+  setPendingBackgroundScale: pendingBackgroundScale => set(() => ({pendingBackgroundScale})),
+  setPendingBackgroundOffset: pendingBackgroundOffset => set(() => ({pendingBackgroundOffset})),
+
   resetGrid: () => set(() => ({ grid: defaultGrid })),
   setGridFocus: (scene_id, t?) =>
     set(() => {
