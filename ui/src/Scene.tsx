@@ -152,18 +152,6 @@ export function EditSceneBackground({ scene, onDone }: { scene: T.Scene; onDone:
 
   return (
     <div style={{ display: "flex", flexDirection: "column" }}>
-      {scene.background_image_url
-        ? (
-          <>
-            <h3>Preview</h3>
-            <img
-              style={{ width: "90%", marginLeft: "auto", marginRight: "auto" }}
-              src={scene.background_image_url}
-            />
-          </>
-        )
-        : null}
-
       <CV.ModalMaker
         button={click => <Button onClick={click}>Upload Image</Button>}
         header={<>Upload Image</>}
@@ -207,7 +195,10 @@ export function EditSceneBackground({ scene, onDone }: { scene: T.Scene; onDone:
         value={pendingBackgroundScale}
         onChange={(value) => M.getState().setPendingBackgroundScale([value, value])}
       />
-      <Button onClick={save}>Save</Button>
+      <Stack direction="row">
+        <Button onClick={save}>Save</Button>
+        <Button onClick={cancel}>Reset</Button>
+      </Stack>
     </div>
   );
 
@@ -219,6 +210,11 @@ export function EditSceneBackground({ scene, onDone }: { scene: T.Scene; onDone:
     };
     A.sendGMCommand({ t: "EditSceneDetails", scene_id: scene.id, details });
     onDone();
+  }
+
+  function cancel() {
+    M.getState().setPendingBackgroundOffset(scene.background_image_offset || undefined);
+    M.getState().setPendingBackgroundScale(scene.background_image_scale);
   }
 }
 
@@ -232,7 +228,12 @@ function NumericSlider(
     onChange: (value: number) => void;
   },
 ) {
-  const [numberText, setNumberText] = React.useState(value.toString());
+  const [numberText, setNumberText] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    setNumberText(value.toString());
+  }, [value]);
+
   return (
     <>
       <Typography>{label}</Typography>
@@ -245,6 +246,7 @@ function NumericSlider(
           valueLabelDisplay="auto"
           onChange={(_event, value) => {
             value = value as number; // this is not a ranged slider.
+            setNumberText(value.toString());
             onChange(value);
           }}
         />
