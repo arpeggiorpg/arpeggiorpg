@@ -11,6 +11,7 @@ import * as GM from "./GMComponents";
 import * as M from "./Model";
 import * as T from "./PTTypes";
 import * as SPZ from "./SVGPanZoom";
+import { AddAnnotation, AddSceneHotspot } from "./Scene";
 
 interface Obj<T> {
   [index: string]: T;
@@ -677,8 +678,8 @@ class ContextMenu extends React.Component<ContextMenuProps, ContextMenuState> {
     };
     // TODO: oh crap, this popup should probably only happen for GMs.
     const items: Array<[string, (c: () => void) => JSX.Element]> = [
-      ["Add Scene Hotspot", close => <GM.AddSceneHotspot scene={scene} pt={pt} onClose={close} />],
-      ["Add Annotation", close => <GM.AddAnnotation scene={scene} pt={pt} onClose={close} />],
+      ["Add Scene Hotspot", close => <AddSceneHotspot scene={scene} pt={pt} onClose={close} />],
+      ["Add Annotation", close => <AddAnnotation scene={scene} pt={pt} onClose={close} />],
     ];
     return (
       <Menu vertical={true} style={{ display: this.state.visible ? "block" : "none" }}>
