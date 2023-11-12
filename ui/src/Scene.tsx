@@ -1,4 +1,7 @@
+import Input from "@mui/material/Input";
 import Slider from "@mui/material/Slider";
+import Stack from "@mui/material/Stack";
+import Typography from "@mui/material/Typography";
 import { Map, Set } from "immutable";
 import capitalize from "lodash/capitalize";
 import sortBy from "lodash/sortBy";
@@ -23,11 +26,9 @@ import {
 } from "semantic-ui-react";
 import * as Z from "zod";
 
-import Typography from "@mui/material/Typography";
 import * as A from "./Actions";
 import * as Campaign from "./Campaign";
 import * as CV from "./CommonView";
-import { CoolForm, NumericInput, PlaintextInput, Submit } from "./CoolForm";
 import * as M from "./Model";
 import * as T from "./PTTypes";
 import { EditableNumericLabel, TextInput } from "./TextInput";
@@ -144,9 +145,11 @@ export function EditSceneName(props: { scene: T.Scene; onDone: () => void }) {
 }
 
 export function EditSceneBackground({ scene, onDone }: { scene: T.Scene; onDone: () => void }) {
-  const [pinned, setPinned] = React.useState(scene.background_image_offset !== undefined);
-  const pendingBackgroundOffset = M.useState(s => s.pendingBackgroundOffset);
-  const pendingBackgroundScale = M.useState(s => s.pendingBackgroundScale?.[0] || 0);
+  const pendingBackgroundOffset = M.useState(s => s.pendingBackgroundOffset)
+    || scene.background_image_offset || [0, 0];
+  const pendingBackgroundScale = M.useState(s => s.pendingBackgroundScale?.[0])
+    || scene.background_image_scale?.[0] || 0;
+
   return (
     <div style={{ display: "flex", flexDirection: "column" }}>
       {scene.background_image_url
@@ -167,81 +170,101 @@ export function EditSceneBackground({ scene, onDone }: { scene: T.Scene; onDone:
         content={closer => <BackgroundImageUpload scene={scene} onClose={closer} />}
       />
 
-      <Typography id="offset-label">Offset</Typography>
-      <Slider
-        value={pendingBackgroundOffset?.[0] || scene.background_image_offset?.[0] || 0}
+      <NumericSlider
+        label="X Offset"
+        value={pendingBackgroundOffset[0]}
         min={-500}
         max={500}
         step={1}
-        valueLabelDisplay="auto"
-        aria-labelledby="offset-label"
-        onChange={(_event, value) => {
+        onChange={(value) => {
           const currentOffset = M.getState().pendingBackgroundOffset;
           value = value as number; // this is not a ranged slider
           M.getState().setPendingBackgroundOffset([value, currentOffset?.[1] || 0]);
         }}
       />
-      <Slider
-        value={pendingBackgroundOffset?.[1] || scene.background_image_offset?.[1] || 0}
+      <NumericSlider
+        label="Y Offset"
+        value={pendingBackgroundOffset[1]}
         min={-500}
         max={500}
         step={1}
-        valueLabelDisplay="auto"
-        aria-labelledby="offset-label"
-        onChange={(_event, value) => {
+        onChange={value => {
           const currentOffset = M.getState().pendingBackgroundOffset;
           value = value as number; // this is not a ranged slider
           M.getState().setPendingBackgroundOffset([currentOffset?.[0] || 0, value]);
         }}
       />
-      <Typography id="scale-label">Scale</Typography>
+
       {
         /* Technically, scale separates x/y, but that is... like... really dumb, so I'm not bothering
         * with that. */
       }
-      <Slider
-        value={pendingBackgroundScale || scene.background_image_scale[0]}
+      <NumericSlider
+        label="Scale"
         min={0}
         max={5}
         step={0.01}
-        aria-labelledby="scale-label"
-        valueLabelDisplay="auto"
-        onChange={(_event, value) => {
-          value = value as number; // this is not a ranged slider.
-          M.getState().setPendingBackgroundScale([value, value]);
-        }}
+        value={pendingBackgroundScale}
+        onChange={(value) => M.getState().setPendingBackgroundScale([value, value])}
       />
-
-      {
-        /* There is a concept of "unpinned" background images which just render at the top-left of
-      the view port, but I honestly can't remember why I implemented that, so I'm not going to
-      bother. I actually wonder if it's just because I needed a behavior for when the optional
-      "background offset" was None?
-      */
-      }
-      {
-        /* <Form.Checkbox
-        label="Pin to map"
-        checked={pinned}
-        onChange={(_, d) => setPinned(d.checked as boolean)}
-      /> */
-      }
       <Button onClick={save}>Save</Button>
     </div>
   );
 
   function save() {
-    const background_image_scale = M.getState().pendingBackgroundScale
-      || scene.background_image_scale || [0, 0];
-    const background_image_offset = M.getState().pendingBackgroundOffset
-      || scene.background_image_offset || null;
-    const details = {
+    const details: T.SceneCreation = {
       ...scene,
-      background_image_scale,
-      background_image_offset,
+      background_image_scale: [pendingBackgroundScale, pendingBackgroundScale],
+      background_image_offset: pendingBackgroundOffset,
     };
     A.sendGMCommand({ t: "EditSceneDetails", scene_id: scene.id, details });
     onDone();
+  }
+}
+
+function NumericSlider(
+  { label, value, onChange, min, max, step }: {
+    label: string;
+    min: number;
+    max: number;
+    step: number;
+    value: number;
+    onChange: (value: number) => void;
+  },
+) {
+  const [numberText, setNumberText] = React.useState(value.toString());
+  return (
+    <>
+      <Typography>{label}</Typography>
+      <Stack direction="row" spacing={5}>
+        <Slider
+          value={value}
+          min={min}
+          max={max}
+          step={step}
+          valueLabelDisplay="auto"
+          onChange={(_event, value) => {
+            value = value as number; // this is not a ranged slider.
+            onChange(value);
+          }}
+        />
+        <Input
+          value={numberText}
+          onChange={(event) => {
+            setNumberText(event.target.value);
+          }}
+          onBlur={activate}
+          onKeyDown={(event) => {
+            console.log("[RADIX] keypress", event.key);
+            if (event.key === "Enter") activate();
+          }}
+        />
+      </Stack>
+    </>
+  );
+
+  function activate() {
+    onChange(Number(numberText));
   }
 }
 
