@@ -120,7 +120,9 @@ impl ArpeggioGame {
           let account_id = self.env.var("CF_ACCOUNT_ID").map_err(anyhow_str)?.to_string();
           let image_delivery_prefix =
             self.env.var("CF_IMAGE_DELIVERY_PREFIX").map_err(anyhow_str)?.to_string();
-          let image_service = CFImageService::new(account_id, &image_delivery_prefix, game_id)?;
+          let images_token =
+            self.env.var("CF_IMAGES_TOKEN").map_err(anyhow_str)?.to_string();
+          let image_service = CFImageService::new(account_id, images_token, &image_delivery_prefix, game_id)?;
           let session = wsrpi::GameSession::new(
             image_service,
             game_storage,

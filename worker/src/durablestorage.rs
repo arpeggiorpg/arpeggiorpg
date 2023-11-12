@@ -5,7 +5,7 @@ use std::{
 };
 
 use anyhow::anyhow;
-use tracing::{error, info, warn};
+use tracing::{info, warn};
 use worker::{ListOptions, State};
 
 use arpeggio::types::{ChangedGame, Game, GameLog};
@@ -44,13 +44,13 @@ impl GameStorage {
 
   pub async fn load(state: Rc<State>) -> anyhow::Result<Self> {
     // TODO: support muiltple snapshots? Or maybe just wait until SQLite support exists...
-    let (game, recent_logs) = match state.storage().get::<String>("snapshot-0-chunk-0").await {
-      Ok(game_str) => {
-        let game = serde_json::from_str(&game_str)?;
-        Self::load_logs(state.clone(), game).await?
-      }
-      Err(e) => match e {
-        worker::Error::JsError(e) if e == "No such value in storage." => {
+    let (game, recent_logs) =
+      match Self::get_key_state::<String>(&state, "snapshot-0-chunk-0").await? {
+        Some(game_str) => {
+          let game = serde_json::from_str(&game_str)?;
+          Self::load_logs(state.clone(), game).await?
+        }
+        None => {
           info!(event = "new-game");
           let default_game = Default::default();
           state
@@ -60,12 +60,7 @@ impl GameStorage {
             .map_err(anyhow_str)?;
           (default_game, VecDeque::new())
         }
-        _ => {
-          error!(event = "error-fetching-game", ?e);
-          return Err(anyhow_str(e));
-        }
-      },
-    };
+      };
     let next_log_idx = recent_logs.iter().last().map(|l| l.0.log_idx + 1).unwrap_or(0);
     let game_storage = Self {
       state,
@@ -75,6 +70,20 @@ impl GameStorage {
       recent_logs: Rc::new(RefCell::new(recent_logs)),
     };
     Ok(game_storage)
+  }
+
+  async fn get_key_state<T: serde::de::DeserializeOwned>(
+    state: &State, key: &str,
+  ) -> anyhow::Result<Option<T>> {
+    match state.storage().get::<T>(key).await {
+      Ok(v) => Ok(Some(v)),
+      Err(worker::Error::JsError(e)) if e == "No such value in storage." => Ok(None),
+      Err(e) => Err(anyhow_str(e)),
+    }
+  }
+
+  async fn get_key<T: serde::de::DeserializeOwned>(&self, key: &str) -> anyhow::Result<Option<T>> {
+    Self::get_key_state(&self.state, key).await
   }
 
   /// log keys are like "log-{snapshot_idx}-idx-{log_idx}"
@@ -159,14 +168,7 @@ impl GameStorage {
   }
 
   pub async fn list_invitations(&self) -> anyhow::Result<Vec<InvitationID>> {
-    let invitations = self.state.storage().get("invitations").await;
-    let invitations: Vec<InvitationID> = match invitations {
-      Ok(invitations) => invitations,
-      Err(e) => {
-        error!(event = "error-listing-invitations", ?e);
-        vec![]
-      }
-    };
+    let invitations = self.get_key("invitations").await?.unwrap_or(vec![]);
     Ok(invitations)
   }
 
@@ -184,10 +186,9 @@ impl GameStorage {
   ) -> anyhow::Result<()> {
     // stupid for now; please give me SQL cloudflare!
     let images_key = format!("images-{image_type}");
-    let mut storage = self.state.storage();
-    let mut images: Vec<String> = storage.get(&images_key).await.map_err(anyhow_str)?;
+    let mut images: Vec<String> = self.get_key(&images_key).await?.unwrap_or(vec![]);
     images.push(url.to_string());
-    storage.put(&images_key, images).await.map_err(anyhow_str)?;
+    self.state.storage().put(&images_key, images).await.map_err(anyhow_str)?;
     Ok(())
   }
 }

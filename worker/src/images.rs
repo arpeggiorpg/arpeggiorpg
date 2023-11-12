@@ -11,16 +11,17 @@ use worker::Url;
 // how to store images for local development.
 pub struct CFImageService {
   account_id: String,
+  images_token: String,
   image_delivery_prefix: Url,
   game_id: GameID,
 }
 
 impl CFImageService {
   pub fn new(
-    account_id: String, image_delivery_prefix: &str, game_id: GameID,
+    account_id: String, images_token: String, image_delivery_prefix: &str, game_id: GameID,
   ) -> anyhow::Result<CFImageService> {
     let image_delivery_prefix = Url::parse(image_delivery_prefix)?;
-    Ok(CFImageService { account_id, image_delivery_prefix, game_id })
+    Ok(CFImageService { account_id, images_token, image_delivery_prefix, game_id })
   }
 
   pub async fn upload_from_url(
@@ -36,9 +37,16 @@ impl CFImageService {
     let api_url =
       format!("https://api.cloudflare.com/client/v4/accounts/{}/images/v1", self.account_id);
     let metadata = serde_json::to_string(&json!({"purpose": purpose.to_string()}))?;
-    let params = [("url", url), ("metadata", &metadata), ("id", &self.gen_custom_id())];
+    let form = reqwest::multipart::Form::new()
+      .text("metadata", metadata)
+      .text("id", self.gen_custom_id())
+      .text("url", url.to_owned());
     let client = reqwest::Client::new();
-    let response = client.post(api_url).form(&params).send().await?;
+    let response = client
+      .post(api_url)
+      .multipart(form)
+      .header("Authorization", format!("Bearer {}", &self.images_token))
+      .send().await?;
     let response = response.error_for_status()?;
 
     let response = response.json::<serde_json::Value>().await?;
