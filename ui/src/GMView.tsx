@@ -144,7 +144,6 @@ function getSceneFromPath(
     console.error("Couldn't parse path", pathstr);
     return undefined;
   }
-  console.log("[getSceneFromPath]", path);
   let sceneName = path.at(-1);
   let folder = M.getFolder(state.game.campaign, path.slice(0, -1));
   if (!folder) {

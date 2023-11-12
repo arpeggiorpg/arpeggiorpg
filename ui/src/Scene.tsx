@@ -1,3 +1,4 @@
+import Slider from "@mui/material/Slider";
 import { Map, Set } from "immutable";
 import capitalize from "lodash/capitalize";
 import sortBy from "lodash/sortBy";
@@ -22,6 +23,7 @@ import {
 } from "semantic-ui-react";
 import * as Z from "zod";
 
+import Typography from "@mui/material/Typography";
 import * as A from "./Actions";
 import * as Campaign from "./Campaign";
 import * as CV from "./CommonView";
@@ -143,6 +145,8 @@ export function EditSceneName(props: { scene: T.Scene; onDone: () => void }) {
 
 export function EditSceneBackground({ scene, onDone }: { scene: T.Scene; onDone: () => void }) {
   const [pinned, setPinned] = React.useState(scene.background_image_offset !== undefined);
+  const pendingBackgroundOffset = M.useState(s => s.pendingBackgroundOffset);
+  const pendingBackgroundScale = M.useState(s => s.pendingBackgroundScale?.[0] || 0);
   return (
     <div style={{ display: "flex", flexDirection: "column" }}>
       {scene.background_image_url
@@ -163,53 +167,74 @@ export function EditSceneBackground({ scene, onDone }: { scene: T.Scene; onDone:
         content={closer => <BackgroundImageUpload scene={scene} onClose={closer} />}
       />
 
-      <CoolForm>
-        <Form.Checkbox
-          label="Pin to map"
-          checked={pinned}
-          onChange={(_, d) => setPinned(d.checked as boolean)}
-        />
-        <Form.Group>
-          <NumericInput
-            label="Scale X (cm)"
-            name="scale_x"
-            min={0}
-            style={{ width: "100px" }}
-            default={scene.background_image_scale[0]}
-          />
-          <NumericInput
-            label="Scale Y (cm)"
-            name="scale_y"
-            min={0}
-            style={{ width: "100px" }}
-            default={scene.background_image_scale[1]}
-          />
-        </Form.Group>
-        <Form.Group>
-          <NumericInput
-            label="Offset X (cm)"
-            name="offset_x"
-            style={{ width: "100px" }}
-            default={scene.background_image_offset ? scene.background_image_offset[0] : 0}
-          />
-          <NumericInput
-            label="Offset Y (cm)"
-            name="offset_y"
-            style={{ width: "100px" }}
-            default={scene.background_image_offset ? scene.background_image_offset[1] : 0}
-          />
-        </Form.Group>
-        <Submit onClick={save}>Save</Submit>
-      </CoolForm>
+      <Typography id="offset-label">Offset</Typography>
+      <Slider
+        value={pendingBackgroundOffset?.[0] || scene.background_image_offset?.[0] || 0}
+        min={-500}
+        max={500}
+        step={1}
+        valueLabelDisplay="auto"
+        aria-labelledby="offset-label"
+        onChange={(_event, value) => {
+          const currentOffset = M.getState().pendingBackgroundOffset;
+          value = value as number; // this is not a ranged slider
+          M.getState().setPendingBackgroundOffset([value, currentOffset?.[1] || 0]);
+        }}
+      />
+      <Slider
+        value={pendingBackgroundOffset?.[1] || scene.background_image_offset?.[1] || 0}
+        min={-500}
+        max={500}
+        step={1}
+        valueLabelDisplay="auto"
+        aria-labelledby="offset-label"
+        onChange={(_event, value) => {
+          const currentOffset = M.getState().pendingBackgroundOffset;
+          value = value as number; // this is not a ranged slider
+          M.getState().setPendingBackgroundOffset([currentOffset?.[0] || 0, value]);
+        }}
+      />
+      <Typography id="scale-label">Scale</Typography>
+      {
+        /* Technically, scale separates x/y, but that is... like... really dumb, so I'm not bothering
+        * with that. */
+      }
+      <Slider
+        value={pendingBackgroundScale || scene.background_image_scale[0]}
+        min={0}
+        max={5}
+        step={0.01}
+        aria-labelledby="scale-label"
+        valueLabelDisplay="auto"
+        onChange={(_event, value) => {
+          value = value as number; // this is not a ranged slider.
+          M.getState().setPendingBackgroundScale([value, value]);
+        }}
+      />
+
+      {
+        /* There is a concept of "unpinned" background images which just render at the top-left of
+      the view port, but I honestly can't remember why I implemented that, so I'm not going to
+      bother. I actually wonder if it's just because I needed a behavior for when the optional
+      "background offset" was None?
+      */
+      }
+      {
+        /* <Form.Checkbox
+        label="Pin to map"
+        checked={pinned}
+        onChange={(_, d) => setPinned(d.checked as boolean)}
+      /> */
+      }
+      <Button onClick={save}>Save</Button>
     </div>
   );
 
-  function save(data: any) {
-    const { scale_x, scale_y, offset_x, offset_y } = data;
-    const background_image_scale: [number, number] = [scale_x, scale_y];
-    const background_image_offset: [number, number] | null = pinned
-      ? [offset_x, offset_y]
-      : null;
+  function save() {
+    const background_image_scale = M.getState().pendingBackgroundScale
+      || scene.background_image_scale || [0, 0];
+    const background_image_offset = M.getState().pendingBackgroundOffset
+      || scene.background_image_offset || null;
     const details = {
       ...scene,
       background_image_scale,
@@ -268,7 +293,7 @@ function BackgroundImageUpload({ scene, onClose }: { scene: T.Scene; onClose: ()
     }
     const formData = new FormData();
     formData.append("file", file, file.name);
-    const result = await fetch(preparedUpload.upload_url, {method: "POST", body: formData});
+    const result = await fetch(preparedUpload.upload_url, { method: "POST", body: formData });
     if (!result.ok) {
       onClose();
       M.getState().setError("Error uploading file, sorry!");
@@ -902,8 +927,6 @@ function SceneItemCountEditor(props: { scene: T.Scene; item: T.Item; count: numb
     );
   }
 }
-
-
 
 interface AddSceneHotspotProps {
   scene: T.Scene;

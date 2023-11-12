@@ -1,4 +1,3 @@
-import { Map } from "immutable";
 import range from "lodash/range";
 import sortBy from "lodash/sortBy";
 import * as React from "react";
@@ -7,7 +6,6 @@ import { Button, Menu } from "semantic-ui-react";
 
 import * as A from "./Actions";
 import * as CV from "./CommonView";
-import * as GM from "./GMComponents";
 import * as M from "./Model";
 import * as T from "./PTTypes";
 import * as SPZ from "./SVGPanZoom";
@@ -31,6 +29,8 @@ export function SceneGrid(props: SceneGridProps) {
   const grid = M.useState(s => s.grid); // This is bad.
   const focus = M.useState(s => s.gridFocus);
   const playerID = M.useState(s => s.playerId);
+  const pendingScale = M.useState(s => s.pendingBackgroundScale);
+  const pendingOffset = M.useState(s => s.pendingBackgroundOffset);
 
   const menu = grid.active_objects.objects.length !== 0
     ? renderGridObjectMenu(grid.active_objects)
@@ -45,22 +45,19 @@ export function SceneGrid(props: SceneGridProps) {
   const layer = focus?.layer;
   const disable_style: React.CSSProperties = layer ? { pointerEvents: "none", opacity: 0.3 } : {};
 
-  const [bg_width, bg_height] = scene.background_image_scale;
-  const background_image = scene.background_image_url && scene.background_image_offset
+  const [bgXScale, bgYScale] = pendingScale ? pendingScale : scene.background_image_scale;
+  const [offsetX, offsetY] = pendingOffset ? pendingOffset : scene.background_image_offset || [0, 0];
+  const background_image = scene.background_image_url
     ? (
       <image
         xlinkHref={scene.background_image_url}
-        width={bg_width ? bg_width : undefined}
-        height={bg_height ? bg_height : undefined}
-        x={scene.background_image_offset[0]}
-        y={scene.background_image_offset[1]}
+        style={{transform: `scale(${bgXScale}, ${bgYScale})`}}
+        x={offsetX}
+        y={offsetY}
         preserveAspectRatio="none"
       />
     )
     : null;
-  const static_background = scene.background_image_url && !scene.background_image_offset
-    ? `url(${scene.background_image_url})`
-    : undefined;
 
   const current_terrain = layer && layer.t === "Terrain" ? layer.terrain : scene.terrain;
   const open_terrain_color = scene.background_image_url ? "transparent" : "white";
@@ -108,7 +105,6 @@ export function SceneGrid(props: SceneGridProps) {
           width: "100%",
           height: "100%",
           backgroundColor: "rgb(215, 215, 215)",
-          backgroundImage: static_background,
           backgroundRepeat: "no-repeat",
           backgroundSize: "contain",
         }}

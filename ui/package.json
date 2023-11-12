@@ -11,6 +11,9 @@
     "typecheck": "tsc"
   },
   "dependencies": {
+    "@emotion/react": "^11.11.1",
+    "@emotion/styled": "^11.11.0",
+    "@mui/material": "^5.14.17",
     "@react-oauth/google": "^0.11.1",
     "fuse.js": "^6.6.2",
     "hammerjs": "^2.0.8",

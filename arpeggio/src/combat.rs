@@ -158,7 +158,7 @@ impl Combat {
   }
 }
 
-#[derive(Clone, Eq, PartialEq, Debug)]
+#[derive(Clone, PartialEq, Debug)]
 pub struct CombatMove<'game> {
   movement_left: u32units::Length,
   pub combat: &'game DynamicCombat<'game>,
@@ -180,7 +180,7 @@ impl<'game> CombatMove<'game> {
   }
 }
 
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct ChangedCombat<'game> {
   pub combat: Combat,
   scene: &'game Scene,

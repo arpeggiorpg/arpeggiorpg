@@ -251,9 +251,7 @@ macro_rules! uuid_id {
     }
 
     impl std::fmt::Display for $type {
-      fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        self.0.fmt(f)
-      }
+      fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result { self.0.fmt(f) }
     }
 
     impl ::std::str::FromStr for $type {
@@ -400,7 +398,7 @@ pub enum PlayerCommand {
 }
 
 /// Top-level commands that can be sent from a GM to affect the state of the game.
-#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS)]
 #[serde(tag = "t")]
 pub enum GMCommand {
   LoadModule {
@@ -737,7 +735,7 @@ pub fn creature_logs_into_game_logs(creature_id: CreatureID, ls: Vec<CreatureLog
 /// Note that these represent *concrete* changes to the game, which will have deterministic results.
 /// i.e., randomness happens when processing `GMCommand`s, which then result in specific
 /// `GameLog`s.
-#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS)]
 #[serde(tag = "t")]
 pub enum GameLog {
   LoadModule {
@@ -1381,13 +1379,13 @@ impl DeriveKey for Creature {
   fn derive_key(&self) -> CreatureID { self.id }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, TS, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, TS, Serialize, Deserialize)]
 pub struct ChangedGame {
   pub game: Game,
   pub logs: Vec<GameLog>,
 }
 
-#[derive(Clone, Default, Eq, PartialEq, Debug, Serialize, Deserialize, TS)]
+#[derive(Clone, Default, PartialEq, Debug, Serialize, Deserialize, TS)]
 pub struct Game {
   pub current_combat: Option<Combat>,
   #[ts(type = "GameAbilities")]
@@ -1430,15 +1428,15 @@ impl Player {
   }
 }
 
-#[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize, TS)]
+#[derive(Clone, PartialEq, Debug, Serialize, Deserialize, TS)]
 pub struct SceneCreation {
   pub name: String,
   pub background_image_url: String,
   pub background_image_offset: Option<(i32, i32)>,
-  pub background_image_scale: (i32, i32),
+  pub background_image_scale: (f64, f64),
 }
 
-#[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize, TS)]
+#[derive(Clone, PartialEq, Debug, Serialize, Deserialize, TS)]
 pub struct Scene {
   pub id: SceneID,
   pub name: String,
@@ -1461,7 +1459,7 @@ pub struct Scene {
   /// If this field is None, then the image will "float" fixed on the screen, instead of panning
   /// with the scene.
   pub background_image_offset: Option<(i32, i32)>,
-  pub background_image_scale: (i32, i32),
+  pub background_image_scale: (f64, f64),
 
   #[ts(type = "SceneCreatures")]
   pub creatures: HashMap<CreatureID, (Point3, Visibility)>,
@@ -1516,14 +1514,14 @@ pub enum Visibility {
   AllPlayers,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct DynamicCombat<'game> {
   pub scene: &'game Scene,
   pub combat: &'game Combat,
   pub game: &'game Game,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct DynamicCreature<'creature, 'game: 'creature> {
   pub creature: &'creature Creature,
   pub game: &'game Game,
@@ -1723,7 +1721,7 @@ pub mod test {
       name: "Test Scene".to_string(),
       background_image_url: "".to_string(),
       background_image_offset: None,
-      background_image_scale: (1, 1),
+      background_image_scale: (1., 1.),
       terrain: huge_box(),
       highlights: HashMap::new(),
       annotations: HashMap::new(),
