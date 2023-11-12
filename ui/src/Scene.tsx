@@ -205,14 +205,13 @@ export function EditSceneBackground({ scene, onDone }: { scene: T.Scene; onDone:
   );
 
   function save(data: any) {
-    const { background_image_url, scale_x, scale_y, offset_x, offset_y } = data;
+    const { scale_x, scale_y, offset_x, offset_y } = data;
     const background_image_scale: [number, number] = [scale_x, scale_y];
     const background_image_offset: [number, number] | null = pinned
       ? [offset_x, offset_y]
       : null;
     const details = {
-      name: scene.name,
-      background_image_url,
+      ...scene,
       background_image_scale,
       background_image_offset,
     };
@@ -248,10 +247,11 @@ function BackgroundImageUpload({ scene, onClose }: { scene: T.Scene; onClose: ()
     );
     const details = {
       ...scene,
-      background_image_url: result.image_url,
+      background_image_url: `${result.image_url}/original`, // XXX CF Images Dependency
     };
 
     A.sendGMCommand({ t: "EditSceneDetails", scene_id: scene.id, details });
+    onClose();
   }
 }
 
