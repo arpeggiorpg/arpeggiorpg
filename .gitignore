@@ -7,3 +7,4 @@ docker/cache
 artifacts
 rpi/storage
 mprocs.yaml
+assets/*/*.png

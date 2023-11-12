@@ -65,6 +65,13 @@ pub struct Invitation {
   pub game_id: GameID,
 }
 
+#[derive(Clone, Copy, Serialize, Deserialize, Debug, TS, strum::EnumString, strum::Display)]
+#[serde(tag = "t")]
+pub enum ImageType {
+  BackgroundImage,
+  CreatureIcon,
+}
+
 /// The various kinds of requests that a frontend can make of the RPI in the context of a game.
 /// These are scoped to a specific game, so you won't see things like "Auth" or "ListGames" here,
 /// just the commands that related to one specific game.
@@ -81,7 +88,21 @@ pub enum RPIGameRequest {
   // you're authorized already.
   GMGenerateInvitation,
   GMListInvitations,
-  GMDeleteInvitation { invitation_id: InvitationID },
+  GMDeleteInvitation {
+    invitation_id: InvitationID,
+  },
+
+  // "upload" an image by giving us a URL which will be downloaded and saved to our Image store.
+  UploadImageFromURL {
+    url: String,
+    purpose: ImageType,
+  },
+
+  // Request a presigned image upload URL that the browser can send the file data to to store it in
+  // our Image store.
+  RequestUploadImage {
+    purpose: ImageType,
+  },
 
   PlayerCommand {
     command: PlayerCommand,
@@ -106,5 +127,4 @@ pub enum RPIGameRequest {
     ability_id: AbilityID,
     point: Point3,
   },
-
 }

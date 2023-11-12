@@ -18,6 +18,7 @@ pub fn main() -> Result<(), anyhow::Error> {
     <MT::Role as TS>::decl(),
     <MT::RPIGameRequest as TS>::decl(),
     <MT::UserID as TS>::decl(),
+    <MT::ImageType as TS>::decl(),
     <T::AABB as TS>::decl(),
     <T::Ability as TS>::decl(),
     <T::AbilityCreation as TS>::decl(),

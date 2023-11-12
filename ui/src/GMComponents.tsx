@@ -1,9 +1,6 @@
 /// GM-only components
-import { Map, Set } from "immutable";
-import capitalize from "lodash/capitalize";
-import sortBy from "lodash/sortBy";
+import { Set } from "immutable";
 import * as React from "react";
-import TwitterPicker from "react-color/lib/components/twitter/Twitter";
 
 import {
   Button,
