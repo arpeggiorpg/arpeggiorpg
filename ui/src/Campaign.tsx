@@ -636,8 +636,9 @@ function TreeObject({ path, object, selecting }: TreeObjectProps) {
     switch (object.t) {
       case "Scene":
         M.getState().setGridFocus(object.id);
-        const encodedPath = path.map(encodeURIComponent).join("/");
-        navigate(`./campaign/${encodedPath}/${encodeURIComponent(name)}`);
+        const segments = path.concat(name);
+        const encodedPath = segments.map(encodeURIComponent).join("/");
+        navigate(`./campaign/${encodedPath}`);
         return;
       case "Creature":
         M.getState().setSecondaryFocus({ t: "Creature", creature_id: object.id });
