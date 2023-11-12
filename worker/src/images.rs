@@ -27,13 +27,6 @@ impl CFImageService {
   pub async fn upload_from_url(
     &self, url: &str, purpose: mtarp::types::ImageType,
   ) -> anyhow::Result<Url> {
-    // curl --request POST \
-    // --url https://api.cloudflare.com/client/v4/accounts/<ACCOUNT_ID>/images/v1 \
-    // --header 'Authorization: Bearer <API_TOKEN>' \
-    // --form 'url=https://[user:password@]example.com/<PATH_TO_IMAGE>' \
-    // --form 'metadata={"key":"value"}' \
-    // --form 'requireSignedURLs=false'
-
     let api_url =
       format!("https://api.cloudflare.com/client/v4/accounts/{}/images/v1", self.account_id);
     let metadata = serde_json::to_string(&json!({"purpose": purpose.to_string()}))?;
@@ -46,7 +39,8 @@ impl CFImageService {
       .post(api_url)
       .multipart(form)
       .header("Authorization", format!("Bearer {}", &self.images_token))
-      .send().await?;
+      .send()
+      .await?;
     let response = response.error_for_status()?;
 
     let response = response.json::<serde_json::Value>().await?;
@@ -68,8 +62,14 @@ impl CFImageService {
     );
     let client = reqwest::Client::new();
     let metadata = serde_json::to_string(&json!({"purpose": purpose.to_string()}))?;
-    let params = [("id", &self.gen_custom_id()), ("metadata", &metadata)];
-    let response = client.post(api_url).form(&params).send().await?;
+    let form =
+      reqwest::multipart::Form::new().text("id", self.gen_custom_id()).text("metadata", metadata);
+    let response = client
+      .post(api_url)
+      .multipart(form)
+      .header("Authorization", format!("Bearer {}", &self.images_token))
+      .send()
+      .await?;
     let response = response.error_for_status()?;
     let response = response.json::<serde_json::Value>().await?;
 

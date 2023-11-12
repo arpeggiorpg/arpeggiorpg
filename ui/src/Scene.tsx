@@ -222,24 +222,63 @@ export function EditSceneBackground({ scene, onDone }: { scene: T.Scene; onDone:
 
 function BackgroundImageUpload({ scene, onClose }: { scene: T.Scene; onClose: () => void }) {
   const [type, setType] = React.useState<null | "URL" | "upload">(null);
+  const [preparedUpload, setPreparedUpload] = React.useState<
+    null | { upload_url: string; final_url: string }
+  >(null);
+
   return (
     <div style={{ display: "flex", flexDirection: "column" }}>
       <div style={{ alignSelf: "center", display: "flex", flexDirection: "row", margin: "5px" }}>
-        <Button onClick={() => setType("upload")}>Upload Image</Button>
-        <Button onClick={() => setType("URL")}>Paste URL</Button>
+        <Button onClick={() => prepareUpload()}>Upload Image</Button>
+        <Button onClick={() => prepareURL()}>Paste URL</Button>
       </div>
       {type === "URL"
-        ? (
-          <TextInput
-            defaultValue={scene.background_image_url || "Enter URL"}
-            onSubmit={uploadBackgroundFromURL}
-          />
-        )
+        ? <TextInput defaultValue={"Enter URL"} onSubmit={uploadBackgroundFromURL} />
         : type === "upload"
-        ? <>OK</>
+        ? preparedUpload
+          ? <input type="file" name="file" accept="image/*" onChange={upload} />
+          : <div>Preparing upload...</div>
         : null}
     </div>
   );
+
+  function prepareURL() {
+    setType("URL");
+    setPreparedUpload(null);
+  }
+
+  async function prepareUpload() {
+    setType("upload");
+    const preparedUpload = await A.sendRequest(
+      { t: "RequestUploadImage", purpose: { t: "BackgroundImage" } },
+      Z.object({ upload_url: Z.string(), final_url: Z.string() }),
+    );
+    setPreparedUpload(preparedUpload);
+  }
+
+  async function upload(event: React.ChangeEvent<HTMLInputElement>) {
+    if (!preparedUpload) {
+      console.log("Somehow, preparedUpload is not set");
+      return;
+    }
+    const file = event.currentTarget?.files?.[0];
+    if (!file) {
+      console.error("No file?");
+      return;
+    }
+    const formData = new FormData();
+    formData.append("file", file, file.name);
+    const result = await fetch(preparedUpload.upload_url, {method: "POST", body: formData});
+    if (!result.ok) {
+      onClose();
+      M.getState().setError("Error uploading file, sorry!");
+    }
+
+    const details = { ...scene, background_image_url: `${preparedUpload.final_url}/original` };
+    A.sendGMCommand({ t: "EditSceneDetails", scene_id: scene.id, details });
+    onClose();
+  }
+
   async function uploadBackgroundFromURL(url: string) {
     let result = await A.sendRequest(
       { t: "UploadImageFromURL", url, purpose: { t: "BackgroundImage" } },

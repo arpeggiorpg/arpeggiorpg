@@ -218,17 +218,20 @@ impl GameSession {
         let invitations = self.game_storage.delete_invitation(invitation_id).await?;
         Ok(serde_json::to_value(invitations)?)
       }
-      (role, UploadImageFromURL { url, purpose }) => {
+      (_, UploadImageFromURL { url, purpose }) => {
         let url = self.image_service.upload_from_url(&url, purpose).await?;
         self.game_storage.register_image(&url, purpose).await?;
 
         let response = json!({"image_url": url.to_string()});
         Ok(serde_json::to_value(response)?)
       }
-      (role, RequestUploadImage { purpose }) => {
+      (_, RequestUploadImage { purpose }) => {
         let pending_image = self.image_service.request_upload_image(purpose).await?;
         self.game_storage.register_image(&pending_image.final_url, purpose).await?;
-        let response = json!({"upload_url": pending_image.upload_url.to_string()});
+        let response = json!({
+          "upload_url": pending_image.upload_url.to_string(),
+          "final_url": pending_image.final_url.to_string()
+        });
         Ok(serde_json::to_value(response)?)
       }
       _ => Err(anyhow!("You can't run that command as that role.")),
