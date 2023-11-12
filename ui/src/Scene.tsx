@@ -322,7 +322,11 @@ function BackgroundImageUpload({ scene, onClose }: { scene: T.Scene; onClose: ()
       M.getState().setError("Error uploading file, sorry!");
     }
 
-    const details = { ...scene, background_image_url: `${preparedUpload.final_url}/original` };
+    const details: T.SceneCreation = {
+      ...scene,
+      background_image_scale: [1, 1],
+      background_image_url: `${preparedUpload.final_url}/original`,
+    };
     A.sendGMCommand({ t: "EditSceneDetails", scene_id: scene.id, details });
     onClose();
   }
@@ -332,8 +336,9 @@ function BackgroundImageUpload({ scene, onClose }: { scene: T.Scene; onClose: ()
       { t: "UploadImageFromURL", url, purpose: { t: "BackgroundImage" } },
       Z.object({ image_url: Z.string() }),
     );
-    const details = {
+    const details: T.SceneCreation = {
       ...scene,
+      background_image_scale: [1, 1],
       background_image_url: `${result.image_url}/original`, // XXX CF Images Dependency
     };
 
