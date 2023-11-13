@@ -1,4 +1,5 @@
 import { Map } from "immutable";
+import isEqual from "lodash/isEqual";
 import mapValues from "lodash/mapValues";
 import * as React from "react";
 
@@ -8,12 +9,12 @@ import * as Campaign from "./Campaign";
 import * as CV from "./CommonView";
 import Connector from "./Connector";
 import * as GM from "./GMComponents";
-import * as Scene from "./Scene";
 import * as Grid from "./Grid";
 import * as History from "./History";
 import * as M from "./Model";
 import * as Players from "./Players";
 import * as T from "./PTTypes";
+import * as Scene from "./Scene";
 
 export default function GMView() {
   return (
@@ -115,22 +116,22 @@ function Secondary() {
 
 export function GMMap() {
   const { "*": path } = useParams();
-  const { scene, creaturesInMap } = M.useState((s) => {
+  const { sceneId, creaturesInMap } = M.useState((s) => {
     if (!path) return { scene: undefined, creaturesInMap: undefined };
     const scene = getSceneFromPath(s, path);
     if (!scene) return { scene: undefined, creaturesInMap: undefined };
     const creaturesInMap = mapCreatures(scene, s);
-    return { scene, creaturesInMap };
-  });
+    return { sceneId: scene.id, creaturesInMap };
+  }, isEqual);
   React.useEffect(() => {
     // We need to synchronize the scene from the path to the zustand store
-    console.log("setting grid focus to", scene?.id);
-    M.getState().setGridFocus(scene?.id);
-  }, [path, scene]);
-  if (!scene) {
+    console.log("setting grid focus to", sceneId);
+    M.getState().setGridFocus(sceneId);
+  }, [path, sceneId]);
+  if (!sceneId) {
     return <div>Couldn't find scene {path}</div>;
   }
-  return <Grid.SceneGrid scene={scene} creatures={creaturesInMap} />;
+  return <Grid.SceneGrid creatures={creaturesInMap} />;
 }
 
 function getSceneFromPath(

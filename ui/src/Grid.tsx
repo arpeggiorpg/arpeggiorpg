@@ -12,29 +12,24 @@ import * as T from "./PTTypes";
 import { AddAnnotation, AddSceneHotspot } from "./Scene";
 import * as SPZ from "./SVGPanZoom";
 
-interface Obj<T> {
-  [index: string]: T;
-}
-
-interface SceneGridProps {
-  scene: T.Scene;
-  creatures: Obj<MapCreature>;
-}
-export function SceneGrid(props: SceneGridProps) {
+export function SceneGrid(props: { creatures: Record<T.CreatureID, MapCreature> }) {
+  // TODO: creatures should probably just be in the store or something?
   const [targetingPoint, setTargetingPoint] = React.useState<T.Point3 | undefined>();
   const [affectedPoints, setAffectedPoints] = React.useState<T.Point3[] | undefined>();
   const [affectedCreatures, setAffectedCreatures] = React.useState<T.CreatureID[] | undefined>();
   const [painting, setPainting] = React.useState<"Opening" | "Closing" | undefined>();
 
-  const { scene } = props;
+  const scene = M.useState(s => s.getFocusedScene());
   const grid = M.useState(s => s.grid); // This is bad.
   const focus = M.useState(s => s.gridFocus);
   const playerID = M.useState(s => s.playerId);
   const pendingScale = M.useState(s => s.pendingBackgroundScale);
   const pendingOffset = M.useState(s => s.pendingBackgroundOffset);
 
+  if (!scene) return <div>No scene!</div>;
+
   const menu = grid.active_objects.objects.length !== 0
-    ? renderGridObjectMenu(grid.active_objects)
+    ? <GridObjectMenu creatures={props.creatures} />
     : grid.context_menu
     ? contextMenu(grid.context_menu.pt, grid.context_menu.coords)
     : null;
@@ -67,19 +62,15 @@ export function SceneGrid(props: SceneGridProps) {
     : getHighlights(scene.highlights, playerID);
   const annotations = getAnnotations(scene.annotations, playerID);
 
-  const scene_hotspots = getSceneHotspots();
-
-  const volumes = layer && layer.t === "Volumes"
-    ? getEditableVolumes()
-    : getVolumeConditions();
+  const volumes = <VolumeConditions />;
 
   const annotations_style = layer
       && (layer.t === "Terrain" || layer.t === "Highlights")
     ? disable_style
     : {};
-  const highlights_style = layer && (layer.t !== "Highlights") ? disable_style : {};
-  const volumes_style = layer && layer.t !== "Volumes" ? disable_style : {};
-  const scene_hotspots_style = layer && layer.t !== "LinkedScenes" ? disable_style : {};
+  const highlights_style = layer?.t !== "Highlights" ? disable_style : {};
+  const volumes_style = layer?.t !== "Volumes" ? disable_style : {};
+  const scene_hotspots_style = layer?.t !== "LinkedScenes" ? disable_style : {};
 
   return (
     <div style={{ width: "100%", height: "100%" }}>
@@ -171,7 +162,9 @@ export function SceneGrid(props: SceneGridProps) {
         {background_image}
         <Terrain />
         <g id="volume-conditions" style={volumes_style}>{volumes}</g>
-        <g id="scene_hotspots" style={scene_hotspots_style}>{scene_hotspots}</g>
+        <g id="scene_hotspots" style={scene_hotspots_style}>
+          <SceneHotspots />
+        </g>
         <g id="creatures" style={disable_style}>{getCreatures()}</g>
         <g id="highlights" style={highlights_style}>{highlights}</g>
         <g id="annotations" style={annotations_style}>{annotations}</g>
@@ -179,23 +172,11 @@ export function SceneGrid(props: SceneGridProps) {
         <g id="targets" style={disable_style}>{target_els}</g>
         <g id="affected" style={disable_style}>{getAffectedTiles()}</g>
         <g id="targeted-volume" style={disable_style}>
-          <DrawTargetedVolume />
+          {targetingPoint ? <TargetedVolume targetingPoint={targetingPoint} /> : null}
         </g>
       </SPZ.SVGPanZoom>
     </div>
   );
-
-  function getSceneHotspots() {
-    return props.scene.scene_hotspots.entrySeq().toArray().map(
-      ([pos, scene_id]) => (
-        <SceneHotSpot
-          key={`scene-hotspot-${scene_id}-${pos.toString()}`}
-          pos={pos}
-          scene_id={scene_id}
-        />
-      ),
-    );
-  }
 
   function getMovementTargets() {
     const move = grid.movement_options;
@@ -289,74 +270,9 @@ export function SceneGrid(props: SceneGridProps) {
     });
   }
 
-  function getEditableVolumes(): Array<JSX.Element> | undefined {
-    return getVolumeConditions(0.5, (vcid, _, me) => {
-      const coords: [number, number] = [me.pageX, me.pageY];
-      M.getState().activateObjects([{ t: "VolumeCondition", id: vcid }], coords);
-    });
-  }
-
-  function getVolumeConditions(
-    fillOpacity: number = 0.1,
-    onClick: (id: T.ConditionID, vc: T.VolumeCondition, evt: React.MouseEvent<any>) => void = () =>
-      undefined,
-  ): Array<JSX.Element> | undefined {
-    return props.scene.volume_conditions.entrySeq().map(([id, vol_cond]) =>
-      svgVolume(id, vol_cond.volume, vol_cond.point, {
-        fill: "green",
-        fillOpacity: `${fillOpacity}`,
-        strokeOpacity: "0.5",
-        style: { pointerEvents: "auto" },
-        onClick: me => onClick(id, vol_cond, me),
-      })
-    ).toArray();
-  }
-
-  function DrawTargetedVolume() {
-    const { scene } = props;
-    const options = grid.target_options;
-    if (!options) return;
-    if (!targetingPoint) return;
-    const ability_id = options.ability_id;
-    const ability = M.useState(s => s.getAbility(ability_id));
-    if (!ability) return;
-    const action = ability.action;
-
-    if ("Creature" in action) {
-      if (typeof action.Creature.target === "string") return;
-      if ("AllCreaturesInVolumeInRange" in action.Creature.target) {
-        return svgVolume(
-          "target-volume",
-          action.Creature.target.AllCreaturesInVolumeInRange.volume,
-          targetingPoint,
-        );
-      }
-      if ("LineFromActor" in action.Creature.target) {
-        // TODO: do we need to do something with LineFromActor.distance?
-        const caster_pos = getCreaturePos(scene, options.cid);
-        if (!caster_pos) return;
-        return (
-          <line
-            x1={caster_pos.x + 50}
-            y1={caster_pos.y + 50}
-            x2={targetingPoint.x + 50}
-            y2={targetingPoint.y + 50}
-            style={{ pointerEvents: "none" }}
-            strokeWidth="3"
-            stroke="black"
-          />
-        );
-      }
-    } else if ("SceneVolume" in action) {
-      return svgVolume(
-        "target-volume",
-        action.SceneVolume.target.RangedVolume.volume,
-        targetingPoint,
-      );
-    }
-  }
-
   async function targetClicked(point: T.Point3) {
+    const sceneId = M.getState().getFocusedScene()?.id;
+    if (!sceneId) return;
     const options = grid.target_options!;
     const ability = M.getState().getAbility(options.ability_id);
     if (!ability) return;
@@ -385,7 +301,7 @@ export function SceneGrid(props: SceneGridProps) {
     }
     setTargetingPoint(point);
     const { points, creatures } = await A.fetchAbilityTargets(
-      props.scene.id,
+      sceneId,
       options.cid,
       options.ability_id,
       point,
@@ -398,110 +314,8 @@ export function SceneGrid(props: SceneGridProps) {
     const close = () => M.getState().clearContextMenu();
     return (
       <PopupMenu coords={coords} onClose={close}>
-        <ContextMenu scene={props.scene} pt={pt} onClose={close} />
+        <ContextMenu pt={pt} onClose={close} />
       </PopupMenu>
-    );
-  }
-
-  function renderGridObjectMenu(arg: { objects: Array<M.GridObject>; coords: [number, number] }) {
-    const { objects, coords } = arg;
-    const { scene, creatures } = props;
-    const close = () => M.getState().clearContextMenu();
-    return (
-      <PopupMenu coords={coords} onClose={close}>
-        <Menu vertical={true}>
-          {objects.map(obj => {
-            switch (obj.t) {
-              case "Annotation":
-                return annotationMenu(close, scene, obj.pt);
-              case "SceneHotSpot":
-                return (
-                  <SceneHotspotMenu
-                    closeMenu={close}
-                    scene={scene}
-                    target_scene_id={obj.scene_id}
-                    pt={obj.pt}
-                  />
-                );
-              case "Creature":
-                return creatureMenu(close, creatures, obj.id);
-              case "VolumeCondition":
-                return volumeConditionMenu(close, scene, obj.id);
-            }
-          })}
-        </Menu>
-      </PopupMenu>
-    );
-  }
-
-  function annotationMenu(close: () => void, scene: T.Scene, pt: T.Point3) {
-    const ann = scene.annotations.get(pt);
-    const delet = () => {
-      const annotations = scene.annotations.delete(pt);
-      A.sendGMCommand({ t: "EditSceneAnnotations", scene_id: scene.id, annotations });
-      close();
-    };
-    if (ann) {
-      return (
-        <>
-          <Menu.Item key="ANN">
-            <Menu.Header>Annotation: {ann[0]}</Menu.Header>
-          </Menu.Item>
-          {playerID
-            ? null
-            : <Menu.Item onClick={delet}>Delete this annotation</Menu.Item>}
-        </>
-      );
-    }
-    return;
-  }
-
-  function creatureMenu(
-    closeMenu: () => void,
-    creatures: Obj<MapCreature>,
-    creature_id: T.CreatureID,
-  ) {
-    const creature = creatures[creature_id];
-    if (creature) {
-      return (
-        <React.Fragment key={`creature-menu-${creature.creature.id}`}>
-          <Menu.Item key={creature.creature.id} header={true}>
-            <CV.ClassIcon class_id={creature.creature.class} /> {creature.creature.name}
-          </Menu.Item>
-          {creature.actions.map(
-            ({ actionName, action }) => {
-              const onClick = () => {
-                closeMenu();
-                action(creature_id);
-              };
-              return (
-                <Menu.Item key={actionName} onClick={() => onClick()}>
-                  {actionName}
-                </Menu.Item>
-              );
-            },
-          )}
-        </React.Fragment>
-      );
-    }
-    return;
-  }
-
-  function volumeConditionMenu(
-    closeMenu: () => void,
-    scene: T.Scene,
-    condition_id: T.ConditionID,
-  ) {
-    const onClick = () => {
-      A.sendGMCommand({ t: "RemoveSceneVolumeCondition", scene_id: scene.id, condition_id });
-      closeMenu();
-    };
-    // unimplemented!: put a name here
-    return (
-      <>
-        <Menu.Item key="Header" header={true}>Condition</Menu.Item>
-        <Menu.Item key="Remove VC" onClick={() => onClick()}>Remove</Menu.Item>
-      </>
     );
   }
 
@@ -585,10 +399,272 @@ export function SceneGrid(props: SceneGridProps) {
   }
 }
 
+/** The GridObjectMenu renders sub-menus for every object which is at a point.
+ * */
+function GridObjectMenu({ creatures }: { creatures: Record<T.CreatureID, MapCreature> }) {
+  const { objects, coords } = M.useState(s => s.grid.active_objects, isEqual);
+  const close = () => M.getState().clearContextMenu();
+  return (
+    <PopupMenu coords={coords} onClose={close}>
+      <Menu vertical={true}>
+        {objects.map(obj => {
+          switch (obj.t) {
+            case "Annotation":
+              return <AnnotationMenu key={pointKey("ann", obj.pt)} onClose={close} pt={obj.pt} />;
+            case "SceneHotSpot":
+              return (
+                <SceneHotspotMenu
+                  key={pointKey("hot", obj.pt)}
+                  onClose={close}
+                  targetSceneId={obj.scene_id}
+                  pt={obj.pt}
+                />
+              );
+            case "Creature":
+              return (
+                <CreatureMenu
+                  key={`creat-${obj.id}`}
+                  onClose={close}
+                  creatures={creatures}
+                  creatureId={obj.id}
+                />
+              );
+            case "VolumeCondition":
+              return <VolumeConditionMenu key={`vc-${obj.id}`} onClose={close} id={obj.id} />;
+          }
+        })}
+      </Menu>
+    </PopupMenu>
+  );
+}
+
+function AnnotationMenu({ onClose, pt }: { onClose: () => void; pt: T.Point3 }) {
+  const isPlayer = M.useState(s => !!s.playerId);
+  const ann = M.useState(s => s.getFocusedScene()?.annotations.get(pt));
+  if (!ann) return;
+  const delet = () => {
+    const scene = M.getState().getFocusedScene();
+    if (scene) {
+      const annotations = scene.annotations.delete(pt);
+      if (annotations) {
+        A.sendGMCommand({ t: "EditSceneAnnotations", scene_id: scene.id, annotations });
+      }
+    }
+    onClose();
+  };
+  return (
+    <>
+      <Menu.Item key="ANN">
+        <Menu.Header>Annotation: {ann[0]}</Menu.Header>
+      </Menu.Item>
+      {isPlayer
+        ? null
+        : <Menu.Item onClick={delet}>Delete this annotation</Menu.Item>}
+    </>
+  );
+}
+
+function SceneHotspotMenu(
+  { onClose, targetSceneId, pt }: { onClose: () => void; targetSceneId: T.SceneID; pt: T.Point3 },
+) {
+  const playerId = M.useState(s => s.playerId);
+  const linked_scene = M.useState(s => s.getScene(targetSceneId));
+  if (!linked_scene) return;
+  const jumpScene = () => {
+    M.getState().setGridFocus(targetSceneId);
+    onClose();
+  };
+  const deleteHotspot = () => {
+    const scene = M.getState().getFocusedScene();
+    if (scene) {
+      const scene_hotspots = scene.scene_hotspots.remove(pt);
+      A.sendGMCommand({ t: "EditSceneSceneHotspots", scene_id: scene.id, scene_hotspots });
+    }
+    onClose();
+  };
+  return (
+    <React.Fragment key="Scene-Hotspot">
+      <Menu.Item>
+        <Menu.Header>Scene Hotspot</Menu.Header>
+      </Menu.Item>
+      <Menu.Item style={{ cursor: "pointer" }} onClick={jumpScene}>
+        {linked_scene.name}
+      </Menu.Item>
+      {playerId ? null : (
+        <Menu.Item style={{ cursor: "pointer" }} onClick={deleteHotspot}>
+          Delete Hotspot
+        </Menu.Item>
+      )}
+    </React.Fragment>
+  );
+}
+
+function CreatureMenu(
+  { onClose, creatures, creatureId }: {
+    onClose: () => void;
+    creatures: Record<T.CreatureID, MapCreature>;
+    creatureId: T.CreatureID;
+  },
+) {
+  const creature = creatures[creatureId];
+  if (creature) {
+    return (
+      <React.Fragment key={`creature-menu-${creature.creature.id}`}>
+        <Menu.Item key={creature.creature.id} header={true}>
+          <CV.ClassIcon class_id={creature.creature.class} /> {creature.creature.name}
+        </Menu.Item>
+        {creature.actions.map(
+          ({ actionName, action }) => {
+            const onClick = () => {
+              onClose();
+              action(creatureId);
+            };
+            return (
+              <Menu.Item key={actionName} onClick={() => onClick()}>
+                {actionName}
+              </Menu.Item>
+            );
+          },
+        )}
+      </React.Fragment>
+    );
+  }
+  return;
+}
+
+function VolumeConditionMenu(
+  { onClose, id }: {
+    onClose: () => void;
+    id: T.ConditionID;
+  },
+) {
+  const onClick = () => {
+    const scene = M.getState().getFocusedScene();
+    if (scene) {
+      A.sendGMCommand({ t: "RemoveSceneVolumeCondition", scene_id: scene.id, condition_id: id });
+    }
+    onClose();
+  };
+  // unimplemented!: put a name here
+  return (
+    <>
+      <Menu.Item key="Header" header={true}>Condition</Menu.Item>
+      <Menu.Item key="Remove VC" onClick={() => onClick()}>Remove</Menu.Item>
+    </>
+  );
+}
+
+function VolumeConditions_() {
+  const volumeConditions = M.useState(
+    s => s.getFocusedScene()?.volume_conditions.entrySeq(),
+    isEqual,
+  );
+  const editingVolumes = M.useState(s => s.gridFocus?.layer?.t === "Volumes");
+  const fillOpacity = editingVolumes ? 0.5 : 0.1;
+  if (!volumeConditions) return;
+  return volumeConditions.map(([id, vol_cond]) =>
+    svgVolume(id, vol_cond.volume, vol_cond.point, {
+      fill: "green",
+      fillOpacity: `${fillOpacity}`,
+      strokeOpacity: "0.5",
+      style: { pointerEvents: "auto" },
+      onClick: me => onClick(id, me),
+    })
+  ).toArray();
+
+  function onClick(id: T.ConditionID, me: React.MouseEvent<any>) {
+    if (!editingVolumes) return;
+    const coords: [number, number] = [me.pageX, me.pageY];
+    M.getState().activateObjects([{ t: "VolumeCondition", id }], coords);
+  }
+}
+
+const VolumeConditions = React.memo(VolumeConditions_, isEqual);
+
+function TargetedVolume({ targetingPoint }: { targetingPoint: T.Point3 }) {
+  const action = M.useState(s => {
+    const options = s.grid.target_options;
+    if (!options) return;
+    const ability_id = options.ability_id;
+    const ability = M.useState(s => s.getAbility(ability_id));
+    if (!ability) return;
+    return ability.action;
+  }, isEqual);
+  const actorId = M.useState(s => s.grid.target_options?.cid);
+  if (!targetingPoint || !action) return;
+
+  if ("Creature" in action) {
+    if (typeof action.Creature.target === "string") return;
+    if ("AllCreaturesInVolumeInRange" in action.Creature.target) {
+      return svgVolume(
+        "target-volume",
+        action.Creature.target.AllCreaturesInVolumeInRange.volume,
+        targetingPoint,
+      );
+    }
+    if ("LineFromActor" in action.Creature.target) {
+      if (!actorId) {
+        console.error("trying to draw a LineFromError but don't have an actor");
+        return;
+      }
+      return <LineFromActor targetingPoint={targetingPoint} actorId={actorId} />;
+    }
+  } else if ("SceneVolume" in action) {
+    return svgVolume(
+      "target-volume",
+      action.SceneVolume.target.RangedVolume.volume,
+      targetingPoint,
+    );
+  }
+}
+
+function LineFromActor(
+  { actorId, targetingPoint }: { actorId: T.CreatureID; targetingPoint: T.Point3 },
+) {
+  const casterPos = M.useState(s => {
+    const scene = s.getFocusedScene();
+    if (!scene) return;
+    return getCreaturePos(scene, actorId);
+  });
+  if (!casterPos) return;
+  // TODO: DO SOMETHING with LineFromActor.distance
+  return (
+    <line
+      x1={casterPos.x + 50}
+      y1={casterPos.y + 50}
+      x2={targetingPoint.x + 50}
+      y2={targetingPoint.y + 50}
+      style={{ pointerEvents: "none" }}
+      strokeWidth="3"
+      stroke="black"
+    />
+  );
+}
+
+function SceneHotspots_() {
+  const hotspots = M.useState(
+    s => s.getFocusedScene()?.scene_hotspots.entrySeq().toArray(),
+    isEqual,
+  );
+  if (hotspots) {
+    return hotspots.map(
+      ([pos, scene_id]) => (
+        <SceneHotSpot
+          key={`scene-hotspot-${scene_id}-${pos.toString()}`}
+          pos={pos}
+          scene_id={scene_id}
+        />
+      ),
+    );
+  }
+}
+
+const SceneHotspots = React.memo(SceneHotspots_, isEqual);
+
 const BASE_AREA = nearby_points(new T.Point3(0, 0, 0));
 
 function Terrain_() {
-  const terrainMode = M.useState(s => s.gridFocus?.layer?.t === "Terrain")
+  const terrainMode = M.useState(s => s.gridFocus?.layer?.t === "Terrain");
 
   const currentTerrain = M.useState(s => {
     const layer = s.gridFocus?.layer;
@@ -635,38 +711,6 @@ function getCreaturePos(scene: T.Scene, creature_id: T.CreatureID): T.Point3 | u
   return M.optMap(scene.creatures.get(creature_id), ([pos, _]) => pos);
 }
 
-function SceneHotspotMenu(
-  props: { closeMenu: () => void; scene: T.Scene; target_scene_id: T.SceneID; pt: T.Point3 },
-) {
-  const playerId = M.useState(s => s.playerId);
-  const linked_scene = M.useState(s => s.getScene(props.target_scene_id));
-  if (!linked_scene) return;
-  const jumpScene = () => {
-    M.getState().setGridFocus(linked_scene.id);
-    props.closeMenu();
-  };
-  const deleteHotspot = () => {
-    const scene_hotspots = props.scene.scene_hotspots.remove(props.pt);
-    A.sendGMCommand({ t: "EditSceneSceneHotspots", scene_id: props.scene.id, scene_hotspots });
-    props.closeMenu();
-  };
-  return (
-    <React.Fragment key="Scene-Hotspot">
-      <Menu.Item>
-        <Menu.Header>Scene Hotspot</Menu.Header>
-      </Menu.Item>
-      <Menu.Item style={{ cursor: "pointer" }} onClick={jumpScene}>
-        {linked_scene.name}
-      </Menu.Item>
-      {playerId ? null : (
-        <Menu.Item style={{ cursor: "pointer" }} onClick={deleteHotspot}>
-          Delete Hotspot
-        </Menu.Item>
-      )}
-    </React.Fragment>
-  );
-}
-
 function getPoint3AtMouse(event: React.MouseEvent<any>) {
   // "as": getElementById has no typed version, so we unfortunately have to assert here.
   const svg = document.getElementById("pt-grid") as any as SVGSVGElement;
@@ -686,48 +730,37 @@ function getPoint3AtMouse(event: React.MouseEvent<any>) {
   return new T.Point3(x, y, 0);
 }
 
-interface ContextMenuProps {
-  scene: T.Scene;
+function ContextMenu({ pt, onClose }: {
   pt: T.Point3;
   onClose: () => void;
-}
-interface ContextMenuState {
-  visible: boolean;
-}
-class ContextMenu extends React.Component<ContextMenuProps, ContextMenuState> {
-  constructor(props: ContextMenuProps) {
-    super(props);
-    this.state = { visible: true };
-  }
-  render() {
-    const { scene, pt, onClose } = this.props;
-    const hideAnd = (open: () => void) => () => {
-      this.setState({ visible: false });
-      open();
-    };
-    // TODO: oh crap, this popup should probably only happen for GMs.
-    const items: Array<[string, (c: () => void) => JSX.Element]> = [
-      ["Add Scene Hotspot", close => <AddSceneHotspot scene={scene} pt={pt} onClose={close} />],
-      ["Add Annotation", close => <AddAnnotation scene={scene} pt={pt} onClose={close} />],
-    ];
-    return (
-      <Menu vertical={true} style={{ display: this.state.visible ? "block" : "none" }}>
-        {items.map(([title, comp]) => (
-          <CV.ModalMaker
-            key={title}
-            button={open => (
-              <Menu.Item style={{ cursor: "pointer" }} onClick={hideAnd(open)}>
-                {title}
-              </Menu.Item>
-            )}
-            header={<>{title}</>}
-            content={comp}
-            onClose={onClose}
-          />
-        ))}
-      </Menu>
-    );
-  }
+}) {
+  const [visible, setVisible] = React.useState<boolean>(true);
+  const hideAnd = (open: () => void) => () => {
+    setVisible(false);
+    open();
+  };
+  // TODO: oh crap, this popup should probably only happen for GMs.
+  const items: Array<[string, (c: () => void) => JSX.Element]> = [
+    ["Add Scene Hotspot", close => <AddSceneHotspot pt={pt} onClose={close} />],
+    ["Add Annotation", close => <AddAnnotation pt={pt} onClose={close} />],
+  ];
+  return (
+    <Menu vertical={true} style={{ display: visible ? "block" : "none" }}>
+      {items.map(([title, comp]) => (
+        <CV.ModalMaker
+          key={title}
+          button={open => (
+            <Menu.Item style={{ cursor: "pointer" }} onClick={hideAnd(open)}>
+              {title}
+            </Menu.Item>
+          )}
+          header={<>{title}</>}
+          content={comp}
+          onClose={onClose}
+        />
+      ))}
+    </Menu>
+  );
 }
 
 function svgVolume(
@@ -821,6 +854,10 @@ function PopupMenu(props: PopupMenuProps): JSX.Element {
 }
 
 export interface MapCreature {
+  // RADIX TODO! This interface and all code using it must be ANNIHILATED. The only important thing
+  // that it provides is the menu of actions to show when clicking on the creature. Instead, we
+  // should just pass these actions directly to SceneGrid, or maybe they can be passed in as a
+  // higher order component or something.
   creature: T.Creature;
   pos: T.Point3;
   class: T.Class;

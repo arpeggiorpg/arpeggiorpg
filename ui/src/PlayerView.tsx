@@ -1,3 +1,4 @@
+import isEqual from "lodash/isEqual";
 import * as React from "react";
 import useSWR from "swr";
 
@@ -10,23 +11,20 @@ import * as M from "./Model";
 import * as T from "./PTTypes";
 
 function PlayerGameView({ playerId }: { playerId: T.PlayerID }) {
-  const { player, scene, mapCreatures } = M.useState(s => {
+  const { player, sceneId, mapCreatures } = M.useState(s => {
     const player = s.getGame().players.get(playerId);
     const scene = player?.scene ? s.getScene(player.scene) : undefined;
     const mapCreatures = player?.scene && scene ? selectMapCreatures(s, player, scene) : {};
-    return { player, scene, mapCreatures };
-  });
+    return { player, sceneId: scene?.id, mapCreatures };
+  }, isEqual);
   const combat = M.useState(s => s.getCombat());
   React.useEffect(() => {
-    M.getState().setGridFocus(scene?.id);
-  }, [scene?.id]);
+    M.getState().setGridFocus(sceneId);
+  }, [sceneId]);
   if (!player) {
     return <div>Player {playerId} not found</div>;
   }
 
-  const map = scene
-    ? <Grid.SceneGrid scene={scene} creatures={mapCreatures} />
-    : <div>No scene loaded</div>;
   const tabs = [
     <CV.Tab key="Creatures" name="Creatures">
       <PlayerCreatures player={player} />
@@ -37,7 +35,7 @@ function PlayerGameView({ playerId }: { playerId: T.PlayerID }) {
   ];
   return (
     <CV.TheLayout
-      map={map}
+      map={<Grid.SceneGrid creatures={mapCreatures} />}
       bottom_right={<PlayerChat player_id={player.player_id} />}
       tabs={tabs}
       bar_width={325}

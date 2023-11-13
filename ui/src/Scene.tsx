@@ -959,36 +959,29 @@ function SceneItemCountEditor(props: { scene: T.Scene; item: T.Item; count: numb
 }
 
 interface AddSceneHotspotProps {
-  scene: T.Scene;
   pt: T.Point3;
   onClose: () => void;
 }
 export function AddSceneHotspot(props: AddSceneHotspotProps) {
-  const { pt, onClose, scene } = props;
+  const { pt, onClose } = props;
   return <Campaign.SceneSelector onCancel={onClose} onSelect={select} />;
 
   function select(sid: T.SceneID) {
     onClose();
-    const scene_hotspots = scene.scene_hotspots.set(pt, sid);
-    A.sendGMCommand({ t: "EditSceneSceneHotspots", scene_id: scene.id, scene_hotspots });
+    const scene = M.getState().getFocusedScene();
+    if (scene) {
+      const scene_hotspots = scene.scene_hotspots.set(pt, sid);
+      A.sendGMCommand({ t: "EditSceneSceneHotspots", scene_id: scene.id, scene_hotspots });
+    }
   }
 }
 
-interface AddAnnotationProps {
-  scene: T.Scene;
+export function AddAnnotation(props: {
   pt: T.Point3;
   onClose: () => void;
-}
-
-export function AddAnnotation(props: AddAnnotationProps) {
+}) {
   const [allPlayers, setAllPlayers] = React.useState(false);
-  const { pt, onClose, scene } = props;
-  const annotate = (text: string) => {
-    const vis: T.Visibility = allPlayers ? "AllPlayers" : "GMOnly";
-    const annotations = scene.annotations.set(pt, [text, vis]);
-    A.sendGMCommand({ t: "EditSceneAnnotations", scene_id: scene.id, annotations });
-    onClose();
-  };
+  const { pt, onClose } = props;
   return (
     <>
       <Checkbox
@@ -999,4 +992,13 @@ export function AddAnnotation(props: AddAnnotationProps) {
       <CV.SingleInputForm buttonText="Annotate" onSubmit={annotate} />
     </>
   );
+  function annotate(text: string) {
+    const vis: T.Visibility = allPlayers ? "AllPlayers" : "GMOnly";
+    const scene = M.getState().getFocusedScene();
+    if (scene) {
+      const annotations = scene.annotations.set(pt, [text, vis]);
+      A.sendGMCommand({ t: "EditSceneAnnotations", scene_id: scene.id, annotations });
+    }
+    onClose();
+  }
 }
