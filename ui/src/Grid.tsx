@@ -12,24 +12,24 @@ import * as T from "./PTTypes";
 import { AddAnnotation, AddSceneHotspot } from "./Scene";
 import * as SPZ from "./SVGPanZoom";
 
-export function SceneGrid(props: { creatures: Record<T.CreatureID, MapCreature> }) {
+export function SceneGrid(props: { creatureIds: T.CreatureID[]; actionProducer: ActionProducer }) {
   // TODO: creatures should probably just be in the store or something?
   const [targetingPoint, setTargetingPoint] = React.useState<T.Point3 | undefined>();
   const [affectedPoints, setAffectedPoints] = React.useState<T.Point3[] | undefined>();
-  const [affectedCreatures, setAffectedCreatures] = React.useState<T.CreatureID[] | undefined>();
+  const [affectedCreatures, setAffectedCreatures] = React.useState<T.CreatureID[]>([]);
   const [painting, setPainting] = React.useState<"Opening" | "Closing" | undefined>();
 
+  const playerID = M.useState(s => s.playerId);
   const scene = M.useState(s => s.getFocusedScene());
   const grid = M.useState(s => s.grid); // This is bad.
   const focus = M.useState(s => s.gridFocus);
-  const playerID = M.useState(s => s.playerId);
   const pendingScale = M.useState(s => s.pendingBackgroundScale);
   const pendingOffset = M.useState(s => s.pendingBackgroundOffset);
 
   if (!scene) return <div>No scene!</div>;
 
   const menu = grid.active_objects.objects.length !== 0
-    ? <GridObjectMenu creatures={props.creatures} />
+    ? <GridObjectMenu actionProducer={props.actionProducer} />
     : grid.context_menu
     ? contextMenu(grid.context_menu.pt, grid.context_menu.coords)
     : null;
@@ -165,7 +165,9 @@ export function SceneGrid(props: { creatures: Record<T.CreatureID, MapCreature> 
         <g id="scene_hotspots" style={scene_hotspots_style}>
           <SceneHotspots />
         </g>
-        <g id="creatures" style={disable_style}>{getCreatures()}</g>
+        <g id="creatures" style={disable_style}>
+          <Creatures creatureIds={props.creatureIds} affectedCreatures={affectedCreatures} />
+        </g>
         <g id="highlights" style={highlights_style}>{highlights}</g>
         <g id="annotations" style={annotations_style}>{annotations}</g>
         <g id="movement-targets" style={disable_style}>{getMovementTargets()}</g>
@@ -185,16 +187,6 @@ export function SceneGrid(props: { creatures: Record<T.CreatureID, MapCreature> 
         <MovementTarget key={pt.toString()} cid={move.cid} pt={pt} teleport={move.teleport} />
       ))
       : null;
-  }
-
-  function getCreatures() {
-    const creatures = sortBy(props.creatures, c => -c.creature.size.x);
-    return Object.values(creatures).map(c => {
-      const highlight = affectedCreatures?.includes(c.creature.id)
-        ? "red"
-        : undefined;
-      return <GridCreature key={c.creature.id} creature={c} highlight={highlight} />;
-    });
   }
 
   function getHighlights(
@@ -388,7 +380,7 @@ export function SceneGrid(props: { creatures: Record<T.CreatureID, MapCreature> 
 
   function clearTargets() {
     setAffectedPoints(undefined);
-    setAffectedCreatures(undefined);
+    setAffectedCreatures([]);
     setTargetingPoint(undefined);
   }
 
@@ -399,9 +391,24 @@ export function SceneGrid(props: { creatures: Record<T.CreatureID, MapCreature> 
   }
 }
 
+function Creatures(
+  { creatureIds, affectedCreatures }: {
+    creatureIds: T.CreatureID[];
+    affectedCreatures: T.CreatureID[];
+  },
+) {
+  creatureIds = M.useState(s => sortBy(s.getCreatures(creatureIds), c => -c.size.x).map(c => c.id));
+  return creatureIds.map(cid => {
+    const highlight = affectedCreatures?.includes(cid)
+      ? "red"
+      : undefined;
+    return <GridCreature key={cid} creatureId={cid} highlight={highlight} />;
+  });
+}
+
 /** The GridObjectMenu renders sub-menus for every object which is at a point.
- * */
-function GridObjectMenu({ creatures }: { creatures: Record<T.CreatureID, MapCreature> }) {
+ */
+function GridObjectMenu({ actionProducer }: { actionProducer: ActionProducer }) {
   const { objects, coords } = M.useState(s => s.grid.active_objects, isEqual);
   const close = () => M.getState().clearContextMenu();
   return (
@@ -425,7 +432,7 @@ function GridObjectMenu({ creatures }: { creatures: Record<T.CreatureID, MapCrea
                 <CreatureMenu
                   key={`creat-${obj.id}`}
                   onClose={close}
-                  creatures={creatures}
+                  actionProducer={actionProducer}
                   creatureId={obj.id}
                 />
               );
@@ -500,20 +507,29 @@ function SceneHotspotMenu(
 }
 
 function CreatureMenu(
-  { onClose, creatures, creatureId }: {
+  { onClose, actionProducer, creatureId }: {
     onClose: () => void;
-    creatures: Record<T.CreatureID, MapCreature>;
+    actionProducer: ActionProducer;
     creatureId: T.CreatureID;
   },
 ) {
-  const creature = creatures[creatureId];
+  const creature = M.useState(s => {
+    const creature = s.getCreature(creatureId);
+    if (!creature) return;
+    return { id: creature.id, name: creature.name, class: creature.class };
+  });
+  const actions = M.useState(
+    s => defaultActions(s, creatureId).concat(actionProducer(s, creatureId)),
+    isEqual,
+  );
+  if (!creature) return <div>Lost creature</div>;
   if (creature) {
     return (
-      <React.Fragment key={`creature-menu-${creature.creature.id}`}>
-        <Menu.Item key={creature.creature.id} header={true}>
-          <CV.ClassIcon class_id={creature.creature.class} /> {creature.creature.name}
+      <React.Fragment key={`creature-menu-${creature.id}`}>
+        <Menu.Item key={creature.id} header={true}>
+          <CV.ClassIcon class_id={creature.class} /> {creature.name}
         </Menu.Item>
-        {creature.actions.map(
+        {actions.map(
           ({ actionName, action }) => {
             const onClick = () => {
               onClose();
@@ -735,7 +751,6 @@ function ContextMenu({ pt, onClose }: {
     setVisible(false);
     open();
   };
-  // TODO: oh crap, this popup should probably only happen for GMs.
   const items: Array<[string, (c: () => void) => JSX.Element]> = [
     ["Add Scene Hotspot", close => <AddSceneHotspot pt={pt} onClose={close} />],
     ["Add Annotation", close => <AddAnnotation pt={pt} onClose={close} />],
@@ -849,17 +864,8 @@ function PopupMenu(props: PopupMenuProps): JSX.Element {
   );
 }
 
-export interface MapCreature {
-  // RADIX TODO! This interface and all code using it must be ANNIHILATED. The only important thing
-  // that it provides is the menu of actions to show when clicking on the creature. Instead, we
-  // should just pass these actions directly to SceneGrid, or maybe they can be passed in as a
-  // higher order component or something.
-  creature: T.Creature;
-  pos: T.Point3;
-  class: T.Class;
-  actions: { actionName: string; action: (cid: T.CreatureID) => void }[];
-  visibility: T.Visibility;
-}
+export type Action = { actionName: string; action: (cid: T.CreatureID) => void };
+export type ActionProducer = (state: M.AllStates, creatureId: T.CreatureID) => Action[];
 
 function MovementTarget(props: { cid?: T.CreatureID; pt: T.Point3; teleport: boolean }) {
   const { cid, pt, teleport } = props;
@@ -1011,29 +1017,24 @@ function findElementsAtPoint<R>(
   return results;
 }
 
-function GridCreature({ creature, highlight }: { creature: MapCreature; highlight?: string }) {
+function GridCreature({ creatureId, highlight }: { creatureId: T.CreatureID; highlight?: string }) {
   const element = React.useRef<MySVGElement | null>(null);
-  const combat = M.useState(s => s.getGame().current_combat);
+  const combat = M.useState(s => s.game.current_combat);
   const targetOptions = M.useState(s => s.grid.target_options);
   const currentCreatureId = M.useState(s => s.getCurrentCombatCreatureID());
+  const creatureData = M.useState(getCreatureData, isEqual);
 
-  const onClick = (event: React.MouseEvent<any>) => {
-    if (element.current) {
-      activateGridObjects(event, element.current);
-    } else {
-      console.log("NO ELEMENT!!!!!!!!!!", element);
-    }
-  };
+  if (!creatureData) return;
 
   const highlightProps: React.SVGAttributes<SVGGraphicsElement> = {};
-  if (combat && currentCreatureId === creature.creature.id) {
+  if (combat && currentCreatureId === creatureData.id) {
     highlightProps.stroke = "black";
     highlightProps.strokeWidth = 3;
   }
   if (
     targetOptions?.options
     && "CreatureIDs" in targetOptions.options
-    && targetOptions.options.CreatureIDs.includes(creature.creature.id)
+    && targetOptions.options.CreatureIDs.includes(creatureData.id)
   ) {
     highlightProps.stroke = "red";
     highlightProps.strokeWidth = 3;
@@ -1043,19 +1044,57 @@ function GridCreature({ creature, highlight }: { creature: MapCreature; highligh
     highlightProps.strokeWidth = 15;
   }
 
-  const opacity = (creature.visibility === "GMOnly") ? "0.4" : "1.0";
-  const reflection_props = { "data-pt-type": "creature", "data-pt-id": creature.creature.id };
+  const opacity = (creatureData.visibility === "GMOnly") ? "0.4" : "1.0";
+  const reflection_props = { "data-pt-type": "creature", "data-pt-id": creatureData.id };
 
   return (
-    <g key={creature.creature.id} opacity={opacity} onClick={onClick} style={{ cursor: "pointer" }}>
-      {contents()}
+    <g key={creatureData.id} opacity={opacity} onClick={onClick} style={{ cursor: "pointer" }}>
+      {contents(creatureData)}
     </g>
   );
 
-  function contents() {
-    if (creature.creature.icon_url !== "") {
-      const props = tile_props<SVGImageElement>("white", creature.pos, creature.creature.size);
-      const bare_props = bare_tile_props<SVGRectElement>(creature.pos, creature.creature.size);
+  function onClick(event: React.MouseEvent<any>) {
+    if (element.current) {
+      activateGridObjects(event, element.current);
+    } else {
+      console.log("NO ELEMENT!!!!!!!!!!", element);
+    }
+  }
+
+  interface CreatureData {
+    id: string;
+    name: string;
+    classColor: string;
+    icon: string;
+    visibility: T.Visibility;
+    pos: T.Point3;
+    size: T.AABB;
+  }
+
+  function getCreatureData(s: M.AllStates): CreatureData | undefined {
+    const creature = s.getCreature(creatureId);
+    if (!creature) return;
+    const class_ = s.getClass(creature.class);
+    if (!class_) throw new Error("no class :-(");
+    const scene = s.getFocusedScene();
+    if (!scene) throw new Error("no scene :-(");
+    const sceneCreature = scene.creatures.get(creature.id);
+    if (!sceneCreature) throw new Error("no scene creature :-(");
+    return {
+      id: creature.id,
+      name: creature.name,
+      classColor: class_.color,
+      icon: creature.icon_url,
+      visibility: sceneCreature[1],
+      pos: sceneCreature[0],
+      size: creature.size,
+    };
+  }
+
+  function contents(creatureData: CreatureData) {
+    if (creatureData.icon !== "") {
+      const props = tile_props<SVGImageElement>("white", creatureData.pos, creatureData.size);
+      const bare_props = bare_tile_props<SVGRectElement>(creatureData.pos, creatureData.size);
       // we need to use the old-fashioned ref callback syntax here to avoid some
       // type errors. This is a workaround that is still type-safe.
       return (
@@ -1065,7 +1104,7 @@ function GridCreature({ creature, highlight }: { creature: MapCreature; highligh
             ref={e => {
               element.current = e;
             }}
-            xlinkHref={creature.creature.icon_url}
+            xlinkHref={creatureData.icon}
             {...props}
           />
           <rect
@@ -1079,9 +1118,9 @@ function GridCreature({ creature, highlight }: { creature: MapCreature; highligh
       );
     } else {
       const props = tile_props<SVGRectElement>(
-        creature.class.color,
-        creature.pos,
-        creature.creature.size,
+        creatureData.classColor,
+        creatureData.pos,
+        creatureData.size,
       );
       return (
         <>
@@ -1096,12 +1135,12 @@ function GridCreature({ creature, highlight }: { creature: MapCreature; highligh
           <text
             style={{ pointerEvents: "none" }}
             fontSize="50"
-            x={creature.pos.x + 50}
-            y={creature.pos.y}
+            x={creatureData.pos.x + 50}
+            y={creatureData.pos.y}
             dominantBaseline="hanging"
             textAnchor="middle"
           >
-            {creature.creature.name.slice(0, 4)}
+            {creatureData.name.slice(0, 4)}
           </text>
         </>
       );
@@ -1164,54 +1203,20 @@ function screenCoordsForRect(rect: MySVGElement): [number, number] {
   return [sw.x, sw.y];
 }
 
-/**
- * Create the `MapCreature`s for all creatures in a scene. This is common code shared for player
- * and GM views.
- */
-export function mapCreatures(state: M.AllStates, scene: T.Scene): { [index: string]: MapCreature } {
+function defaultActions(state: M.AllStates, creatureId: T.CreatureID): Action[] {
   const targetOptions = state.grid.target_options;
-  const sceneCreatures = state.getSceneCreatures(scene);
-  const creatures = M.filterMap(
-    sceneCreatures,
-    creature => {
-      const [pos, vis] = scene.creatures.get(creature.id)!; // map over keys -> .get() is ok
-      const class_ = state.getClass(creature.class);
-      if (class_) {
-        let actions = [];
-        const target = targetAction(creature);
-        if (target) {
-          actions.push({ actionName: target.name, action: target.action });
-        }
-        return { creature, pos, class: class_, actions, visibility: vis };
-      }
-    },
-  );
-  const result: { [index: string]: MapCreature } = {};
-  for (const creature of creatures) {
-    result[creature.creature.id] = creature;
-  }
-  return result;
 
-  function targetAction(
-    creature: T.Creature,
-  ): { name: string; action: (cid: T.CreatureID) => void } | undefined {
-    if (targetOptions) {
-      const { ability_id, options } = targetOptions;
-      if (!("CreatureIDs" in options)) return undefined;
-      // this is quadratic (TODO: switch options.cids to a hashmap)
-      if (options.CreatureIDs.includes(creature.id)) {
-        const ability = state.getAbility(ability_id);
-        if (ability) {
-          return {
-            name: `${ability.name} this creature`,
-            action: cid => {
-              A.executeCombatAbility(cid);
-            },
-          };
-        }
-      }
-    }
-  }
+  if (!targetOptions) return [];
+  const { ability_id, options } = targetOptions;
+  if (!("CreatureIDs" in options)) return [];
+  // this is quadratic (TODO: switch options.cids to a hashmap)
+  if (!options.CreatureIDs.includes(creatureId)) return [];
+  const ability = state.getAbility(ability_id);
+  if (!ability) return [];
+  return [{
+    actionName: `${ability.name} this creature`,
+    action: A.executeCombatAbility,
+  }];
 }
 
 export function nearby_points(pos: T.Point3): Array<T.Point3> {
@@ -1224,7 +1229,9 @@ export function nearby_points(pos: T.Point3): Array<T.Point3> {
   return result;
 }
 
-export function requestTeleport(scene: T.Scene, cid: T.CreatureID) {
+export function requestTeleport(cid: T.CreatureID) {
+  const scene = M.getState().getFocusedScene();
+  if (!scene) throw new Error("no scene");
   const scene_creature = scene.creatures.get(cid);
   if (scene_creature) {
     M.getState().displayMovementOptions(nearby_points(scene_creature[0]), cid, true);

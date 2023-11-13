@@ -36,9 +36,9 @@ import { EditableNumericLabel, TextInput } from "./TextInput";
 
 export function GMScene() {
   const scenePlayers = M.useState(s =>
-    s.getGame().players.count(p => p.scene === s.getFocusedScene()?.id)
+    s.game.players.count(p => p.scene === s.getFocusedScene()?.id)
   );
-  const totalPlayers = M.useState(s => s.getGame().players.count());
+  const totalPlayers = M.useState(s => s.game.players.count());
   const playerCount = `${scenePlayers}/${totalPlayers}`;
   const linkedScenesCount = M.useState(s => {
     const scene = s.getFocusedScene();
@@ -444,7 +444,7 @@ export function GMScenePlayers() {
     s => {
       const scene = s.getFocusedScene();
       if (!scene) return;
-      return s.getGame().players.valueSeq().toArray().filter(player => player.scene === scene.id);
+      return s.game.players.valueSeq().toArray().filter(player => player.scene === scene.id);
     },
   );
   if (!playersHere) return <div>No scene</div>;
@@ -532,7 +532,7 @@ export function LinkedScenes() {
   }
 
   function getHotspotScenes(s: M.AllStates) {
-    const allScenes = s.getGame().scenes;
+    const allScenes = s.game.scenes;
     const scene = s.getFocusedScene();
     if (!scene) return;
     return sortBy(

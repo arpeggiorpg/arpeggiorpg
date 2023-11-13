@@ -49,7 +49,6 @@ export interface AppState {
   getCreatures: (cids: T.CreatureID[]) => T.Creature[];
   getCreature: (cid: T.CreatureID) => T.Creature | undefined;
   getCombat: () => T.Combat | null;
-  getGame: () => T.Game;
 
   getAbility: (abid: T.AbilityID) => T.Ability | undefined;
   getAbilities: (abids: T.AbilityID[]) => T.Ability[];
@@ -94,7 +93,7 @@ const appSlice: Slice<AppState> = (set, get) => ({
     return {recentLogs};
   }),
 
-  getItem: iid => get().getGame().items[iid],
+  getItem: iid => get().game.items[iid],
   getItems: iids =>
     sortBy(
       filterMap(iids, iid => get().getItem(iid)),
@@ -102,8 +101,8 @@ const appSlice: Slice<AppState> = (set, get) => ({
     ),
 
   getScenes: (sceneIds) =>
-    sortBy(filterMap(sceneIds, s => get().getGame().scenes.get(s)), s => s.name),
-  getScene: (scene_id) => get().getGame().scenes.get(scene_id),
+    sortBy(filterMap(sceneIds, s => get().game.scenes.get(s)), s => s.name),
+  getScene: (scene_id) => get().game.scenes.get(scene_id),
 
   getCurrentCombatCreatureID: () => {
     const combat = get().getCombat();
@@ -124,7 +123,7 @@ const appSlice: Slice<AppState> = (set, get) => ({
   getFolderNode: path => get().getFolder(path)?.data,
 
   getFolder: path => {
-    let cur: T.Folder | undefined = get().getGame().campaign;
+    let cur: T.Folder | undefined = get().game.campaign;
     for (const seg of path) {
       cur = cur.children.get(seg);
       if (!cur) return undefined;
@@ -137,13 +136,12 @@ const appSlice: Slice<AppState> = (set, get) => ({
   getSceneCreatures: scene => get().getCreatures(scene.creatures.keySeq().toArray()),
   getCreatures: cids =>
     sortBy(filterMap(cids, cid => get().getCreature(cid)), (c: T.Creature) => c.name),
-  getCreature: cid => get().getGame().creatures.get(cid),
-  getCombat: () => get().getGame().current_combat,
-  getGame: () => get().game,
+  getCreature: cid => get().game.creatures.get(cid),
+  getCombat: () => get().game.current_combat,
 
-  getAbility: abid => get().getGame().abilities[abid],
+  getAbility: abid => get().game.abilities[abid],
   getAbilities: abids => sortBy(filterMap(abids, abid => get().getAbility(abid)), i => i.name),
-  getClass: classid => get().getGame().classes.get(classid),
+  getClass: classid => get().game.classes.get(classid),
   getClasses: classids =>
     sortBy(
       filterMap(classids, classid => get().getClass(classid)),
@@ -237,7 +235,7 @@ const gridSlice: Slice<GridState> = (set, get) => ({
       if (!scene_id) {
         return { gridFocus: undefined };
       }
-      const scene = get().getGame().scenes.get(scene_id);
+      const scene = get().game.scenes.get(scene_id);
       let layer: SceneLayer | undefined = undefined;
       switch (t) {
         case "Terrain":
@@ -297,7 +295,7 @@ const gridSlice: Slice<GridState> = (set, get) => ({
   getFocusedScene: () => {
     const state = get();
     if (!state.gridFocus) return;
-    return state.getGame().scenes.get(state.gridFocus.scene_id);
+    return state.game.scenes.get(state.gridFocus.scene_id);
   },
 });
 

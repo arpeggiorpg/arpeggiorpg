@@ -133,7 +133,7 @@ function AddItemsToCreature(props: { creature: T.Creature; onClose: () => void }
 }
 
 export function GMCombat() {
-  const inCombat = M.useState(s => !!s.getGame().current_combat);
+  const inCombat = M.useState(s => !!s.game.current_combat);
   if (!inCombat) {
     return <StartCombat />;
   }
@@ -393,7 +393,7 @@ function EditCreatureData(props: EditCreatureDataProps) {
   const { onClose } = props;
   const parsed_initiative = Dice.maybeParse(initiative_string);
   const classes = M.useState(s =>
-    s.getGame().classes.valueSeq().toArray().map(class_ => ({
+    s.game.classes.valueSeq().toArray().map(class_ => ({
       key: class_.id,
       // it's probably not good to return elements from useState
       text: (

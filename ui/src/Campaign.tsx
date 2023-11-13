@@ -838,18 +838,18 @@ function collectFolderObjects<T>(
 }
 
 function collectAllItems(state: M.AppState): Array<[T.FolderPath, T.Item]> {
-  return collectFolderObjects([], state.getGame().campaign, node => state.getItems(node.items));
+  return collectFolderObjects([], state.game.campaign, node => state.getItems(node.items));
 }
 
 function collectAllScenes(state: M.AppState): Array<[T.FolderPath, T.Scene]> {
-  return collectFolderObjects([], state.getGame().campaign, node => state.getScenes(node.scenes));
+  return collectFolderObjects([], state.game.campaign, node => state.getScenes(node.scenes));
 }
 
 interface SelectFolderProps {
   onSelect: (p: T.FolderPath) => void;
 }
 function SelectFolder(props: SelectFolderProps) {
-  const all_folders = M.useState(s => collectAllFolders([], s.getGame().campaign));
+  const all_folders = M.useState(s => collectAllFolders([], s.game.campaign));
 
   return (
     <SearchSelect

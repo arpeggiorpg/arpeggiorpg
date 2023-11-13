@@ -115,12 +115,13 @@ function Secondary() {
 
 export function GMMap() {
   const { "*": path } = useParams();
-  const { sceneId, creaturesInMap } = M.useState((s) => {
+  const { sceneId, creaturesInScene } = M.useState((s) => {
     if (!path) return { scene: undefined, creaturesInMap: undefined };
     const scene = getSceneFromPath(s, path);
     if (!scene) return { scene: undefined, creaturesInMap: undefined };
-    const creaturesInMap = mapCreatures(scene, s);
-    return { sceneId: scene.id, creaturesInMap };
+    const creaturesInScene = scene.creatures.keySeq().toArray();
+    // mapCreatures(scene, s);
+    return { sceneId: scene.id, creaturesInScene };
   }, isEqual);
   React.useEffect(() => {
     // We need to synchronize the scene from the path to the zustand store
@@ -130,7 +131,7 @@ export function GMMap() {
   if (!sceneId) {
     return <div>Couldn't find scene {path}</div>;
   }
-  return <Grid.SceneGrid creatures={creaturesInMap} />;
+  return <Grid.SceneGrid creatureIds={creaturesInScene} actionProducer={creatureMenuActions} />;
 }
 
 function getSceneFromPath(
@@ -166,47 +167,24 @@ function getSceneFromPath(
   console.error("Couldn't find scene with name", sceneName);
 }
 
-/** Create `MapCreature`s for all creatures in a scene, and annotate them with GM-specific actions.
- */
-function mapCreatures(
-  scene: T.Scene,
-  state: M.AllStates,
-): { [index: string]: Grid.MapCreature } {
-  return mapValues(Grid.mapCreatures(state, scene), (mapc) => ({
-    ...mapc,
-    actions: mapc.actions.concat(
-      creatureMenuActions(
-        state,
-        scene,
-        state.getGame().current_combat,
-        mapc.creature,
-      ),
-    ),
-  }));
-}
-
 function creatureMenuActions(
   state: M.AllStates,
-  scene: T.Scene,
-  combat: T.Combat | null,
-  creature: T.Creature,
-): Grid.MapCreature["actions"] {
+  creatureId: T.CreatureID,
+): Grid.Action[] {
   const actions = [
-    {
-      actionName: "View Creature",
-      action: (cid: T.CreatureID) =>
-        M.getState().setSecondaryFocus({ t: "Creature", creature_id: cid }),
-    },
-    { actionName: "Walk", action: (cid: T.CreatureID) => A.requestMove(cid) },
-    { actionName: "Teleport", action: (cid: T.CreatureID) => Grid.requestTeleport(scene, cid) },
+    { actionName: "View Creature", action: focusCreature },
+    { actionName: "Walk", action: A.requestMove },
+    { actionName: "Teleport", action: Grid.requestTeleport },
   ];
-  if (combat && state.getCurrentCombatCreatureID() === creature.id) {
-    actions.push({
-      actionName: "Combat-move",
-      action: (_: T.CreatureID) => A.requestCombatMovement(),
-    });
+  const combat = state.getCombat();
+  if (combat && state.getCurrentCombatCreatureID() === creatureId) {
+    actions.push({ actionName: "Combat-move", action: A.requestCombatMovement });
   }
   return actions;
+}
+
+function focusCreature(cid: T.CreatureID) {
+  M.getState().setSecondaryFocus({ t: "Creature", creature_id: cid });
 }
 
 function GMChat(): JSX.Element {

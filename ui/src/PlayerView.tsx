@@ -11,11 +11,17 @@ import * as M from "./Model";
 import * as T from "./PTTypes";
 
 function PlayerGameView({ playerId }: { playerId: T.PlayerID }) {
-  const { player, sceneId, mapCreatures } = M.useState(s => {
-    const player = s.getGame().players.get(playerId);
+  const { player, sceneId, visibleCreatures } = M.useState(s => {
+    const player = s.game.players.get(playerId);
     const scene = player?.scene ? s.getScene(player.scene) : undefined;
-    const mapCreatures = player?.scene && scene ? selectMapCreatures(s, player, scene) : {};
-    return { player, sceneId: scene?.id, mapCreatures };
+    if (!scene) return { player, sceneId: undefined, visibleCreatures: undefined };
+    const visibleCreatures = M.filterMap(
+      scene?.creatures.entrySeq().toArray(),
+      ([creatureId, [_, vis]]) => {
+        if (vis === "AllPlayers") return creatureId;
+      },
+    );
+    return { player, sceneId: scene?.id, visibleCreatures };
   }, isEqual);
   const combat = M.useState(s => s.getCombat());
   React.useEffect(() => {
@@ -35,7 +41,14 @@ function PlayerGameView({ playerId }: { playerId: T.PlayerID }) {
   ];
   return (
     <CV.TheLayout
-      map={<Grid.SceneGrid creatures={mapCreatures} />}
+      map={visibleCreatures
+        ? (
+          <Grid.SceneGrid
+            creatureIds={visibleCreatures}
+            actionProducer={creatureMenuActions(player.creatures)}
+          />
+        )
+        : <div>Ask your GM to put you in a scene</div>}
       bottom_right={<PlayerChat player_id={player.player_id} />}
       tabs={tabs}
       bar_width={325}
@@ -45,43 +58,23 @@ function PlayerGameView({ playerId }: { playerId: T.PlayerID }) {
   );
 }
 
-/**
- * Figure out which creatures to display, and create [[Grid.MapCreature]] for each of them.
- * This involves figuring out what kind of actions this player can perform on each creature, such as
- * moving them (if the player has control of them), or targeting them for an ability that has been
- * selected.
- */
-function selectMapCreatures(
-  state: M.AllStates,
-  player: T.Player,
-  scene: T.Scene,
-): { [index: string]: Grid.MapCreature } {
-  return M.filterMapValues(Grid.mapCreatures(state, scene), mapc => {
-    // !: must exist in filterMapValues()
-    if (scene.creatures.get(mapc.creature.id)![1] === "AllPlayers") {
-      const actions = creatureMenuActions(state, player, mapc.creature);
-      return { ...mapc, actions: mapc.actions.concat(actions) };
+function creatureMenuActions(playerCreatures: T.CreatureID[]) {
+  function creatureMenuActions(
+    state: M.AllStates,
+    creatureId: T.CreatureID,
+  ): Grid.Action[] {
+    const actions = [];
+    const combat = state.getCombat();
+    if (combat) {
+      if (state.getCurrentCombatCreatureID() === creatureId) {
+        actions.push({ actionName: "Combat Move", action: A.requestCombatMovement });
+      }
+    } else if (playerCreatures.includes(creatureId)) {
+      actions.push({ actionName: "Walk", action: A.requestMove });
     }
-  });
-}
-
-function creatureMenuActions(
-  state: M.AllStates,
-  player: T.Player,
-  creature: T.Creature,
-): Grid.MapCreature["actions"] {
-  // Well, this function is *definitely* not returning identity-stable or even equatable return
-  // values, so this is going to force re-renders constantly.
-  const actions = [];
-  const combat = state.getCombat();
-  if (combat) {
-    if (state.getCurrentCombatCreatureID() === creature.id) {
-      actions.push({ actionName: "Combat Move", action: () => A.requestCombatMovement() });
-    }
-  } else if (player.creatures.includes(creature.id)) {
-    actions.push({ actionName: "Walk", action: A.requestMove });
+    return actions;
   }
-  return actions;
+  return creatureMenuActions;
 }
 
 function PlayerCreatures(props: { player: T.Player }) {

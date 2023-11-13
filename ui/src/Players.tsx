@@ -11,7 +11,7 @@ import * as M from "./Model";
 import * as T from "./PTTypes";
 
 export function Players() {
-  const players = M.useState((s) => s.getGame().players);
+  const players = M.useState((s) => s.game.players);
   const gm_scene = M.useState((s) => s.getFocusedScene());
   const player_creatures = M.useState((s) =>
     players
