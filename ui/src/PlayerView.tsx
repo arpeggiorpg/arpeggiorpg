@@ -17,9 +17,13 @@ function PlayerGameView({ playerId }: { playerId: T.PlayerID }) {
     return { player, scene, mapCreatures };
   });
   const combat = M.useState(s => s.getCombat());
+  React.useEffect(() => {
+    M.getState().setGridFocus(scene?.id);
+  }, [scene?.id]);
   if (!player) {
     return <div>Player {playerId} not found</div>;
   }
+
   const map = scene
     ? <Grid.SceneGrid scene={scene} creatures={mapCreatures} />
     : <div>No scene loaded</div>;
