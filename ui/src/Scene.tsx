@@ -251,7 +251,7 @@ function NumericSlider(
           }}
         />
         <Input
-          value={numberText}
+          value={numberText || ""}
           onChange={(event) => {
             setNumberText(event.target.value);
           }}
