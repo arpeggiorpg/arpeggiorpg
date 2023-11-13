@@ -542,26 +542,28 @@ export class Tab extends React.Component<TabProps> {
 }
 
 interface CombatProps {
-  combat: T.Combat;
-  card?: React.ComponentType<{ creature: T.Creature }>;
-  initiative?: (creature: T.Creature, init: number) => JSX.Element;
+  card?: React.ComponentType<{ creature: T.Creature }>; // TODO: This should just take a CreatureID
+  initiative?: (creatureId: T.CreatureID, init: number) => JSX.Element;
 }
-export function Combat({ combat, card, initiative }: CombatProps): JSX.Element {
-  const creaturesWithInit = M.useState(
-    (s) =>
-      M.filterMap(combat.creatures.data, ([cid, init]) => {
-        const creature = s.getCreature(cid);
-        if (creature) {
-          return [creature, init];
-        }
-      }) as Array<[T.Creature, number]>,
-  );
+export function Combat({ card, initiative }: CombatProps): JSX.Element {
+  const creaturesWithInit = M.useState(s => {
+    const combat = s.getCombat();
+    if (!combat) return;
+    return M.filterMap(combat.creatures.data, ([cid, init]) => {
+      const creature = s.getCreature(cid);
+      if (creature) {
+        return [creature, init];
+      }
+    }) as Array<[T.Creature, number]>;
+  });
+  const currentPosition = M.useState(s => s.getCombat()?.creatures.cursor);
+  if (!creaturesWithInit) return <div>No combat</div>;
 
   const Card = card ? card : CreatureCard;
   return (
     <Segment.Group>
       {creaturesWithInit.map(([creature, init], index) => {
-        const show_init = initiative ? initiative(creature, init) : null;
+        const show_init = initiative ? initiative(creature.id, init) : null;
         return (
           <Segment.Group key={creature.id} horizontal={true}>
             <Segment
@@ -576,7 +578,7 @@ export function Combat({ combat, card, initiative }: CombatProps): JSX.Element {
               }}
             >
               <div style={{ height: "25px" }}>
-                {index === combat.creatures.cursor ? "▶️" : ""}
+                {index === currentPosition ? "▶️" : ""}
               </div>
               <div>{show_init}</div>
             </Segment>

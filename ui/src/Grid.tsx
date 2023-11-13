@@ -624,7 +624,7 @@ function LineFromActor(
   const casterPos = M.useState(s => {
     const scene = s.getFocusedScene();
     if (!scene) return;
-    return getCreaturePos(scene, actorId);
+    return M.optMap(scene.creatures.get(actorId), ([pos, _]) => pos);
   });
   if (!casterPos) return;
   // TODO: DO SOMETHING with LineFromActor.distance
@@ -706,10 +706,6 @@ function ClosedTerrainTile_({ pt }: { pt: T.Point3 }) {
   return <rect {...tprops} style={{ cursor: "pointer" }} key={pointKey("closed", pt)} />;
 }
 const ClosedTerrainTile = React.memo(ClosedTerrainTile_, isEqual);
-
-function getCreaturePos(scene: T.Scene, creature_id: T.CreatureID): T.Point3 | undefined {
-  return M.optMap(scene.creatures.get(creature_id), ([pos, _]) => pos);
-}
 
 function getPoint3AtMouse(event: React.MouseEvent<any>) {
   // "as": getElementById has no typed version, so we unfortunately have to assert here.

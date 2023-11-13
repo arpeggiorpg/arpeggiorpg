@@ -133,23 +133,19 @@ function AddItemsToCreature(props: { creature: T.Creature; onClose: () => void }
 }
 
 export function GMCombat() {
-  const combat = M.useState(s => s.getGame().current_combat);
-  const scene = M.useState(s => s.getFocusedScene());
-  if (!combat) {
-    const startCombat = scene
-      ? <StartCombat scene={scene} />
-      : <div>Load a scene to start a combat.</div>;
-    return startCombat;
+  const inCombat = M.useState(s => !!s.getGame().current_combat);
+  if (!inCombat) {
+    return <StartCombat />;
   }
 
   return (
     <div>
-      <GMCombatHeader combat={combat} />
-      <CV.Combat combat={combat} card={GMCombatCreatureCard} initiative={initiative} />
+      <GMCombatHeader />
+      <CV.Combat card={GMCombatCreatureCard} initiative={initiative} />
     </div>
   );
 
-  function initiative(creature: T.Creature, init: number) {
+  function initiative(creatureId: T.CreatureID, init: number) {
     return <CV.Toggler a={view} b={edit} />;
 
     function view(toggle: CV.ToggleFunc) {
@@ -168,25 +164,31 @@ export function GMCombat() {
           onCancel={toggle}
           onSubmit={input => {
             toggle();
-            changeInit(creature, input);
+            changeInit(creatureId, input);
           }}
         />
       );
     }
   }
 
-  function changeInit(creature: T.Creature, new_init: string) {
+  function changeInit(creatureId: T.CreatureID, new_init: string) {
     const initiative = Number(new_init);
     A.sendGMCommand(
-      { t: "ChangeCreatureInitiative", creature_id: creature.id, initiative },
+      { t: "ChangeCreatureInitiative", creature_id: creatureId, initiative },
     );
   }
 }
 
-function StartCombat(props: { scene: T.Scene }) {
-  const sceneCreatureIDs = M.useState(s => s.getSceneCreatures(props.scene).map(c => c.id));
+function StartCombat() {
+  const sceneCreatureIDs = M.useState(s => {
+    const scene = s.getFocusedScene();
+    if (!scene) return;
+    return s.getSceneCreatures(scene).map(c => c.id);
+  });
   // TODO: clean up this mess. Should this be a useEffect? I hate useEffect!
   const [selected, setSelected] = React.useState<Set<T.CreatureID>>(Set(sceneCreatureIDs));
+
+  if (!sceneCreatureIDs) return <div>No scene</div>;
 
   // componentWillReceiveProps(nextProps: { scene: T.Scene } & M.ReduxProps) {
   //   const scene_creatures = nextProps.scene.creatures.keySeq().toSet();
@@ -194,14 +196,16 @@ function StartCombat(props: { scene: T.Scene }) {
   //   this.setState({ selected: this.state.selected.intersect(scene_creatures) });
   // }
 
-  const { scene } = props;
   return (
     <div>
       <Button
-        onClick={() =>
+        onClick={() => {
+          const scene = M.getState().getFocusedScene();
+          if (!scene) throw new Error("no scene");
           A.sendGMCommand(
             { t: "StartCombat", scene_id: scene.id, combatants: selected.toArray() },
-          )}
+          );
+        }}
       >
         Start combat
       </Button>
@@ -214,24 +218,32 @@ function StartCombat(props: { scene: T.Scene }) {
   );
 }
 
-function GMCombatHeader({ combat }: { combat: T.Combat }) {
-  const scene = M.useState(s => s.getScene(combat.scene));
+function GMCombatHeader() {
+  const sceneName = M.useState(s => {
+    const combatSceneId = s.getCombat()?.scene;
+    if (!combatSceneId) return;
+    const scene = s.getScene(combatSceneId);
+    return scene?.name;
+  });
 
   return (
     <Segment>
-      {scene
-        ? (
-          <div>
-            <span style={{ fontWeight: "bold" }}>Scene:</span>&nbsp;
-            <a href="#" onClick={() => M.getState().setGridFocus(scene.id)}>
-              {scene.name}
-            </a>
-            <Button onClick={() => A.sendGMCommand({ t: "StopCombat" })}>
-              Stop combat
-            </Button>
-          </div>
-        )
-        : <div>Lost scene!</div>}
+      <div>
+        <span style={{ fontWeight: "bold" }}>Scene:</span>&nbsp;
+        <a
+          href="#"
+          onClick={() => {
+            const combatSceneId = M.getState().getCombat()?.scene;
+            if (!combatSceneId) throw new Error("no combat?");
+            M.getState().setGridFocus(combatSceneId);
+          }}
+        >
+          {sceneName}
+        </a>
+        <Button onClick={() => A.sendGMCommand({ t: "StopCombat" })}>
+          Stop combat
+        </Button>
+      </div>
     </Segment>
   );
 }
