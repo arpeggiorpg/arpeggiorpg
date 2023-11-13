@@ -1,15 +1,16 @@
+import { Set } from "immutable";
+import isEqual from "lodash/isEqual";
 import range from "lodash/range";
 import sortBy from "lodash/sortBy";
 import * as React from "react";
-
 import { Button, Menu } from "semantic-ui-react";
 
 import * as A from "./Actions";
 import * as CV from "./CommonView";
 import * as M from "./Model";
 import * as T from "./PTTypes";
-import * as SPZ from "./SVGPanZoom";
 import { AddAnnotation, AddSceneHotspot } from "./Scene";
+import * as SPZ from "./SVGPanZoom";
 
 interface Obj<T> {
   [index: string]: T;
@@ -46,25 +47,20 @@ export function SceneGrid(props: SceneGridProps) {
   const disable_style: React.CSSProperties = layer ? { pointerEvents: "none", opacity: 0.3 } : {};
 
   const [bgXScale, bgYScale] = pendingScale ? pendingScale : scene.background_image_scale;
-  const [offsetX, offsetY] = pendingOffset ? pendingOffset : scene.background_image_offset || [0, 0];
+  const [offsetX, offsetY] = pendingOffset
+    ? pendingOffset
+    : scene.background_image_offset || [0, 0];
   const background_image = scene.background_image_url
     ? (
       <image
         xlinkHref={scene.background_image_url}
-        style={{transform: `scale(${bgXScale}, ${bgYScale})`}}
+        style={{ transform: `scale(${bgXScale}, ${bgYScale})` }}
         x={offsetX}
         y={offsetY}
         preserveAspectRatio="none"
       />
     )
     : null;
-
-  const current_terrain = layer && layer.t === "Terrain" ? layer.terrain : scene.terrain;
-  const open_terrain_color = scene.background_image_url ? "transparent" : "white";
-  const closed_terrain_els = layer && layer.t === "Terrain"
-    ? getClosedTerrain(current_terrain)
-    : null;
-  const open_terrain_els = current_terrain.map(pt => tile(open_terrain_color, "base-terrain", pt));
 
   const highlights = layer && layer.t === "Highlights"
     ? getEditableHighlights(layer.highlights)
@@ -173,7 +169,7 @@ export function SceneGrid(props: SceneGridProps) {
         }}
       >
         {background_image}
-        <g id="terrain">{closed_terrain_els}{open_terrain_els}</g>
+        <Terrain />
         <g id="volume-conditions" style={volumes_style}>{volumes}</g>
         <g id="scene_hotspots" style={scene_hotspots_style}>{scene_hotspots}</g>
         <g id="creatures" style={disable_style}>{getCreatures()}</g>
@@ -218,15 +214,6 @@ export function SceneGrid(props: SceneGridProps) {
         : undefined;
       return <GridCreature key={c.creature.id} creature={c} highlight={highlight} />;
     });
-  }
-
-  function getClosedTerrain(terrain: T.Terrain) {
-    const closed_tiles = M.filterMap(nearby_points(new T.Point3(0, 0, 0)), pt => {
-      if (terrain.contains(pt)) return;
-      const tprops = tile_props<SVGRectElement>("black", pt, { x: 1, y: 1 }, 0.5);
-      return <rect {...tprops} style={{ cursor: "pointer" }} key={pointKey("closed", pt)} />;
-    });
-    return closed_tiles;
   }
 
   function getHighlights(
@@ -597,6 +584,52 @@ export function SceneGrid(props: SceneGridProps) {
     clearTargets();
   }
 }
+
+const BASE_AREA = nearby_points(new T.Point3(0, 0, 0));
+
+function Terrain_() {
+  const terrainMode = M.useState(s => s.gridFocus?.layer?.t === "Terrain")
+
+  const currentTerrain = M.useState(s => {
+    const layer = s.gridFocus?.layer;
+    const scene = s.getFocusedScene();
+    const terrain = layer?.t === "Terrain" ? layer.terrain : scene?.terrain;
+    return terrain;
+  }) || Set();
+  const openTerrainColor = M.useState(s =>
+    s.getFocusedScene()?.background_image_url ? "transparent" : "white"
+  );
+
+  const closedTerrain = terrainMode && M.filterMap(BASE_AREA, pt => {
+    if (currentTerrain.contains(pt)) return;
+    return <ClosedTerrainTile key={pointKey("closed-terrain", pt)} pt={pt} />;
+  });
+
+  const openTerrain = currentTerrain.map(pt => (
+    <OpenTerrainTile color={openTerrainColor} key={pointKey("base-terrain", pt)} pt={pt} />
+  ));
+
+  return <g id="terrain">{closedTerrain}{openTerrain}</g>;
+}
+const Terrain = React.memo(Terrain_, isEqual);
+
+function OpenTerrainTile_(
+  { color, pt, size }: {
+    color: string;
+    pt: T.Point3;
+    size?: { x: number; y: number };
+  },
+): JSX.Element {
+  const props = tile_props<SVGRectElement>(color, pt, size);
+  return <rect {...props} />;
+}
+const OpenTerrainTile = React.memo(OpenTerrainTile_, isEqual);
+
+function ClosedTerrainTile_({ pt }: { pt: T.Point3 }) {
+  const tprops = tile_props<SVGRectElement>("black", pt, { x: 1, y: 1 }, 0.5);
+  return <rect {...tprops} style={{ cursor: "pointer" }} key={pointKey("closed", pt)} />;
+}
+const ClosedTerrainTile = React.memo(ClosedTerrainTile_, isEqual);
 
 function getCreaturePos(scene: T.Scene, creature_id: T.CreatureID): T.Point3 | undefined {
   return M.optMap(scene.creatures.get(creature_id), ([pos, _]) => pos);
@@ -1041,16 +1074,6 @@ function GridCreature({ creature, highlight }: { creature: MapCreature; highligh
       );
     }
   }
-}
-
-function tile(
-  color: string,
-  keyPrefix: string,
-  pos: T.Point3,
-  size?: { x: number; y: number },
-): JSX.Element {
-  const props = tile_props<SVGRectElement>(color, pos, size);
-  return <rect key={pointKey(keyPrefix, pos)} {...props} />;
 }
 
 function bare_tile_props<T>(pt: T.Point3, size = { x: 1, y: 1 }): React.SVGProps<T> {
