@@ -17,9 +17,11 @@ interface SVGPanZoomState {
 export class SVGPanZoom
   extends React.Component<SVGPanZoomProps & React.SVGProps<SVGSVGElement>, SVGPanZoomState>
 {
+  svgRef: React.RefObject<SVGSVGElement>;
   constructor(props: SVGPanZoomProps & React.SVGProps<SVGSVGElement>) {
     super(props);
     this.state = { spz_element: undefined, isMouseDown: false };
+    this.svgRef = React.createRef<SVGSVGElement>();
   }
 
   panzoomEvents() {
@@ -102,14 +104,18 @@ export class SVGPanZoom
   }
 
   componentDidMount() {
-    const pz = svgPanZoom("#pt-grid", {
+    // !: componentDidMount is only called *after* rendering, so the ref definitely exists.
+    const pz = svgPanZoom(this.svgRef.current!, {
       dblClickZoomEnabled: false,
       customEventsHandler: this.panzoomEvents(),
       zoomScaleSensitivity: 0.3,
       beforePan: this.beforePan.bind(this),
+      minZoom: 0.1,
+      maxZoom: 100,
     });
+    if (window) (window as any).panzoom = pz;
     this.setState({ spz_element: pz });
-    this.refreshPanZoom(pz);
+    setTimeout(() => this.refreshPanZoom(pz), 250);
   }
 
   beforePan(_oldPan: SvgPanZoom.Point, _newPan: SvgPanZoom.Point) {
@@ -131,6 +137,9 @@ export class SVGPanZoom
       panzoom.fit();
       panzoom.zoomOut();
     }
+    if (this.svgRef.current) {
+      this.svgRef.current.style.visibility = "visible";
+    }
   }
 
   public refresh() {
@@ -141,9 +150,16 @@ export class SVGPanZoom
 
   render(): JSX.Element {
     const { children, onPanZoom, shouldPan, ...props } = this.props;
-    (props as any).style = { cursor: this.state.isMouseDown ? "grabbing" : "grab", ...props.style };
     return (
-      <svg {...props}>
+      <svg
+        {...props}
+        ref={this.svgRef}
+        style={{
+          cursor: this.state.isMouseDown ? "grabbing" : "grab",
+          ...props.style,
+          visibility: "hidden",
+        }}
+      >
         <g id="svg-pan-zoom-viewport">
           {
             /* this <g> needs to be here for svg-pan-zoom. Otherwise it will reparent all
