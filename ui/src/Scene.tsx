@@ -53,7 +53,7 @@ export function GMScene() {
 
   const panes = [
     menuItem("Background", () => <EditSceneBackground onDone={() => undefined} />),
-    menuItem("Terrain", () => <SceneTerrain />, "Terrain"),
+    menuItem("Terrain", () => <SceneTerrain />),
     menuItem("Highlights", () => <SceneHighlights />, "Highlights"),
     menuItem("Volumes", () => <GMSceneVolumes />, "Volumes"),
     menuItem(
@@ -377,25 +377,32 @@ function BackgroundImageUpload({ onClose }: { onClose: () => void }) {
 }
 
 export function SceneTerrain() {
-  return (
-    <div>
-      Edit the terrain on the map and then
-      <Button onClick={saveTerrain}>Save</Button> or
-      <Button onClick={cancelTerrain}>Cancel</Button>
-    </div>
-  );
+  const editing = M.useState(s => s.gridFocus?.layer?.t === "Terrain");
+  if (editing) {
+    return (
+      <div>
+        Edit the terrain on the map and then
+        <Button onClick={saveTerrain}>Save</Button> or
+        <Button onClick={stopEditing}>Cancel</Button>
+      </div>
+    );
+  } else {
+    return <Button onClick={edit}>Edit Terrain</Button>;
+  }
 
+  function edit() {
+    M.getState().setGridFocus(M.getState().gridFocus?.scene_id, "Terrain");
+  }
+  function stopEditing() {
+    M.getState().setGridFocus(M.getState().gridFocus?.scene_id);
+  }
   function saveTerrain() {
-    const { gridFocus, setGridFocus } = M.getState();
+    const { gridFocus } = M.getState();
     if (gridFocus?.layer?.t !== "Terrain") return;
     const scene_id = gridFocus.scene_id;
     const terrain = gridFocus.layer.terrain;
     A.sendGMCommand({ t: "EditSceneTerrain", scene_id, terrain });
-    // // RADIX: why am I setting focus here?
-    // setGridFocus(scene.id);
-  }
-  function cancelTerrain() {
-    M.getState().setGridFocus(M.getState().gridFocus?.scene_id, "Terrain");
+    stopEditing();
   }
 }
 
@@ -431,8 +438,6 @@ export function SceneHighlights() {
     const scene_id = gridFocus.scene_id;
     const highlights = gridFocus.layer.highlights;
     A.sendGMCommand({ t: "EditSceneHighlights", scene_id, highlights });
-    // // RADIX: Why am I setting focus here?
-    // setGridFocus(scene.id);
   }
   function cancelObjects() {
     M.getState().setGridFocus(M.getState().gridFocus?.scene_id, "Highlights");
@@ -954,7 +959,11 @@ export function SelectSceneCreatures(props: {
   const creatures = M.useState(s => {
     const scene = s.getFocusedScene();
     if (!scene) return;
-    return s.getSceneCreatures(scene).map(({ id, name, class: class_ }) => ({ id, name, class: class_ }));
+    return s.getSceneCreatures(scene).map(({ id, name, class: class_ }) => ({
+      id,
+      name,
+      class: class_,
+    }));
   }, isEqual);
   if (!creatures) return <div>No scene</div>;
   return (

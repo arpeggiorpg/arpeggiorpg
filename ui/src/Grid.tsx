@@ -677,11 +677,7 @@ function SceneHotspots_() {
 
 const SceneHotspots = React.memo(SceneHotspots_, isEqual);
 
-const BASE_AREA = nearby_points(new T.Point3(0, 0, 0));
-
 function Terrain_() {
-  const terrainMode = M.useState(s => s.gridFocus?.layer?.t === "Terrain");
-
   const currentTerrain = M.useState(s => {
     const layer = s.gridFocus?.layer;
     const scene = s.getFocusedScene();
@@ -692,16 +688,11 @@ function Terrain_() {
     s.getFocusedScene()?.background_image_url ? "transparent" : "white"
   );
 
-  const closedTerrain = terrainMode && M.filterMap(BASE_AREA, pt => {
-    if (currentTerrain.contains(pt)) return;
-    return <ClosedTerrainTile key={pointKey("closed-terrain", pt)} pt={pt} />;
-  });
-
   const openTerrain = currentTerrain.map(pt => (
     <OpenTerrainTile color={openTerrainColor} key={pointKey("base-terrain", pt)} pt={pt} />
   ));
 
-  return <g id="terrain">{closedTerrain}{openTerrain}</g>;
+  return <g id="terrain">{openTerrain}</g>;
 }
 const Terrain = React.memo(Terrain_, isEqual);
 
@@ -716,12 +707,6 @@ function OpenTerrainTile_(
   return <rect {...props} />;
 }
 const OpenTerrainTile = React.memo(OpenTerrainTile_, isEqual);
-
-function ClosedTerrainTile_({ pt }: { pt: T.Point3 }) {
-  const tprops = tile_props<SVGRectElement>("black", pt, { x: 1, y: 1 }, 0.5);
-  return <rect {...tprops} style={{ cursor: "pointer" }} key={pointKey("closed", pt)} />;
-}
-const ClosedTerrainTile = React.memo(ClosedTerrainTile_, isEqual);
 
 function getPoint3AtMouse(event: React.MouseEvent<any>) {
   // "as": getElementById has no typed version, so we unfortunately have to assert here.
@@ -1219,10 +1204,10 @@ function defaultActions(state: M.AllStates, creatureId: T.CreatureID): Action[] 
   }];
 }
 
-export function nearby_points(pos: T.Point3): Array<T.Point3> {
+export function nearby_points(pos: T.Point3, radius: number = 2000): Array<T.Point3> {
   const result = [];
-  for (const x of range(pos.x - 2000, pos.x + 2000, 100)) {
-    for (const y of range(pos.y - 2000, pos.y + 2000, 100)) {
+  for (const x of range(pos.x - radius, pos.x + radius, 100)) {
+    for (const y of range(pos.y - radius, pos.y + radius, 100)) {
       result.push(new T.Point3(x, y, pos.z));
     }
   }
