@@ -27,7 +27,6 @@ export default function GMView() {
 }
 
 function GMMain() {
-  const scene = M.useState((s) => s.getFocusedScene());
   const numPlayers = M.useState(s => s.game.players.count());
   const combatActive = M.useState(s => !!s.game.current_combat);
 
@@ -64,7 +63,7 @@ function GMMain() {
       map={<Outlet />}
       tabs={tabs}
       bottom_left={<Secondary />}
-      top_left={scene ? <Scene.GMScene scene={scene} /> : <div>Select a scene</div>}
+      top_left={<Scene.GMScene />}
       bottom_right={<GMChat />}
       bar_width={450}
       menu_size="tiny"

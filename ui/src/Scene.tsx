@@ -4,6 +4,7 @@ import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import { Map, Set } from "immutable";
 import capitalize from "lodash/capitalize";
+import isEqual from "lodash/isEqual";
 import sortBy from "lodash/sortBy";
 import * as React from "react";
 import { TwitterPicker } from "react-color";
@@ -33,41 +34,52 @@ import * as M from "./Model";
 import * as T from "./PTTypes";
 import { EditableNumericLabel, TextInput } from "./TextInput";
 
-export function GMScene({ scene }: { scene: T.Scene }) {
-  const scenePlayers = M.useState(s => s.getGame().players.count(p => p.scene === scene.id));
+export function GMScene() {
+  const scenePlayers = M.useState(s =>
+    s.getGame().players.count(p => p.scene === s.getFocusedScene()?.id)
+  );
   const totalPlayers = M.useState(s => s.getGame().players.count());
-  const player_count = `${scenePlayers}/${totalPlayers}`;
-  const linked_scenes_count = scene.related_scenes.count() + scene.scene_hotspots.count();
+  const playerCount = `${scenePlayers}/${totalPlayers}`;
+  const linkedScenesCount = M.useState(s => {
+    const scene = s.getFocusedScene();
+    if (!scene) return 0;
+    return scene.related_scenes.count() + scene.scene_hotspots.count();
+  });
+  const creaturesCount = M.useState(s => s.getFocusedScene()?.creatures?.count() || 0);
+  const inventoryCount = M.useState(s => s.getFocusedScene()?.inventory.count() || 0);
+  const attributeChecksCount = M.useState(s => s.getFocusedScene()?.attribute_checks.count() || 0);
+
+  const sceneName = M.useState(s => s.getFocusedScene()?.name);
 
   const panes = [
-    menuItem("Background", () => <EditSceneBackground scene={scene} onDone={() => undefined} />),
-    menuItem("Terrain", () => <SceneTerrain scene={scene} />, "Terrain"),
-    menuItem("Highlights", () => <SceneHighlights scene={scene} />, "Highlights"),
-    menuItem("Volumes", () => <GMSceneVolumes scene={scene} />, "Volumes"),
+    menuItem("Background", () => <EditSceneBackground onDone={() => undefined} />),
+    menuItem("Terrain", () => <SceneTerrain />, "Terrain"),
+    menuItem("Highlights", () => <SceneHighlights />, "Highlights"),
+    menuItem("Volumes", () => <GMSceneVolumes />, "Volumes"),
     menuItem(
       "Creatures",
-      () => <GMSceneCreatures scene={scene} />,
+      () => <GMSceneCreatures />,
       undefined,
-      scene.creatures.count().toString(),
+      creaturesCount.toString(),
     ),
-    menuItem("Players", () => <GMScenePlayers scene={scene} />, undefined, player_count),
+    menuItem("Players", () => <GMScenePlayers />, undefined, playerCount),
     menuItem(
       "Items",
-      () => <GMSceneInventory scene={scene} />,
+      () => <GMSceneInventory />,
       undefined,
-      scene.inventory.count().toString(),
+      inventoryCount.toString(),
     ),
     menuItem(
       "Challenges",
-      () => <GMSceneChallenges scene={scene} />,
+      () => <GMSceneChallenges />,
       undefined,
-      scene.attribute_checks.count().toString(),
+      attributeChecksCount.toString(),
     ),
     menuItem(
       "Linked Scenes",
-      () => <LinkedScenes scene={scene} />,
+      () => <LinkedScenes />,
       "LinkedScenes",
-      linked_scenes_count.toString(),
+      linkedScenesCount.toString(),
     ),
   ];
 
@@ -76,11 +88,11 @@ export function GMScene({ scene }: { scene: T.Scene }) {
       <CV.Toggler
         a={open => (
           <Header>
-            {scene.name}
+            {sceneName}
             <Icon name="edit" style={{ float: "right", cursor: "pointer" }} onClick={open} />
           </Header>
         )}
-        b={close => <EditSceneName scene={scene} onDone={close} />}
+        b={close => <EditSceneName onDone={close} />}
       />
 
       <Tab
@@ -90,7 +102,10 @@ export function GMScene({ scene }: { scene: T.Scene }) {
           const menuItem: { menuItem: string; layer?: M.SceneLayerType } = data
             .panes![data.activeIndex as number] as any;
           // unimplemented!: disable tab-switching when Terrain is unsaved
-          M.getState().setGridFocus(scene.id, menuItem.layer);
+          const scene = M.getState().getFocusedScene();
+          if (scene) {
+            M.getState().setGridFocus(scene.id, menuItem.layer);
+          }
         }}
         menu={{
           size: "small",
@@ -119,43 +134,46 @@ export function GMScene({ scene }: { scene: T.Scene }) {
   }
 }
 
-export function EditSceneName(props: { scene: T.Scene; onDone: () => void }) {
+export function EditSceneName({ onDone }: { onDone: () => void }) {
+  const sceneName = M.useState(s => s.getFocusedScene()?.name);
   return (
     <TextInput
       onSubmit={name => save(name)}
-      onCancel={props.onDone}
-      defaultValue={props.scene.name}
+      onCancel={onDone}
+      defaultValue={sceneName || ""}
     />
   );
 
   function save(name: string) {
-    const scene = props.scene;
-    A.sendGMCommand({
-      t: "EditSceneDetails",
-      scene_id: scene.id,
-      details: {
-        name,
-        background_image_url: scene.background_image_url,
-        background_image_offset: scene.background_image_offset,
-        background_image_scale: scene.background_image_scale,
-      },
-    });
-    props.onDone();
+    const scene = M.getState().getFocusedScene();
+    if (scene) {
+      A.sendGMCommand({
+        t: "EditSceneDetails",
+        scene_id: scene.id,
+        details: {
+          ...scene,
+          name,
+        },
+      });
+    }
+    onDone();
   }
 }
 
-export function EditSceneBackground({ scene, onDone }: { scene: T.Scene; onDone: () => void }) {
-  const pendingBackgroundOffset = M.useState(s => s.pendingBackgroundOffset)
-    || scene.background_image_offset || [0, 0];
-  const pendingBackgroundScale = M.useState(s => s.pendingBackgroundScale?.[0])
-    || scene.background_image_scale?.[0] || 0;
+export function EditSceneBackground({ onDone }: { onDone: () => void }) {
+  const pendingBackgroundOffset: [number, number] = M.useState(s =>
+    s.pendingBackgroundOffset || s.getFocusedScene()?.background_image_offset || [0, 0]
+  );
+  const pendingBackgroundScale = M.useState(s =>
+    s.pendingBackgroundScale?.[0] || s.getFocusedScene()?.background_image_scale?.[0] || 0
+  );
 
   return (
     <div style={{ display: "flex", flexDirection: "column" }}>
       <CV.ModalMaker
         button={click => <Button onClick={click}>Upload Image</Button>}
         header={<>Upload Image</>}
-        content={closer => <BackgroundImageUpload scene={scene} onClose={closer} />}
+        content={closer => <BackgroundImageUpload onClose={closer} />}
       />
 
       <NumericSlider
@@ -203,16 +221,21 @@ export function EditSceneBackground({ scene, onDone }: { scene: T.Scene; onDone:
   );
 
   function save() {
-    const details: T.SceneCreation = {
-      ...scene,
-      background_image_scale: [pendingBackgroundScale, pendingBackgroundScale],
-      background_image_offset: pendingBackgroundOffset,
-    };
-    A.sendGMCommand({ t: "EditSceneDetails", scene_id: scene.id, details });
+    const scene = M.getState().getFocusedScene();
+    if (scene) {
+      const details: T.SceneCreation = {
+        ...scene,
+        background_image_scale: [pendingBackgroundScale, pendingBackgroundScale],
+        background_image_offset: pendingBackgroundOffset,
+      };
+      A.sendGMCommand({ t: "EditSceneDetails", scene_id: scene.id, details });
+    }
     onDone();
   }
 
   function cancel() {
+    const scene = M.getState().getFocusedScene();
+    if (!scene) return;
     M.getState().setPendingBackgroundOffset(scene.background_image_offset || undefined);
     M.getState().setPendingBackgroundScale(scene.background_image_scale);
   }
@@ -270,7 +293,7 @@ function NumericSlider(
   }
 }
 
-function BackgroundImageUpload({ scene, onClose }: { scene: T.Scene; onClose: () => void }) {
+function BackgroundImageUpload({ onClose }: { onClose: () => void }) {
   const [type, setType] = React.useState<null | "URL" | "upload">(null);
   const [preparedUpload, setPreparedUpload] = React.useState<
     null | { upload_url: string; final_url: string }
@@ -311,6 +334,8 @@ function BackgroundImageUpload({ scene, onClose }: { scene: T.Scene; onClose: ()
       console.log("Somehow, preparedUpload is not set");
       return;
     }
+    const scene = M.getState().getFocusedScene();
+    if (!scene) return;
     const file = event.currentTarget?.files?.[0];
     if (!file) {
       console.error("No file?");
@@ -334,6 +359,8 @@ function BackgroundImageUpload({ scene, onClose }: { scene: T.Scene; onClose: ()
   }
 
   async function uploadBackgroundFromURL(url: string) {
+    const scene = M.getState().getFocusedScene();
+    if (!scene) return;
     let result = await A.sendRequest(
       { t: "UploadImageFromURL", url, purpose: { t: "BackgroundImage" } },
       Z.object({ image_url: Z.string() }),
@@ -349,8 +376,7 @@ function BackgroundImageUpload({ scene, onClose }: { scene: T.Scene; onClose: ()
   }
 }
 
-export function SceneTerrain(props: { scene: T.Scene }) {
-  const { scene } = props;
+export function SceneTerrain() {
   return (
     <div>
       Edit the terrain on the map and then
@@ -365,16 +391,15 @@ export function SceneTerrain(props: { scene: T.Scene }) {
     const scene_id = gridFocus.scene_id;
     const terrain = gridFocus.layer.terrain;
     A.sendGMCommand({ t: "EditSceneTerrain", scene_id, terrain });
-    // RADIX: why am I setting focus here?
-    setGridFocus(scene.id);
+    // // RADIX: why am I setting focus here?
+    // setGridFocus(scene.id);
   }
   function cancelTerrain() {
-    M.getState().setGridFocus(scene.id, "Terrain");
+    M.getState().setGridFocus(M.getState().gridFocus?.scene_id, "Terrain");
   }
 }
 
-export function SceneHighlights(props: { scene: T.Scene }) {
-  const { scene } = props;
+export function SceneHighlights() {
   const allPlayers = M.useState(s => s.grid.object_visibility === "AllPlayers");
   const highlightColor = M.useState(s => s.grid.highlight_color);
 
@@ -406,29 +431,35 @@ export function SceneHighlights(props: { scene: T.Scene }) {
     const scene_id = gridFocus.scene_id;
     const highlights = gridFocus.layer.highlights;
     A.sendGMCommand({ t: "EditSceneHighlights", scene_id, highlights });
-    // RADIX: Why am I setting focus here?
-    setGridFocus(scene.id);
+    // // RADIX: Why am I setting focus here?
+    // setGridFocus(scene.id);
   }
   function cancelObjects() {
-    M.getState().setGridFocus(scene.id, "Highlights");
+    M.getState().setGridFocus(M.getState().gridFocus?.scene_id, "Highlights");
   }
 }
 
-export function GMScenePlayers(props: { scene: T.Scene }) {
-  const { scene } = props;
-  const players_here = M.useState(
-    s => s.getGame().players.valueSeq().toArray().filter(player => player.scene === scene.id),
+export function GMScenePlayers() {
+  const playersHere = M.useState(
+    s => {
+      const scene = s.getFocusedScene();
+      if (!scene) return;
+      return s.getGame().players.valueSeq().toArray().filter(player => player.scene === scene.id);
+    },
   );
+  if (!playersHere) return <div>No scene</div>;
   return (
     <List relaxed={true}>
       <List.Item>
         <Button onClick={() => moveAll()}>Set as Active Scene and move all players</Button>
       </List.Item>
-      {players_here.map(player => <List.Item key={player.player_id}>{player.player_id}</List.Item>)}
+      {playersHere.map(player => <List.Item key={player.player_id}>{player.player_id}</List.Item>)}
     </List>
   );
 
   function moveAll() {
+    const scene = M.getState().getFocusedScene();
+    if (!scene) throw new Error("no scene");
     const pids = M.getState().game.players.keySeq().toArray();
     const commands: T.GMCommand[] = pids.map(
       player_id => ({ t: "SetPlayerScene", player_id, scene_id: scene.id }),
@@ -438,30 +469,18 @@ export function GMScenePlayers(props: { scene: T.Scene }) {
   }
 }
 
-export function GMSceneVolumes(_: { scene: T.Scene }) {
+export function GMSceneVolumes() {
   // TODO: add volumes manually
   return <div>Interact with volumes on the grid.</div>;
 }
 
-interface LinkedScenesProps {
-  scene: T.Scene;
-}
-export function LinkedScenes(props: LinkedScenesProps) {
-  const { scene } = props;
-  const relatedScenes = M.useState(s => s.getScenes(scene.related_scenes.toArray()));
-  // TODO: this is inefficient without deep-equality on scenes (I don't *think* zustand "shallow" equality will work)
-  const scenes = M.useState(s => s.getGame().scenes);
-  const hotspotScenes = sortBy(
-    M.filterMap(
-      scene.scene_hotspots.entrySeq().toArray(),
-      ([pos, scene_id]): [T.Scene, T.Point3] | undefined => {
-        const hsScene = scenes.get(scene_id);
-        if (hsScene) return [hsScene, pos];
-      },
-    ),
-    ([s, _]) => s.name,
-  );
-  const focusScene = (scene: T.Scene) => () => M.getState().setGridFocus(scene.id);
+export function LinkedScenes() {
+  const relatedScenes = M.useState(getRelatedScenes, isEqual);
+  const hotspotScenes = M.useState(getHotspotScenes, isEqual);
+  if (!hotspotScenes || !relatedScenes) return <div>no scene</div>;
+  function focusScene(sceneId: T.SceneID) {
+    return () => M.getState().setGridFocus(sceneId);
+  }
   return (
     <List>
       <List.Item>
@@ -472,9 +491,11 @@ export function LinkedScenes(props: LinkedScenesProps) {
             header={<>Add or Remove related scenes</>}
             content={close => (
               <Campaign.MultiSceneSelector
-                already_selected={scene.related_scenes}
+                already_selected={Set(relatedScenes.map(s => s.id))}
                 on_cancel={close}
                 on_selected={related_scenes => {
+                  const scene = M.getState().getFocusedScene();
+                  if (!scene) throw new Error("no scene");
                   A.sendGMCommand(
                     { t: "EditSceneRelatedScenes", scene_id: scene.id, related_scenes },
                   );
@@ -485,32 +506,63 @@ export function LinkedScenes(props: LinkedScenesProps) {
           />
         </List.Header>
       </List.Item>
-      {relatedScenes.map(scene => (
-        <List.Item key={`r:${scene.id}`} style={{ cursor: "pointer" }} onClick={focusScene(scene)}>
-          {scene.name}
+      {relatedScenes.map(({ id, name }) => (
+        <List.Item key={`r:${id}`} style={{ cursor: "pointer" }} onClick={focusScene(id)}>
+          {name}
         </List.Item>
       ))}
       <List.Item>
         <List.Header>Hotspot Scenes</List.Header>
       </List.Item>
-      {hotspotScenes.map(([scene, point]) => (
-        <List.Item key={`h:${scene.id}`} style={{ cursor: "pointer" }} onClick={focusScene(scene)}>
-          {scene.name} ({T.encodePoint3(point)})
+      {hotspotScenes.map(({ id, pt, name }) => (
+        <List.Item key={`h:${id}`} style={{ cursor: "pointer" }} onClick={focusScene(id)}>
+          {name} ({T.encodePoint3(pt)})
         </List.Item>
       ))}
     </List>
   );
+
+  function getRelatedScenes(s: M.AllStates) {
+    const scene = s.getFocusedScene();
+    if (!scene) return;
+    return sortBy(
+      s.getScenes(scene.related_scenes.toArray()).map(({ name, id }) => ({ name, id })),
+      ({ name }) => name,
+    );
+  }
+
+  function getHotspotScenes(s: M.AllStates) {
+    const allScenes = s.getGame().scenes;
+    const scene = s.getFocusedScene();
+    if (!scene) return;
+    return sortBy(
+      M.filterMap(
+        scene.scene_hotspots.entrySeq().toArray(),
+        ([pt, sceneId]): { id: T.SceneID; pt: T.Point3; name: string } | undefined => {
+          const hsScene = allScenes.get(sceneId);
+          if (hsScene) return { id: hsScene.id, name: hsScene.name, pt };
+        },
+      ),
+      ({ name }) => name,
+    );
+  }
 }
 
-export function GMSceneChallenges({ scene }: { scene: T.Scene }) {
-  const challenges = scene.attribute_checks.entrySeq().sortBy(([desc, _]) => desc);
+export function GMSceneChallenges() {
+  const challenges = M.useState(s => {
+    const scene = s.getFocusedScene();
+    if (!scene) return;
+    return scene.attribute_checks.entrySeq().sortBy(([desc, _]) => desc);
+  }, isEqual);
+  const sceneName = M.useState(s => s.getFocusedScene()?.name);
+  if (!challenges) return <div>no scene</div>;
   return (
     <List relaxed={true}>
       <List.Item key="add">
         <CV.ModalMaker
           button={open => <Icon name="add" onClick={open} style={{ cursor: "pointer" }} />}
-          header={<span>Add challenge to {scene.name}</span>}
-          content={close => <AddChallengeToScene scene={scene} onClose={close} />}
+          header={<span>Add challenge to {sceneName}</span>}
+          content={close => <AddChallengeToScene onClose={close} />}
         />
       </List.Item>
       {challenges.map(([description, challenge]) => {
@@ -531,10 +583,13 @@ export function GMSceneChallenges({ scene }: { scene: T.Scene }) {
                       <Dropdown.Header content={description} />
                       <Dropdown.Item
                         content="Delete"
-                        onClick={() =>
+                        onClick={() => {
+                          const scene = M.getState().getFocusedScene();
+                          if (!scene) throw new Error("no scene");
                           A.sendGMCommand(
                             { t: "RemoveSceneChallenge", scene_id: scene.id, description },
-                          )}
+                          );
+                        }}
                       />
                     </Dropdown.Menu>
                   </Dropdown>
@@ -543,7 +598,6 @@ export function GMSceneChallenges({ scene }: { scene: T.Scene }) {
               header={<span>Challenge</span>}
               content={close => (
                 <GMChallenge
-                  scene={scene}
                   description={description}
                   challenge={challenge}
                   onClose={close}
@@ -558,18 +612,16 @@ export function GMSceneChallenges({ scene }: { scene: T.Scene }) {
   );
 }
 
-interface GMChallengeProps {
-  scene: T.Scene;
+function GMChallenge(props: {
   description: string;
   challenge: T.AttributeCheck;
   onClose: () => void;
-}
-function GMChallenge(props: GMChallengeProps) {
+}) {
   const [creatureIds, setCreatureIds] = React.useState<Set<T.CreatureID>>(Set());
   const [results, setResults] = React.useState<Map<T.CreatureID, GameChallengeResult> | undefined>(
     undefined,
   );
-  const { scene, description, challenge, onClose } = props;
+  const { description, challenge, onClose } = props;
   const creatureResults = M.useState(s =>
     results?.entrySeq().toArray().map(([cid, result]) => ({ creature: s.getCreature(cid), result }))
   );
@@ -585,7 +637,6 @@ function GMChallenge(props: GMChallengeProps) {
       </List>
       <Header>Select creatures to challenge</Header>
       <SelectSceneCreatures
-        scene={scene}
         selections={creatureIds}
         add={cid => setCreatureIds(creatureIds.add(cid))}
         remove={cid => setCreatureIds(creatureIds.delete(cid))}
@@ -674,7 +725,7 @@ type GameChallengeResult = { t: "ChallengeResponseError"; msg: string } | {
   log: T.GameLog;
 };
 
-function AddChallengeToScene(props: { scene: T.Scene; onClose: () => void }) {
+function AddChallengeToScene(props: { onClose: () => void }) {
   const [description, setDescription] = React.useState("");
   const [attr, setAttr] = React.useState<T.AttrID>("strength");
   const [reliable, setReliable] = React.useState(false);
@@ -720,7 +771,8 @@ function AddChallengeToScene(props: { scene: T.Scene; onClose: () => void }) {
   );
 
   function save() {
-    const { scene } = props;
+    const scene = M.getState().getFocusedScene();
+    if (!scene) throw new Error("no scene");
     const challenge = { attr, target, reliable };
     A.sendGMCommand(
       { t: "AddSceneChallenge", scene_id: scene.id, description, challenge },
@@ -729,8 +781,14 @@ function AddChallengeToScene(props: { scene: T.Scene; onClose: () => void }) {
   }
 }
 
-export function GMSceneInventory({ scene }: { scene: T.Scene }) {
-  const inventory = M.useState(s => s.getSceneInventory(scene));
+export function GMSceneInventory() {
+  const sceneName = M.useState(s => s.getFocusedScene()?.name);
+  const inventory = M.useState(s => {
+    const scene = s.getFocusedScene();
+    if (!scene) return;
+    return s.getSceneInventory(scene);
+  });
+  if (!inventory) return <div>no scene</div>;
   return (
     <div>
       <List relaxed={true}>
@@ -738,8 +796,8 @@ export function GMSceneInventory({ scene }: { scene: T.Scene }) {
           <List.Content>
             <CV.ModalMaker
               button={open => <Button onClick={open}>Add</Button>}
-              header={<span>Add items to {scene.name}</span>}
-              content={close => <AddItemsToScene scene={scene} onClose={close} />}
+              header={<span>Add items to {sceneName}</span>}
+              content={close => <AddItemsToScene onClose={close} />}
             />
           </List.Content>
         </List.Item>
@@ -747,7 +805,7 @@ export function GMSceneInventory({ scene }: { scene: T.Scene }) {
           <List.Item key={`item:${item.id}`}>
             {item.name}
             <div style={{ float: "right", display: "flex" }}>
-              <SceneItemCountEditor scene={scene} item={item} count={count} />
+              <SceneItemCountEditor item={item} count={count} />
               <Dropdown
                 icon="caret down"
                 className="right"
@@ -758,10 +816,8 @@ export function GMSceneInventory({ scene }: { scene: T.Scene }) {
                   <Dropdown.Header content={item.name} />
                   <CV.ModalMaker
                     button={toggler => <Dropdown.Item onClick={toggler} content="Give" />}
-                    header={<span>Give {item.name} from {scene.name}</span>}
-                    content={close => (
-                      <GiveItemFromScene scene={scene} item={item} onClose={close} />
-                    )}
+                    header={<span>Give {item.name} from {sceneName}</span>}
+                    content={close => <GiveItemFromScene item={item} onClose={close} />}
                   />
                 </Dropdown.Menu>
               </Dropdown>
@@ -773,13 +829,23 @@ export function GMSceneInventory({ scene }: { scene: T.Scene }) {
   );
 }
 
-export function GMSceneCreatures(props: { scene: T.Scene }) {
-  const { scene } = props;
-
-  const creatures = M.useState(s =>
-    s.getSceneCreatures(scene).map(c => ({ creature: c, inCombat: s.creatureIsInCombat(c.id) }))
-  );
-  const isCombatScene = M.useState(s => s.getCombat()?.scene === scene.id);
+export function GMSceneCreatures() {
+  const sceneName = M.useState(s => s.getFocusedScene()?.name);
+  const creatures = M.useState(s => {
+    const scene = s.getFocusedScene();
+    if (!scene) return;
+    return s.getSceneCreatures(scene).map(c => ({
+      creature: c,
+      vis: scene.creatures.get(c.id)![1], // !: getSceneCreatures only returns creatures in scene
+      inCombat: s.creatureIsInCombat(c.id),
+    }));
+  });
+  if (!creatures) return <div>no scene</div>;
+  const isCombatScene = M.useState(s => {
+    const sceneId = s.gridFocus?.scene_id;
+    if (!sceneId) return;
+    return s.getCombat()?.scene === sceneId;
+  });
 
   console.log("[EXPENSIVE:GMSceneCreatures]");
   return (
@@ -788,12 +854,14 @@ export function GMSceneCreatures(props: { scene: T.Scene }) {
         <List.Content>
           <CV.ModalMaker
             button={toggler => <Button onClick={toggler}>Add or Remove</Button>}
-            header={<span>Change creatures in {scene.name}</span>}
+            header={<span>Change creatures in {sceneName}</span>}
             content={toggler => (
               <Campaign.MultiCreatureSelector
-                already_selected={scene.creatures.keySeq().toSet()}
+                already_selected={Set(creatures.map(c => c.creature.id))}
                 on_cancel={toggler}
                 on_selected={cids => {
+                  const scene = M.getState().getFocusedScene();
+                  if (!scene) throw new Error("need scene");
                   const existing_cids = Set(scene.creatures.keySeq());
                   const new_cids = cids.subtract(existing_cids).toArray();
                   const removed_cids = existing_cids.subtract(cids).toArray();
@@ -820,8 +888,7 @@ export function GMSceneCreatures(props: { scene: T.Scene }) {
           />
         </List.Content>
       </List.Item>
-      {creatures.map(({ creature, inCombat }) => {
-        const vis = scene.creatures.get(creature.id)![1]; // !: must exist in map()
+      {creatures.map(({ creature, vis, inCombat }) => {
         const vis_desc = vis === "GMOnly"
           ? "Only visible to the GM"
           : "Visible to all players";
@@ -840,6 +907,8 @@ export function GMSceneCreatures(props: { scene: T.Scene }) {
                     onClick={() => {
                       const new_vis: T.Visibility = vis === "GMOnly" ? "AllPlayers" : "GMOnly";
                       console.log("CLICK", new_vis);
+                      const scene = M.getState().getFocusedScene();
+                      if (!scene) throw new Error("no scene");
                       A.sendGMCommand({
                         t: "SetSceneCreatureVisibility",
                         scene_id: scene.id,
@@ -876,15 +945,18 @@ export function GMSceneCreatures(props: { scene: T.Scene }) {
   }
 }
 
-interface SelectSceneCreaturesProps {
-  scene: T.Scene;
+export function SelectSceneCreatures(props: {
   add: (cid: T.CreatureID) => void;
   remove: (cid: T.CreatureID) => void;
   selections: Set<T.CreatureID>;
-}
-export function SelectSceneCreatures(props: SelectSceneCreaturesProps) {
-  const { scene, add, remove, selections } = props;
-  const creatures = M.useState(s => s.getSceneCreatures(scene));
+}) {
+  const { add, remove, selections } = props;
+  const creatures = M.useState(s => {
+    const scene = s.getFocusedScene();
+    if (!scene) return;
+    return s.getSceneCreatures(scene).map(({ id, name, class: class_ }) => ({ id, name, class: class_ }));
+  }, isEqual);
+  if (!creatures) return <div>No scene</div>;
   return (
     <List relaxed={true}>
       {creatures.map(creature => (
@@ -903,23 +975,30 @@ export function SelectSceneCreatures(props: SelectSceneCreaturesProps) {
   );
 }
 
-function GiveItemFromScene(props: { scene: T.Scene; item: T.Item; onClose: () => void }) {
-  const { scene, item, onClose } = props;
-  const available_count = scene.inventory.get(item.id);
-  if (!available_count) return <div>Lost item {item.name}!</div>;
-  const availableRecipients = M.useState(s => s.getSceneCreatures(scene));
+function GiveItemFromScene(props: { item: T.Item; onClose: () => void }) {
+  const { item, onClose } = props;
+  const availableCount = M.useState(s => s.getFocusedScene()?.inventory.get(item.id));
+  const availableRecipients = M.useState(s => {
+    const scene = s.getFocusedScene();
+    if (!scene) return;
+    return s.getSceneCreatures(scene);
+  });
+  if (!availableCount) return <div>Lost item {item.name}!</div>;
+  if (!availableRecipients) return <div>Can't find other creatures in this scene</div>;
   return (
     <CV.TransferItemsToRecipientForm
-      available_count={available_count}
+      available_count={availableCount}
       available_recipients={availableRecipients}
       onGive={give}
       onClose={onClose}
     />
   );
   function give(recip: T.Creature, count: number) {
+    const sceneId = M.getState().getFocusedScene()?.id;
+    if (!sceneId) throw new Error("no scene");
     A.sendGMCommand({
       t: "TransferItem",
-      from: { Scene: scene.id },
+      from: { Scene: sceneId },
       to: { Creature: recip.id },
       item_id: item.id,
       count: BigInt(count),
@@ -928,12 +1007,16 @@ function GiveItemFromScene(props: { scene: T.Scene; item: T.Item; onClose: () =>
   }
 }
 
-function AddItemsToScene(props: { scene: T.Scene; onClose: () => void }) {
-  const { scene, onClose } = props;
+function AddItemsToScene(props: { onClose: () => void }) {
+  const { onClose } = props;
+  const inventory = M.useState(s => s.getFocusedScene()?.inventory.keySeq().toSet(), isEqual);
+  if (!inventory) return <div>no scene</div>;
   return (
     <Campaign.MultiItemSelector
-      require_selected={scene.inventory.keySeq().toSet()}
+      require_selected={inventory}
       on_selected={item_ids => {
+        const scene = M.getState().getFocusedScene();
+        if (!scene) throw new Error("no scene");
         const new_items = item_ids.subtract(scene.inventory.keySeq().toSet());
         for (const item_id of new_items.toArray()) {
           A.sendGMCommand(
@@ -947,13 +1030,15 @@ function AddItemsToScene(props: { scene: T.Scene; onClose: () => void }) {
   );
 }
 
-function SceneItemCountEditor(props: { scene: T.Scene; item: T.Item; count: number }) {
-  const { scene, item, count } = props;
+function SceneItemCountEditor(props: { item: T.Item; count: number }) {
+  const { item, count } = props;
   return <EditableNumericLabel value={count} save={save} />;
 
   function save(num: number) {
+    const sceneId = M.getState().getFocusedScene()?.id;
+    if (!sceneId) throw new Error("no scene");
     A.sendGMCommand(
-      { t: "SetItemCount", owner: { Scene: scene.id }, item_id: item.id, count: BigInt(num) },
+      { t: "SetItemCount", owner: { Scene: sceneId }, item_id: item.id, count: BigInt(num) },
     );
   }
 }

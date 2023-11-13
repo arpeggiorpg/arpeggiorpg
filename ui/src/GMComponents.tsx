@@ -206,7 +206,6 @@ function StartCombat(props: { scene: T.Scene }) {
         Start combat
       </Button>
       <SelectSceneCreatures
-        scene={scene}
         selections={selected}
         add={cid => setSelected(selected.add(cid))}
         remove={cid => setSelected(selected.delete(cid))}
