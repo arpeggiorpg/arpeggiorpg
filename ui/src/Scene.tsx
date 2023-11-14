@@ -417,6 +417,7 @@ export function SceneHighlights() {
       onChange={(_, d) => M.getState().setObjectVisibility(d.checked ? "AllPlayers" : "GMOnly")}
     />
   );
+  const editing = M.useState(s => s.gridFocus?.layer?.t === "Highlights");
 
   return (
     <div>
@@ -426,21 +427,32 @@ export function SceneHighlights() {
         color={highlightColor}
         onChange={color => M.getState().setHighlightColor(color.hex)}
       />
-      Edit the highlights on the map and then
-      <Button onClick={saveObjects}>Save</Button> or
-      <Button onClick={cancelObjects}>Cancel</Button>
+      {editing
+        ? (
+          <>
+            Edit the highlights on the map and then
+            <Button onClick={save}>Save</Button> or
+            <Button onClick={stopEditing}>Cancel</Button>
+          </>
+        )
+        : <Button onClick={edit}>Edit Highlights</Button>}
     </div>
   );
 
-  function saveObjects() {
-    const { gridFocus, setGridFocus } = M.getState();
+  function edit() {
+    M.getState().setGridFocus(M.getState().gridFocus?.scene_id, "Highlights");
+  }
+  function stopEditing() {
+    M.getState().setGridFocus(M.getState().gridFocus?.scene_id);
+  }
+
+  function save() {
+    const { gridFocus } = M.getState();
     if (gridFocus?.layer?.t !== "Highlights") return;
     const scene_id = gridFocus.scene_id;
     const highlights = gridFocus.layer.highlights;
     A.sendGMCommand({ t: "EditSceneHighlights", scene_id, highlights });
-  }
-  function cancelObjects() {
-    M.getState().setGridFocus(M.getState().gridFocus?.scene_id, "Highlights");
+    stopEditing();
   }
 }
 

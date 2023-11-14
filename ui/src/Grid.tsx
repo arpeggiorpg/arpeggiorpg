@@ -57,9 +57,6 @@ export function SceneGrid(props: { creatureIds: T.CreatureID[]; actionProducer: 
     )
     : null;
 
-  const highlights = layer && layer.t === "Highlights"
-    ? getEditableHighlights(layer.highlights)
-    : getHighlights(scene.highlights, playerID);
   const annotations = getAnnotations(scene.annotations, playerID);
 
   const volumes = <VolumeConditions />;
@@ -97,36 +94,54 @@ export function SceneGrid(props: { creatureIds: T.CreatureID[]; actionProducer: 
         }}
         onMouseDown={ev => {
           if (ev.button !== 0 || ev.ctrlKey) return;
-          if (layer && layer.t === "Terrain") {
+          if (layer && ["Terrain", "Highlights"].includes(layer.t)) {
             const pt = getPoint3AtMouse(ev);
-            const painting = layer.terrain.contains(pt) ? "Closing" : "Opening";
+            const painting = (layer.t === "Terrain"
+                ? layer.terrain.contains(pt)
+                : layer.t === "Highlights"
+                ? layer.highlights.has(pt)
+                : false)
+              ? "Closing"
+              : "Opening";
             setPainting(painting);
           }
         }}
         onMouseMove={ev => {
-          if (!layer || layer.t !== "Terrain" || painting === undefined) return;
+          if (!layer || !["Terrain", "Highlights"].includes(layer.t) || painting === undefined) {
+            return;
+          }
           // make sure we've actually got the mouse down before trying to paint
           if (ev.buttons !== 1) {
             setPainting(undefined);
             return;
           }
           const pt = getPoint3AtMouse(ev);
-          let terrain;
           switch (painting) {
             case "Opening": {
-              if (layer.terrain.contains(pt)) return;
-              terrain = layer.terrain.add(pt);
+              if (layer.t === "Terrain") {
+                if (layer.terrain.contains(pt)) return;
+                M.getState().setTerrain(layer.terrain.add(pt));
+              } else if (layer.t === "Highlights") {
+                if (layer.highlights.has(pt)) return;
+                const color = grid.highlight_color; // WOMP WOMP we shouldn't have grid available
+                const vis = grid.object_visibility;
+                M.getState().setHighlights(layer.highlights.set(pt, [color, vis]));
+              }
               break;
             }
             case "Closing": {
-              if (!layer.terrain.contains(pt)) return;
-              terrain = layer.terrain.remove(pt);
+              if (layer.t === "Terrain") {
+                if (!layer.terrain.contains(pt)) return;
+                M.getState().setTerrain(layer.terrain.remove(pt));
+              } else if (layer.t === "Highlights") {
+                if (!layer.highlights.has(pt)) return;
+                M.getState().setHighlights(layer.highlights.remove(pt));
+              }
               break;
             }
             default:
               return;
           }
-          M.getState().setTerrain(terrain);
         }}
         onMouseUp={ev => {
           if (!layer || layer.t !== "Terrain" || painting === undefined) return;
@@ -168,7 +183,9 @@ export function SceneGrid(props: { creatureIds: T.CreatureID[]; actionProducer: 
         <g id="creatures" style={disable_style}>
           <Creatures creatureIds={props.creatureIds} affectedCreatures={affectedCreatures} />
         </g>
-        <g id="highlights" style={highlights_style}>{highlights}</g>
+        <g id="highlights" style={highlights_style}>
+          <Highlights />
+        </g>
         <g id="annotations" style={annotations_style}>{annotations}</g>
         <g id="movement-targets" style={disable_style}>{getMovementTargets()}</g>
         <g id="targets" style={disable_style}>{target_els}</g>
@@ -187,59 +204,6 @@ export function SceneGrid(props: { creatureIds: T.CreatureID[]; actionProducer: 
         <MovementTarget key={pt.toString()} cid={move.cid} pt={pt} teleport={move.teleport} />
       ))
       : null;
-  }
-
-  function getHighlights(
-    highlights: T.Highlights,
-    player_id?: T.PlayerID,
-    onClick?: (pt: T.Point3) => void,
-  ) {
-    return highlights.entrySeq().map(([pt, [color, vis]]) => {
-      const gmonly = vis === "GMOnly";
-      if (gmonly && player_id) {
-        return null;
-      }
-      const tprops = tile_props<SVGRectElement>(color, pt, { x: 1, y: 1 }, 0.5);
-      const clicker = onClick !== undefined ? () => onClick(pt) : undefined;
-      return (
-        <g
-          key={pointKey("highlight", pt)}
-          style={{
-            pointerEvents: onClick ? undefined : "none",
-          }}
-          onClick={clicker}
-        >
-          <rect {...tprops} />
-          {gmonly
-            ? eyeball(pt)
-            : null}
-        </g>
-      );
-    });
-  }
-
-  function getEditableHighlights(highlights: T.Highlights) {
-    const color = grid.highlight_color;
-    const vis = grid.object_visibility;
-    function removeHighlight(pt: T.Point3) {
-      M.getState().setHighlights(highlights.remove(pt));
-    }
-    function addHighlight(pt: T.Point3) {
-      M.getState().setHighlights(highlights.set(pt, [color, vis]));
-    }
-    const highlighted_tiles = getHighlights(highlights, undefined, pt => removeHighlight(pt));
-    const empty_tiles = M.filterMap(nearby_points(new T.Point3(0, 0, 0)), pt => {
-      if (highlights.has(pt)) return;
-      const tprops = tile_props<SVGRectElement>("black", pt, { x: 1, y: 1 }, 0.0);
-      return <rect key={pointKey("non-high", pt)} {...tprops} onClick={() => addHighlight(pt)} />;
-    });
-
-    return (
-      <>
-        <g key="existing-highlights" id="existing-highlights">{highlighted_tiles}</g>,
-        <g key="empty-highlights" id="empty-highlights">{empty_tiles}</g>
-      </>
-    );
   }
 
   function getAnnotations(
@@ -389,6 +353,33 @@ export function SceneGrid(props: { creatureIds: T.CreatureID[]; actionProducer: 
     A.executeCombatPointTargetedAbility(targetingPoint);
     clearTargets();
   }
+}
+
+function Highlights() {
+  const highlights = M.useState(s => {
+    const scene = s.getFocusedScene();
+    if (!scene) return;
+    const layer = s.gridFocus?.layer;
+    const pendingHighlights = layer?.t === "Highlights" && layer.highlights;
+    return pendingHighlights || scene.highlights;
+  });
+  const playerId = M.useState(s => s.playerId);
+  if (!highlights) return <div>No highlights</div>;
+  return highlights.entrySeq().map(([pt, [color, vis]]) => {
+    const gmonly = vis === "GMOnly";
+    if (gmonly && playerId) {
+      return null;
+    }
+    const tprops = tile_props<SVGRectElement>(color, pt, { x: 1, y: 1 }, 0.5);
+    return (
+      <g key={pointKey("highlight", pt)} style={{ pointerEvents: "none" }}>
+        <rect {...tprops} />
+        {gmonly
+          ? eyeball(pt)
+          : null}
+      </g>
+    );
+  });
 }
 
 function Creatures(
