@@ -675,8 +675,8 @@ function Terrain_() {
     const layer = s.gridFocus?.layer;
     const scene = s.getFocusedScene();
     const terrain = layer?.t === "Terrain" ? layer.terrain : scene?.terrain;
-    return terrain;
-  }) || Set();
+    return terrain?.sort();
+  }, isEqual) || Set();
   const openTerrainColor = M.useState(s =>
     s.getFocusedScene()?.background_image_url ? "transparent" : "white"
   );
