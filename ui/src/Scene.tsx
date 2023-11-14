@@ -54,7 +54,7 @@ export function GMScene() {
   const panes = [
     menuItem("Background", () => <EditSceneBackground onDone={() => undefined} />),
     menuItem("Terrain", () => <SceneTerrain />),
-    menuItem("Highlights", () => <SceneHighlights />, "Highlights"),
+    menuItem("Highlights", () => <SceneHighlights />),
     menuItem("Volumes", () => <GMSceneVolumes />, "Volumes"),
     menuItem(
       "Creatures",

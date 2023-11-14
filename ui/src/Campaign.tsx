@@ -1,6 +1,7 @@
 import Fuse from "fuse.js";
 import { Set } from "immutable";
 import escape from "lodash/escape";
+import isEqual from "lodash/isEqual";
 import sortBy from "lodash/sortBy";
 import * as React from "react";
 
@@ -199,10 +200,15 @@ interface FTProps {
 function FolderTree(props: FTProps) {
   const { selecting, path } = props;
   const [expanded, setExpanded] = React.useState(props.start_open || false);
-  const folder = M.useState(s => s.getFolder(path));
-  if (!folder) return <div>No folder found for {T.folderPathToString(path)}</div>;
+  const state = M.useState(s => {
+    const folder = s.getFolder(path);
+    if (!folder) return;
+    const objects = useFolderTreeData(s, path, folder, selecting);
+    return { folder, objects };
+  }, isEqual);
+  if (!state) return <div>No folder found for {T.folderPathToString(path)}</div>;
 
-  const objects = M.useState(s => useFolderTreeData(s, path, folder, selecting));
+  const { folder, objects } = state;
 
   const subfolders = Array.from(folder.children.keys()).sort().map(
     name => (

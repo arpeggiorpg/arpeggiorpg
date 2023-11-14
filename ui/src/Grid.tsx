@@ -355,7 +355,7 @@ export function SceneGrid(props: { creatureIds: T.CreatureID[]; actionProducer: 
   }
 }
 
-function Highlights() {
+function Highlights_() {
   const highlights = M.useState(s => {
     const scene = s.getFocusedScene();
     if (!scene) return;
@@ -381,6 +381,8 @@ function Highlights() {
     );
   });
 }
+
+const Highlights = React.memo(Highlights_);
 
 function Creatures(
   { creatureIds, affectedCreatures }: {
