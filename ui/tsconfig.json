@@ -1,12 +1,12 @@
 {
   "compilerOptions": {
+    "allowSyntheticDefaultImports": true,
     "target": "ES2020",
     "useDefineForClassFields": true,
     "lib": ["ES2020", "DOM", "DOM.Iterable", "ES2023.Array"],
     "module": "ESNext",
     "skipLibCheck": true,
 
-    "allowJs": true,
     "strict": true,
     "noUncheckedIndexedAccess": true,
     "forceConsistentCasingInFileNames": true,
@@ -22,10 +22,8 @@
     "types": ["vite/client"]
   },
   "include": [
-    "next-env.d.ts",
     "**/*.ts",
     "**/*.tsx",
-    ".next/types/**/*.ts"
   ],
   "exclude": [
     "node_modules"
