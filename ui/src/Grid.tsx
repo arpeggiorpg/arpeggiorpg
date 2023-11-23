@@ -16,13 +16,24 @@ export function SceneGrid(props: { creatureIds: T.CreatureID[]; actionProducer: 
   const [painting, setPainting] = React.useState<"Opening" | "Closing" | undefined>();
 
   const playerID = M.useState(s => s.playerId);
-  const scene = M.useState(s => s.getFocusedScene());
   const grid = M.useState(s => s.grid); // This is bad.
-  const focus = M.useState(s => s.gridFocus);
+  const layerType = M.useState(s => s.gridFocus?.layer?.t);
   const pendingScale = M.useState(s => s.pendingBackgroundScale);
   const pendingOffset = M.useState(s => s.pendingBackgroundOffset);
 
-  if (!scene) return <div>No scene!</div>;
+  const hasScene = M.useState(s => !!s.getFocusedScene());
+
+  const background = M.useState(s => {
+    const scene = s.getFocusedScene();
+    if (!scene) return;
+    return {
+      url: scene.background_image_url,
+      scale: scene.background_image_scale,
+      offset: scene.background_image_offset,
+    };
+  }, isEqual);
+
+  if (!hasScene) return <div>No scene!</div>;
 
   const menu = grid.active_objects.objects.length !== 0
     ? <GridObjectMenu actionProducer={props.actionProducer} />
@@ -30,21 +41,16 @@ export function SceneGrid(props: { creatureIds: T.CreatureID[]; actionProducer: 
     ? contextMenu(grid.context_menu.pt, grid.context_menu.coords)
     : null;
 
-  const target_els = grid.target_options
-    ? getTargetTiles(grid.target_options.options, point => targetClicked(point))
-    : [];
+  const disable_style: React.CSSProperties = layerType ? { pointerEvents: "none", opacity: 0.3 } : {};
 
-  const layer = focus?.layer;
-  const disable_style: React.CSSProperties = layer ? { pointerEvents: "none", opacity: 0.3 } : {};
-
-  const [bgXScale, bgYScale] = pendingScale ? pendingScale : scene.background_image_scale;
+  const [bgXScale, bgYScale] = pendingScale ? pendingScale : background?.scale || [1.0, 1.0];
   const [offsetX, offsetY] = pendingOffset
     ? pendingOffset
-    : scene.background_image_offset || [0, 0];
-  const background_image = scene.background_image_url
+    : background?.offset || [0, 0];
+  const background_image = background?.url
     ? (
       <image
-        xlinkHref={scene.background_image_url}
+        xlinkHref={background.url}
         style={{ transform: `scale(${bgXScale}, ${bgYScale})` }}
         x={offsetX}
         y={offsetY}
@@ -53,17 +59,12 @@ export function SceneGrid(props: { creatureIds: T.CreatureID[]; actionProducer: 
     )
     : null;
 
-  const annotations = getAnnotations(scene.annotations, playerID);
-
-  const volumes = <VolumeConditions />;
-
-  const annotations_style = layer
-      && (layer.t === "Terrain" || layer.t === "Highlights")
+  const annotations_style = (layerType === "Terrain" || layerType === "Highlights")
     ? disable_style
     : {};
-  const highlights_style = layer?.t !== "Highlights" ? disable_style : {};
-  const volumes_style = layer?.t !== "Volumes" ? disable_style : {};
-  const scene_hotspots_style = layer?.t !== "LinkedScenes" ? disable_style : {};
+  const highlights_style = layerType !== "Highlights" ? disable_style : {};
+  const volumes_style = layerType !== "Volumes" ? disable_style : {};
+  const scene_hotspots_style = layerType !== "LinkedScenes" ? disable_style : {};
 
   return (
     <div style={{ width: "100%", height: "100%" }}>
@@ -100,11 +101,13 @@ export function SceneGrid(props: { creatureIds: T.CreatureID[]; actionProducer: 
           }
         }}
         shouldPan={ev =>
-          (layer?.t !== "Terrain" && layer?.t !== "Highlights") && findPTObjects(ev).length === 0}
+          (layerType !== "Terrain" && layerType !== "Highlights") && findPTObjects(ev).length === 0}
       >
         {background_image}
         <Terrain />
-        <g id="volume-conditions" style={volumes_style}>{volumes}</g>
+        <g id="volume-conditions" style={volumes_style}>
+          <VolumeConditions />
+        </g>
         <g id="scene_hotspots" style={scene_hotspots_style}>
           <SceneHotspots />
         </g>
@@ -114,9 +117,15 @@ export function SceneGrid(props: { creatureIds: T.CreatureID[]; actionProducer: 
         <g id="highlights" style={highlights_style}>
           <Highlights />
         </g>
-        <g id="annotations" style={annotations_style}>{annotations}</g>
-        <g id="movement-targets" style={disable_style}>{getMovementTargets()}</g>
-        <g id="targets" style={disable_style}>{target_els}</g>
+        <g id="annotations" style={annotations_style}>
+          <Annotations />
+        </g>
+        <g id="movement-targets" style={disable_style}>
+          <MovementTargets />
+        </g>
+        <g id="targets" style={disable_style}>
+          <TargetTiles />
+        </g>
         <g id="affected" style={disable_style}>
           <AffectedTiles />
         </g>
@@ -129,6 +138,7 @@ export function SceneGrid(props: { creatureIds: T.CreatureID[]; actionProducer: 
 
   function mouseDown(ev: React.MouseEvent<SVGSVGElement>) {
     if (ev.button !== 0 || ev.ctrlKey) return;
+    const layer = M.getState().gridFocus?.layer;
     if (layer && ["Terrain", "Highlights"].includes(layer.t)) {
       const pt = getPoint3AtMouse(ev);
       const painting = (layer.t === "Terrain"
@@ -142,6 +152,7 @@ export function SceneGrid(props: { creatureIds: T.CreatureID[]; actionProducer: 
     }
   }
   function mouseMove(ev: React.MouseEvent<SVGSVGElement>) {
+    const layer = M.getState().gridFocus?.layer;
     if (!layer || !["Terrain", "Highlights"].includes(layer.t) || painting === undefined) {
       return;
     }
@@ -180,6 +191,7 @@ export function SceneGrid(props: { creatureIds: T.CreatureID[]; actionProducer: 
   }
 
   function mouseUp(ev: React.MouseEvent<SVGSVGElement>) {
+    const layer = M.getState().gridFocus?.layer;
     if (!layer || layer.t !== "Terrain" || painting === undefined) return;
     const pt = getPoint3AtMouse(ev);
     switch (painting) {
@@ -197,36 +209,60 @@ export function SceneGrid(props: { creatureIds: T.CreatureID[]; actionProducer: 
     setPainting(undefined);
   }
 
-  function getMovementTargets() {
-    const move = grid.movement_options;
-    return move
-      ? move.options.map(pt => (
-        <MovementTarget key={pt.toString()} cid={move.cid} pt={pt} teleport={move.teleport} />
-      ))
-      : null;
+  function contextMenu(pt: T.Point3, coords: [number, number]) {
+    const close = () => M.getState().clearContextMenu();
+    return (
+      <PopupMenu coords={coords} onClose={close}>
+        <ContextMenu pt={pt} onClose={close} />
+      </PopupMenu>
+    );
   }
+}
 
-  function getAnnotations(
-    annotations: T.Annotations,
-    player_id?: T.PlayerID,
-    specialClick?: (pt: T.Point3) => void,
-  ) {
-    return M.filterMap(annotations.entrySeq().toArray(), ([pt, [note, vis]]) => {
-      if (note !== "") {
-        return (
-          <Annotation
-            key={pointKey("annotation", pt)}
-            pt={pt}
-            vis={vis}
-            specialClick={specialClick}
-            player_id={player_id}
-          />
-        );
-      }
+function MovementTargets() {
+  const move = M.useState(s => s.grid.movement_options, isEqual);
+  return move
+    ? move.options.map(pt => (
+      <MovementTarget key={pt.toString()} cid={move.cid} pt={pt} teleport={move.teleport} />
+    ))
+    : null;
+}
+
+function Annotations() {
+  const annotations = M.useState(s => s.getFocusedScene()?.annotations);
+  const playerId = M.useState(s => s.playerId);
+  if (!annotations) return;
+  return M.filterMap(annotations.entrySeq().toArray(), ([pt, [note, vis]]) => {
+    if (note !== "") {
+      return (
+        <Annotation
+          key={pointKey("annotation", pt)}
+          pt={pt}
+          vis={vis}
+          player_id={playerId}
+        />
+      );
+    }
+  });
+}
+
+function TargetTiles() {
+  const targetOptions = M.useState(s => s.grid.target_options);
+  const options = targetOptions?.options;
+
+  if (!options) return;
+
+  if ("CreatureIDs" in options) {
+    return undefined;
+  } else if ("Points" in options) {
+    return options.Points.map(pt => {
+      const rprops = tile_props<SVGRectElement>("pink", pt, { x: 1, y: 1 }, 0.3);
+      return <rect key={pointKey("target", pt)} {...rprops} onClick={() => targetClicked(pt)} />;
     });
   }
 
   async function targetClicked(point: T.Point3) {
+    const grid = M.getState().grid;
     const sceneId = M.getState().getFocusedScene()?.id;
     if (!sceneId) return;
     const options = grid.target_options!;
@@ -264,32 +300,6 @@ export function SceneGrid(props: { creatureIds: T.CreatureID[]; actionProducer: 
     );
     M.getState().setAffectedPoints(points);
     M.getState().setAffectedCreatures(creatures);
-  }
-
-  function contextMenu(pt: T.Point3, coords: [number, number]) {
-    const close = () => M.getState().clearContextMenu();
-    return (
-      <PopupMenu coords={coords} onClose={close}>
-        <ContextMenu pt={pt} onClose={close} />
-      </PopupMenu>
-    );
-  }
-
-  function getTargetTiles(
-    options: T.PotentialTargets,
-    onClick: (pt: T.Point3) => void,
-  ): JSX.Element[] | undefined {
-    if ("CreatureIDs" in options) {
-      return undefined;
-    } else if ("Points" in options) {
-      return options.Points.map(pt => {
-        const rprops = tile_props<SVGRectElement>("pink", pt, { x: 1, y: 1 }, 0.3);
-        function clickTile() {
-          onClick(pt);
-        }
-        return <rect key={pointKey("target", pt)} {...rprops} onClick={clickTile} />;
-      });
-    }
   }
 }
 
