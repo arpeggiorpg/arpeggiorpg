@@ -17,42 +17,14 @@ export function SceneGrid(props: { creatureIds: T.CreatureID[]; actionProducer: 
 
   const playerID = M.useState(s => s.playerId);
   const layerType = M.useState(s => s.gridFocus?.layer?.t);
-  const pendingScale = M.useState(s => s.pendingBackgroundScale);
-  const pendingOffset = M.useState(s => s.pendingBackgroundOffset);
 
   const hasScene = M.useState(s => !!s.getFocusedScene());
-
-  const background = M.useState(s => {
-    const scene = s.getFocusedScene();
-    if (!scene) return;
-    return {
-      url: scene.background_image_url,
-      scale: scene.background_image_scale,
-      offset: scene.background_image_offset,
-    };
-  }, isEqual);
 
   if (!hasScene) return <div>No scene!</div>;
 
   const disable_style: React.CSSProperties = layerType
     ? { pointerEvents: "none", opacity: 0.3 }
     : {};
-
-  const [bgXScale, bgYScale] = pendingScale ? pendingScale : background?.scale || [1.0, 1.0];
-  const [offsetX, offsetY] = pendingOffset
-    ? pendingOffset
-    : background?.offset || [0, 0];
-  const background_image = background?.url
-    ? (
-      <image
-        xlinkHref={background.url}
-        style={{ transform: `scale(${bgXScale}, ${bgYScale})` }}
-        x={offsetX}
-        y={offsetY}
-        preserveAspectRatio="none"
-      />
-    )
-    : null;
 
   const annotations_style = (layerType === "Terrain" || layerType === "Highlights")
     ? disable_style
@@ -98,7 +70,7 @@ export function SceneGrid(props: { creatureIds: T.CreatureID[]; actionProducer: 
         shouldPan={ev =>
           (layerType !== "Terrain" && layerType !== "Highlights") && findPTObjects(ev).length === 0}
       >
-        {background_image}
+        <BackgroundImage />
         <Terrain />
         <g id="volume-conditions" style={volumes_style}>
           <VolumeConditions />
@@ -204,6 +176,37 @@ export function SceneGrid(props: { creatureIds: T.CreatureID[]; actionProducer: 
     }
     setPainting(undefined);
   }
+}
+
+function BackgroundImage() {
+  const pendingScale = M.useState(s => s.pendingBackgroundScale);
+  const pendingOffset = M.useState(s => s.pendingBackgroundOffset);
+
+  const background = M.useState(s => {
+    const scene = s.getFocusedScene();
+    if (!scene) return;
+    return {
+      url: scene.background_image_url,
+      scale: scene.background_image_scale,
+      offset: scene.background_image_offset,
+    };
+  }, isEqual);
+
+  const [bgXScale, bgYScale] = pendingScale ? pendingScale : background?.scale || [1.0, 1.0];
+  const [offsetX, offsetY] = pendingOffset
+    ? pendingOffset
+    : background?.offset || [0, 0];
+  return background?.url
+    ? (
+      <image
+        xlinkHref={background.url}
+        style={{ transform: `scale(${bgXScale}, ${bgYScale})` }}
+        x={offsetX}
+        y={offsetY}
+        preserveAspectRatio="none"
+      />
+    )
+    : null;
 }
 
 function MovementTargets() {
