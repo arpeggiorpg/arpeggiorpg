@@ -375,7 +375,7 @@ function Highlights_() {
     if (gmonly && playerId) {
       return null;
     }
-    const tprops = tile_props<SVGRectElement>(color, pt, { x: 1, y: 1 }, 0.5);
+    const tprops = tile_props<SVGRectElement>(color, pt, { x: 1, y: 1 }, 0.5, 0);
     return (
       <g key={pointKey("highlight", pt)} style={{ pointerEvents: "none" }}>
         <rect {...tprops} />
@@ -1173,11 +1173,12 @@ function tile_props<T>(
   pt: T.Point3,
   size = { x: 1, y: 1 },
   opacity: number = 1,
+  strokeWidth: number = 1,
 ): React.SVGProps<T> {
   return {
     ...bare_tile_props<T>(pt, size),
     stroke: "black",
-    strokeWidth: 1,
+    strokeWidth: strokeWidth,
     fill: color,
     fillOpacity: opacity,
   };
