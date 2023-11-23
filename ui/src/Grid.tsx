@@ -16,7 +16,6 @@ export function SceneGrid(props: { creatureIds: T.CreatureID[]; actionProducer: 
   const [painting, setPainting] = React.useState<"Opening" | "Closing" | undefined>();
 
   const playerID = M.useState(s => s.playerId);
-  const grid = M.useState(s => s.grid); // This is bad.
   const layerType = M.useState(s => s.gridFocus?.layer?.t);
   const pendingScale = M.useState(s => s.pendingBackgroundScale);
   const pendingOffset = M.useState(s => s.pendingBackgroundOffset);
@@ -35,13 +34,9 @@ export function SceneGrid(props: { creatureIds: T.CreatureID[]; actionProducer: 
 
   if (!hasScene) return <div>No scene!</div>;
 
-  const menu = grid.active_objects.objects.length !== 0
-    ? <GridObjectMenu actionProducer={props.actionProducer} />
-    : grid.context_menu
-    ? contextMenu(grid.context_menu.pt, grid.context_menu.coords)
-    : null;
-
-  const disable_style: React.CSSProperties = layerType ? { pointerEvents: "none", opacity: 0.3 } : {};
+  const disable_style: React.CSSProperties = layerType
+    ? { pointerEvents: "none", opacity: 0.3 }
+    : {};
 
   const [bgXScale, bgYScale] = pendingScale ? pendingScale : background?.scale || [1.0, 1.0];
   const [offsetX, offsetY] = pendingOffset
@@ -78,7 +73,7 @@ export function SceneGrid(props: { creatureIds: T.CreatureID[]; actionProducer: 
       >
         <TopBar />
       </div>
-      {menu}
+      <GridMenu actionProducer={props.actionProducer} />
       <SPZ.SVGPanZoom
         id="pt-grid"
         preserveAspectRatio="xMinYMid slice"
@@ -156,6 +151,7 @@ export function SceneGrid(props: { creatureIds: T.CreatureID[]; actionProducer: 
     if (!layer || !["Terrain", "Highlights"].includes(layer.t) || painting === undefined) {
       return;
     }
+    const grid = M.getState().grid;
     // make sure we've actually got the mouse down before trying to paint
     if (ev.buttons !== 1) {
       setPainting(undefined);
@@ -169,7 +165,7 @@ export function SceneGrid(props: { creatureIds: T.CreatureID[]; actionProducer: 
           M.getState().setTerrain(layer.terrain.add(pt));
         } else if (layer.t === "Highlights") {
           if (layer.highlights.has(pt)) return;
-          const color = grid.highlight_color; // WOMP WOMP we shouldn't have grid available
+          const color = grid.highlight_color;
           const vis = grid.object_visibility;
           M.getState().setHighlights(layer.highlights.set(pt, [color, vis]));
         }
@@ -207,15 +203,6 @@ export function SceneGrid(props: { creatureIds: T.CreatureID[]; actionProducer: 
       }
     }
     setPainting(undefined);
-  }
-
-  function contextMenu(pt: T.Point3, coords: [number, number]) {
-    const close = () => M.getState().clearContextMenu();
-    return (
-      <PopupMenu coords={coords} onClose={close}>
-        <ContextMenu pt={pt} onClose={close} />
-      </PopupMenu>
-    );
   }
 }
 
@@ -415,6 +402,60 @@ function Creatures(
   return creaturesWithColor.map(({ id, color }) => {
     return <GridCreature key={id} creatureId={id} highlight={color} />;
   });
+}
+
+/** The Menu either renders menus for active objects, or a right-click context menu. */
+function GridMenu(props: { actionProducer: ActionProducer }) {
+  const hasActiveObjects = M.useState(s => s.grid.active_objects.objects.length > 0);
+  const contextMenuActive = M.useState(s => !!s.grid.context_menu);
+
+  return hasActiveObjects
+    ? <GridObjectMenu actionProducer={props.actionProducer} />
+    : contextMenuActive
+    ? <ContextMenu />
+    : null;
+}
+
+/** ContextMenu is what gets rendered when you right click. */
+function ContextMenu() {
+  const contextMenu = M.useState(s => s.grid?.context_menu);
+  if (!contextMenu) return;
+  const { pt, coords } = contextMenu;
+  const close = () => M.getState().clearContextMenu();
+
+  const [visible, setVisible] = React.useState<boolean>(true);
+
+  const items: Array<[string, (c: () => void) => JSX.Element]> = [
+    ["Add Scene Hotspot", close => <AddSceneHotspot pt={pt} onClose={close} />],
+    ["Add Annotation", close => <AddAnnotation pt={pt} onClose={close} />],
+  ];
+
+  return (
+    <PopupMenu coords={coords} onClose={close}>
+      <Menu vertical={true} style={{ display: visible ? "block" : "none" }}>
+        {items.map(([title, comp]) => (
+          <CV.ModalMaker
+            key={title}
+            button={open => (
+              <Menu.Item style={{ cursor: "pointer" }} onClick={hideAnd(open)}>
+                {title}
+              </Menu.Item>
+            )}
+            header={<>{title}</>}
+            content={comp}
+            onClose={close}
+          />
+        ))}
+      </Menu>
+    </PopupMenu>
+  );
+
+  function hideAnd(open: () => void) {
+    return () => {
+      setVisible(false);
+      open();
+    };
+  }
 }
 
 /** The GridObjectMenu renders sub-menus for every object which is at a point.
@@ -737,38 +778,6 @@ function getPoint3AtMouse(event: React.MouseEvent<any>) {
   const x = Math.floor(cursorpt.x / 100) * 100;
   const y = Math.floor(cursorpt.y / 100) * 100;
   return new T.Point3(x, y, 0);
-}
-
-function ContextMenu({ pt, onClose }: {
-  pt: T.Point3;
-  onClose: () => void;
-}) {
-  const [visible, setVisible] = React.useState<boolean>(true);
-  const hideAnd = (open: () => void) => () => {
-    setVisible(false);
-    open();
-  };
-  const items: Array<[string, (c: () => void) => JSX.Element]> = [
-    ["Add Scene Hotspot", close => <AddSceneHotspot pt={pt} onClose={close} />],
-    ["Add Annotation", close => <AddAnnotation pt={pt} onClose={close} />],
-  ];
-  return (
-    <Menu vertical={true} style={{ display: visible ? "block" : "none" }}>
-      {items.map(([title, comp]) => (
-        <CV.ModalMaker
-          key={title}
-          button={open => (
-            <Menu.Item style={{ cursor: "pointer" }} onClick={hideAnd(open)}>
-              {title}
-            </Menu.Item>
-          )}
-          header={<>{title}</>}
-          content={comp}
-          onClose={onClose}
-        />
-      ))}
-    </Menu>
-  );
 }
 
 function svgVolume(
