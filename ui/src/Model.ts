@@ -183,12 +183,16 @@ const secondaryFocusSlice: Slice<SecondaryFocusState> = set => ({
   setSecondaryFocus: secondaryFocus => set(() => ({ secondaryFocus })),
 });
 
+
 interface GridState {
   grid: GridModel;
   gridFocus?: GridFocus;
 
   pendingBackgroundScale: [number, number] | undefined;
   pendingBackgroundOffset: [number, number] | undefined;
+  targetingPoint: T.Point3 | undefined;
+  affectedPoints: T.Point3[] | undefined;
+  affectedCreatures: T.CreatureID[];
 
   setPendingBackgroundScale: (scale: [number, number] | undefined) => void;
   setPendingBackgroundOffset: (offset: [number, number] | undefined) => void;
@@ -212,6 +216,10 @@ interface GridState {
   clearPotentialTargets: () => void;
   clearMovementOptions: () => void;
 
+  setTargetingPoint: (p: T.Point3 | undefined) => void;
+  setAffectedPoints: (ps: T.Point3[] | undefined) => void;
+  setAffectedCreatures: (cs: T.CreatureID[]) => void;
+
   // accessors
   getFocusedScene: () => T.Scene | undefined;
 }
@@ -225,6 +233,9 @@ const gridSlice: Slice<GridState> = (set, get) => ({
 
   pendingBackgroundScale: undefined,
   pendingBackgroundOffset: undefined,
+  targetingPoint: undefined,
+  affectedPoints: undefined,
+  affectedCreatures: [],
 
   setPendingBackgroundScale: pendingBackgroundScale => set(() => ({pendingBackgroundScale})),
   setPendingBackgroundOffset: pendingBackgroundOffset => set(() => ({pendingBackgroundOffset})),
@@ -291,6 +302,10 @@ const gridSlice: Slice<GridState> = (set, get) => ({
     set(({ grid }) => ({ grid: { ...grid, target_options: undefined } })),
   clearMovementOptions: () =>
     set(({ grid }) => ({ grid: { ...grid, movement_options: undefined } })),
+
+  setTargetingPoint: targetingPoint => set(() => ({targetingPoint})),
+  setAffectedPoints: affectedPoints => set(() => ({affectedPoints})),
+  setAffectedCreatures: affectedCreatures => set(() => ({affectedCreatures})),
 
   getFocusedScene: () => {
     const state = get();

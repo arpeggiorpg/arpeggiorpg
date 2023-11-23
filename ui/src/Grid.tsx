@@ -13,10 +13,6 @@ import { AddAnnotation, AddSceneHotspot } from "./Scene";
 import * as SPZ from "./SVGPanZoom";
 
 export function SceneGrid(props: { creatureIds: T.CreatureID[]; actionProducer: ActionProducer }) {
-  // TODO: creatures should probably just be in the store or something?
-  const [targetingPoint, setTargetingPoint] = React.useState<T.Point3 | undefined>();
-  const [affectedPoints, setAffectedPoints] = React.useState<T.Point3[] | undefined>();
-  const [affectedCreatures, setAffectedCreatures] = React.useState<T.CreatureID[]>([]);
   const [painting, setPainting] = React.useState<"Opening" | "Closing" | undefined>();
 
   const playerID = M.useState(s => s.playerId);
@@ -79,7 +75,7 @@ export function SceneGrid(props: { creatureIds: T.CreatureID[]; actionProducer: 
           alignItems: "center",
         }}
       >
-        {topBar()}
+        <TopBar />
       </div>
       {menu}
       <SPZ.SVGPanZoom
@@ -92,74 +88,9 @@ export function SceneGrid(props: { creatureIds: T.CreatureID[]; actionProducer: 
           backgroundRepeat: "no-repeat",
           backgroundSize: "contain",
         }}
-        onMouseDown={ev => {
-          if (ev.button !== 0 || ev.ctrlKey) return;
-          if (layer && ["Terrain", "Highlights"].includes(layer.t)) {
-            const pt = getPoint3AtMouse(ev);
-            const painting = (layer.t === "Terrain"
-                ? layer.terrain.contains(pt)
-                : layer.t === "Highlights"
-                ? layer.highlights.has(pt)
-                : false)
-              ? "Closing"
-              : "Opening";
-            setPainting(painting);
-          }
-        }}
-        onMouseMove={ev => {
-          if (!layer || !["Terrain", "Highlights"].includes(layer.t) || painting === undefined) {
-            return;
-          }
-          // make sure we've actually got the mouse down before trying to paint
-          if (ev.buttons !== 1) {
-            setPainting(undefined);
-            return;
-          }
-          const pt = getPoint3AtMouse(ev);
-          switch (painting) {
-            case "Opening": {
-              if (layer.t === "Terrain") {
-                if (layer.terrain.contains(pt)) return;
-                M.getState().setTerrain(layer.terrain.add(pt));
-              } else if (layer.t === "Highlights") {
-                if (layer.highlights.has(pt)) return;
-                const color = grid.highlight_color; // WOMP WOMP we shouldn't have grid available
-                const vis = grid.object_visibility;
-                M.getState().setHighlights(layer.highlights.set(pt, [color, vis]));
-              }
-              break;
-            }
-            case "Closing": {
-              if (layer.t === "Terrain") {
-                if (!layer.terrain.contains(pt)) return;
-                M.getState().setTerrain(layer.terrain.remove(pt));
-              } else if (layer.t === "Highlights") {
-                if (!layer.highlights.has(pt)) return;
-                M.getState().setHighlights(layer.highlights.remove(pt));
-              }
-              break;
-            }
-            default:
-              return;
-          }
-        }}
-        onMouseUp={ev => {
-          if (!layer || layer.t !== "Terrain" || painting === undefined) return;
-          const pt = getPoint3AtMouse(ev);
-          switch (painting) {
-            case "Opening": {
-              if (layer.terrain.contains(pt)) return;
-              M.getState().setTerrain(layer.terrain.add(pt));
-              break;
-            }
-            case "Closing": {
-              if (!layer.terrain.contains(pt)) return;
-              M.getState().setTerrain(layer.terrain.remove(pt));
-              break;
-            }
-          }
-          setPainting(undefined);
-        }}
+        onMouseDown={mouseDown}
+        onMouseMove={mouseMove}
+        onMouseUp={mouseUp}
         onMouseLeave={() => setPainting(undefined)}
         onContextMenu={ev => {
           ev.preventDefault();
@@ -168,11 +99,8 @@ export function SceneGrid(props: { creatureIds: T.CreatureID[]; actionProducer: 
             M.getState().activateContextMenu(pt, [ev.clientX, ev.clientY]);
           }
         }}
-        shouldPan={ev => {
-          if (layer && (layer.t === "Terrain" || layer.t === "Highlights")) return false;
-          const objects = findPTObjects(ev);
-          return objects.length === 0;
-        }}
+        shouldPan={ev =>
+          (layer?.t !== "Terrain" && layer?.t !== "Highlights") && findPTObjects(ev).length === 0}
       >
         {background_image}
         <Terrain />
@@ -181,7 +109,7 @@ export function SceneGrid(props: { creatureIds: T.CreatureID[]; actionProducer: 
           <SceneHotspots />
         </g>
         <g id="creatures" style={disable_style}>
-          <Creatures creatureIds={props.creatureIds} affectedCreatures={affectedCreatures} />
+          <Creatures creatureIds={props.creatureIds} />
         </g>
         <g id="highlights" style={highlights_style}>
           <Highlights />
@@ -189,13 +117,85 @@ export function SceneGrid(props: { creatureIds: T.CreatureID[]; actionProducer: 
         <g id="annotations" style={annotations_style}>{annotations}</g>
         <g id="movement-targets" style={disable_style}>{getMovementTargets()}</g>
         <g id="targets" style={disable_style}>{target_els}</g>
-        <g id="affected" style={disable_style}>{getAffectedTiles()}</g>
+        <g id="affected" style={disable_style}>
+          <AffectedTiles />
+        </g>
         <g id="targeted-volume" style={disable_style}>
-          {targetingPoint ? <TargetedVolume targetingPoint={targetingPoint} /> : null}
+          <TargetedVolume />
         </g>
       </SPZ.SVGPanZoom>
     </div>
   );
+
+  function mouseDown(ev: React.MouseEvent<SVGSVGElement>) {
+    if (ev.button !== 0 || ev.ctrlKey) return;
+    if (layer && ["Terrain", "Highlights"].includes(layer.t)) {
+      const pt = getPoint3AtMouse(ev);
+      const painting = (layer.t === "Terrain"
+          ? layer.terrain.contains(pt)
+          : layer.t === "Highlights"
+          ? layer.highlights.has(pt)
+          : false)
+        ? "Closing"
+        : "Opening";
+      setPainting(painting);
+    }
+  }
+  function mouseMove(ev: React.MouseEvent<SVGSVGElement>) {
+    if (!layer || !["Terrain", "Highlights"].includes(layer.t) || painting === undefined) {
+      return;
+    }
+    // make sure we've actually got the mouse down before trying to paint
+    if (ev.buttons !== 1) {
+      setPainting(undefined);
+      return;
+    }
+    const pt = getPoint3AtMouse(ev);
+    switch (painting) {
+      case "Opening": {
+        if (layer.t === "Terrain") {
+          if (layer.terrain.contains(pt)) return;
+          M.getState().setTerrain(layer.terrain.add(pt));
+        } else if (layer.t === "Highlights") {
+          if (layer.highlights.has(pt)) return;
+          const color = grid.highlight_color; // WOMP WOMP we shouldn't have grid available
+          const vis = grid.object_visibility;
+          M.getState().setHighlights(layer.highlights.set(pt, [color, vis]));
+        }
+        break;
+      }
+      case "Closing": {
+        if (layer.t === "Terrain") {
+          if (!layer.terrain.contains(pt)) return;
+          M.getState().setTerrain(layer.terrain.remove(pt));
+        } else if (layer.t === "Highlights") {
+          if (!layer.highlights.has(pt)) return;
+          M.getState().setHighlights(layer.highlights.remove(pt));
+        }
+        break;
+      }
+      default:
+        return;
+    }
+  }
+
+  function mouseUp(ev: React.MouseEvent<SVGSVGElement>) {
+    if (!layer || layer.t !== "Terrain" || painting === undefined) return;
+    const pt = getPoint3AtMouse(ev);
+    switch (painting) {
+      case "Opening": {
+        if (layer.terrain.contains(pt)) return;
+        M.getState().setTerrain(layer.terrain.add(pt));
+        break;
+      }
+      case "Closing": {
+        if (!layer.terrain.contains(pt)) return;
+        M.getState().setTerrain(layer.terrain.remove(pt));
+        break;
+      }
+    }
+    setPainting(undefined);
+  }
 
   function getMovementTargets() {
     const move = grid.movement_options;
@@ -255,15 +255,15 @@ export function SceneGrid(props: { creatureIds: T.CreatureID[]; actionProducer: 
         return;
       }
     }
-    setTargetingPoint(point);
+    M.getState().setTargetingPoint(point);
     const { points, creatures } = await A.fetchAbilityTargets(
       sceneId,
       options.cid,
       options.ability_id,
       point,
     );
-    setAffectedPoints(points);
-    setAffectedCreatures(creatures);
+    M.getState().setAffectedPoints(points);
+    M.getState().setAffectedCreatures(creatures);
   }
 
   function contextMenu(pt: T.Point3, coords: [number, number]) {
@@ -291,67 +291,72 @@ export function SceneGrid(props: { creatureIds: T.CreatureID[]; actionProducer: 
       });
     }
   }
+}
 
-  function getAffectedTiles(): JSX.Element[] | undefined {
-    if (!affectedPoints) return;
-    return affectedPoints.map(
-      pt => {
-        const rprops = tile_props<SVGRectElement>("red", pt, { x: 1, y: 1 }, 0.5);
-        return (
-          <rect
-            key={pointKey("affected", pt)}
-            style={{ pointerEvents: "none" }}
-            {...rprops}
-          />
-        );
-      },
-    );
-  }
+function AffectedTiles() {
+  const affectedPoints = M.useState(s => s.affectedPoints);
+  if (!affectedPoints) return;
+  return affectedPoints.map(
+    pt => {
+      const rprops = tile_props<SVGRectElement>("red", pt, { x: 1, y: 1 }, 0.5);
+      return (
+        <rect
+          key={pointKey("affected", pt)}
+          style={{ pointerEvents: "none" }}
+          {...rprops}
+        />
+      );
+    },
+  );
+}
 
-  function topBar(): JSX.Element {
-    if (targetingPoint) {
-      return (
-        <div>
-          Proceed with action?
-          <Button onClick={() => executePointTargetedAbility()}>Act</Button>
-          <Button onClick={() => clearTargets()}>Cancel</Button>
-        </div>
-      );
-    }
-
-    if (grid.movement_options) {
-      return (
-        <div>
-          Select a destination or
-          <Button onClick={() => M.getState().clearMovementOptions()}>Cancel</Button>
-        </div>
-      );
-    }
-    if (grid.target_options) {
-      return (
-        <div>
-          Select a target or
-          <Button onClick={() => M.getState().clearPotentialTargets()}>Cancel</Button>
-        </div>
-      );
-    }
+function TopBar() {
+  const isMoving = M.useState(s => !!s.grid.movement_options);
+  const isTargeting = M.useState(s => !!s.grid.target_options);
+  const targetingPoint = M.useState(s => s.targetingPoint);
+  if (targetingPoint) {
     return (
       <div>
-        Drag to pan, mousewheel to zoom, click objects for more options, right-click to add things.
+        Proceed with action?
+        <Button onClick={() => executePointTargetedAbility()}>Act</Button>
+        <Button onClick={() => clearTargets()}>Cancel</Button>
       </div>
     );
   }
 
-  function clearTargets() {
-    setAffectedPoints(undefined);
-    setAffectedCreatures([]);
-    setTargetingPoint(undefined);
+  if (isMoving) {
+    return (
+      <div>
+        Select a destination or
+        <Button onClick={() => M.getState().clearMovementOptions()}>Cancel</Button>
+      </div>
+    );
   }
+  if (isTargeting) {
+    return (
+      <div>
+        Select a target or
+        <Button onClick={() => M.getState().clearPotentialTargets()}>Cancel</Button>
+      </div>
+    );
+  }
+  return (
+    <div>
+      Drag to pan, mousewheel to zoom, click objects for more options, right-click to add things.
+    </div>
+  );
 
   function executePointTargetedAbility() {
     if (!targetingPoint) return;
     A.executeCombatPointTargetedAbility(targetingPoint);
     clearTargets();
+  }
+
+  function clearTargets() {
+    const state = M.getState();
+    state.setAffectedPoints(undefined);
+    state.setAffectedCreatures([]);
+    state.setTargetingPoint(undefined);
   }
 }
 
@@ -385,17 +390,20 @@ function Highlights_() {
 const Highlights = React.memo(Highlights_);
 
 function Creatures(
-  { creatureIds, affectedCreatures }: {
+  { creatureIds }: {
     creatureIds: T.CreatureID[];
-    affectedCreatures: T.CreatureID[];
   },
 ) {
-  creatureIds = M.useState(s => sortBy(s.getCreatures(creatureIds), c => -c.size.x).map(c => c.id));
-  return creatureIds.map(cid => {
-    const highlight = affectedCreatures?.includes(cid)
-      ? "red"
-      : undefined;
-    return <GridCreature key={cid} creatureId={cid} highlight={highlight} />;
+  const creaturesWithColor = M.useState(
+    s =>
+      sortBy(s.getCreatures(creatureIds), c => -c.size.x).map(c => ({
+        id: c.id,
+        color: s.affectedCreatures.includes(c.id) ? "red" : undefined,
+      })),
+    isEqual,
+  );
+  return creaturesWithColor.map(({ id, color }) => {
+    return <GridCreature key={id} creatureId={id} highlight={color} />;
   });
 }
 
@@ -590,16 +598,17 @@ function VolumeConditions_() {
 
 const VolumeConditions = React.memo(VolumeConditions_, isEqual);
 
-function TargetedVolume({ targetingPoint }: { targetingPoint: T.Point3 }) {
+function TargetedVolume() {
   const action = M.useState(s => {
     const options = s.grid.target_options;
     if (!options) return;
     const ability_id = options.ability_id;
-    const ability = M.useState(s => s.getAbility(ability_id));
+    const ability = s.getAbility(ability_id);
     if (!ability) return;
     return ability.action;
   }, isEqual);
   const actorId = M.useState(s => s.grid.target_options?.cid);
+  const targetingPoint = M.useState(s => s.targetingPoint);
   if (!targetingPoint || !action) return;
 
   if ("Creature" in action) {
