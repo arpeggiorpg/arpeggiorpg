@@ -665,7 +665,7 @@ function AbilityButton(props: AbilityButtonProps): JSX.Element {
       disabled={disabled}
       onClick={onClick}
     >
-      {props.abinfo.ability.name}
+      {props.abinfo.ability.name} ({props.abinfo.ability.cost})
     </Button>
   );
 }
