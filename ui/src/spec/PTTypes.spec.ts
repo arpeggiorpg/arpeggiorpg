@@ -139,6 +139,7 @@ describe("PTTypes", () => {
       "class": "creature",
       max_health: 10,
       cur_health: 10,
+      conditions: {},
       own_conditions: {},
       volume_conditions: {},
       note: "AC15",
