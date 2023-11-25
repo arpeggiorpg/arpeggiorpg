@@ -127,10 +127,18 @@ impl<'creature, 'game: 'creature> DynamicCreature<'creature, 'game> {
     let (rolls, amt) = expr.roll();
     let amt = HP(amt as u8);
     if amt >= self.creature.cur_health {
-      vec![
-        CreatureLog::Damage { hp: self.creature.cur_health, rolls },
-        Self::apply_condition_log(Duration::Interminate, Condition::Dead),
-      ]
+      let mut logs = vec![];
+      logs.push(CreatureLog::Damage { hp: self.creature.cur_health, rolls });
+      if self
+        .creature
+        .conditions
+        .values()
+        .find(|ac| matches!(ac.condition, Condition::Dead))
+        .is_none()
+      {
+        logs.push(Self::apply_condition_log(Duration::Interminate, Condition::Dead));
+      }
+      logs
     } else {
       vec![CreatureLog::Damage { hp: amt, rolls }]
     }
