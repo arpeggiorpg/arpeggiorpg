@@ -1329,6 +1329,10 @@ pub struct Creature {
   pub name: String,
   #[ts(type = "number")]
   pub speed: u32units::Length,
+  // Things like "max_energy" (and maybe eventually things like "defense_score", if we have that
+  // concept), should not be a a fixed number stored on the Creature. Instead, they should be
+  // based on Conditions such as "ProvideMaxEnergy(Dice)" or "ProvideDefense(Dice)", and then the
+  // max energy or defense of the creature would automatically select the highest value.
   pub max_energy: Energy,
   pub cur_energy: Energy,
   #[ts(type = "Record<AbilityID, AbilityStatus>")]
