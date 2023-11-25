@@ -206,6 +206,9 @@ export function GameLog(props: {
     case "EditCreatureDetails": {
       return <div>Edited a creature {log.details.name}</div>;
     }
+    case "EditCreature": {
+      return <div>Edited a creature {log.creature.name}</div>;
+    }
     case "StartCombat":
       return <div>Started combat</div>;
     case "AddCreatureToCombat": {

@@ -290,12 +290,12 @@ const decodeCommonCreatureData = {
   attributes: Z.record(decodeSkillLevel).transform<Creature["attributes"]>(Map),
   initiative: decodeDice,
   inventory: Z.record(Z.number()).transform<Creature["inventory"]>(Map),
+  conditions: Z.record(decodeAppliedCondition).transform<Creature["own_conditions"]>(Map),
   size: decodeAABB,
 };
 
 export const decodeCreatureData: Decoder<CreatureData> = Z.object({
   ...decodeCommonCreatureData,
-  conditions: Z.record(decodeAppliedCondition).transform<Creature["own_conditions"]>(Map),
 });
 
 export const decodeDynamicCreature: Decoder<Creature> = Z.object({
@@ -735,6 +735,10 @@ export const decodeGameLog: Decoder<GameLog> = Z.discriminatedUnion("t", [
     t: Z.literal("EditCreatureDetails"),
     creature_id: Z.string(),
     details: decodeCreatureCreation,
+  }),
+  Z.object({
+    t: Z.literal("EditCreature"),
+    creature: decodeCreatureData,
   }),
   Z.object({
     t: Z.literal("AddCreatureToCombat"),

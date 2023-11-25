@@ -1,7 +1,7 @@
 /// GM-only components
 import { Set } from "immutable";
+import isEqual from "lodash/isEqual";
 import * as React from "react";
-
 import {
   Button,
   Card,
@@ -312,7 +312,7 @@ function CreatureNote({ creature }: { creature: T.Creature }) {
 
   function submitNote(note: string) {
     const details = { ...creature, note };
-    A.sendGMCommand({ t: "EditCreatureDetails", creature_id: creature.id, details });
+    A.sendGMCommand({ t: "EditCreatureDetails", creature: details });
   }
 }
 
@@ -334,98 +334,134 @@ interface GMCreateCreatureProps {
 }
 export function CreateCreature(props: GMCreateCreatureProps) {
   const { path } = props;
-  const init: T.Dice = { Expr: { num: 1, size: 20 } };
-  const creature_data = {
-    name: "",
-    note: "",
-    bio: "",
-    portrait_url: "",
-    initiative: init,
-    class: "",
-    size: { x: 1, y: 1, z: 1 },
-    icon_url: "",
-  };
+
+  const [class_, setClass] = React.useState<string | undefined>(undefined);
+  const [name, setName] = React.useState("");
+
+  const classes = M.useState(s =>
+    s.game.classes.valueSeq().toArray().map(class_ => ({
+      id: class_.id,
+      name: class_.name,
+    })), isEqual);
+  const classOptions = classes.map(class_ => ({
+    key: class_.id,
+    value: class_.id,
+    text: (
+      <>
+        <CV.ClassIcon class_id={class_.id} />
+        {class_.name}
+      </>
+    ),
+  }));
+
+  const hasClass = !!class_;
+
   return (
-    <EditCreatureData
-      creature={creature_data}
-      onSave={cdata => save(cdata)}
-      onClose={props.onClose}
-    />
+    <Form error={hasClass}>
+      <Form.Field>
+        <Form.Input label="Name" value={name} onChange={(_, data) => setName(data.value)} />
+      </Form.Field>
+      <Form.Field style={{ flex: 2 }}>
+        <Form.Select
+          label="Class"
+          value={class_}
+          options={classOptions}
+          placeholder="Class"
+          onChange={(_, data) => setClass(data.value as string)}
+        />
+      </Form.Field>
+      <Form.Group>
+        <Form.Button disabled={!hasClass} onClick={save}>
+          Save
+        </Form.Button>
+        <Form.Button onClick={props.onClose}>Cancel</Form.Button>
+      </Form.Group>
+    </Form>
   );
 
-  function save(creature: T.CreatureCreation) {
+  function save() {
+    if (!class_) return;
+    const creature: T.CreatureCreation = {
+      name,
+      class: class_,
+      note: "",
+      bio: "",
+      portrait_url: "",
+      initiative: { Expr: { num: 1, size: 20 } },
+      size: { x: 1, y: 1, z: 1 },
+      icon_url: "",
+    };
+
     A.sendGMCommand({ t: "CreateCreature", path, creature });
+    props.onClose();
   }
 }
 
-interface GMEditCreatureProps {
-  creature: T.Creature;
-  onClose: () => void;
-}
-function GMEditCreature(props: GMEditCreatureProps) {
+function GMEditCreature(props: { creature: T.Creature; onClose: () => void }) {
   const { creature, onClose } = props;
-  return <EditCreatureData creature={creature} onSave={c => save(c)} onClose={onClose} />;
+  return <EditCreatureForm creature={creature} onSave={save} onClose={onClose} />;
 
-  function save(details: T.CreatureCreation) {
-    A.sendGMCommand({ t: "EditCreatureDetails", creature_id: creature.id, details });
+  function save(details: T.CreatureData) {
+    A.sendGMCommand({ t: "EditCreatureDetails", creature: details });
     onClose();
   }
 }
 
-interface EditCreatureDataProps {
-  creature: T.CreatureCreation;
+interface EditCreatureProps {
+  creature: T.Creature;
   onClose: () => void;
-  onSave: (cdata: T.CreatureCreation) => void;
+  onSave: (cdata: T.Creature) => void;
 }
-function EditCreatureData(props: EditCreatureDataProps) {
-  // TODO RADIX this is probably bad state management
-  const [portrait_url, set_portrait_url] = React.useState(props.creature.portrait_url);
-  const [name, set_name] = React.useState(props.creature.name);
-  const [note, set_note] = React.useState(props.creature.note);
-  const [bio, set_bio] = React.useState(props.creature.bio);
-  const [initiative_string, set_initiative_string] = React.useState(
+function EditCreatureForm(props: EditCreatureProps) {
+  const [portraitUrl, setPortraitUrl] = React.useState(props.creature.portrait_url);
+  const [name, setName] = React.useState(props.creature.name);
+  const [note, setNote] = React.useState(props.creature.note);
+  const [bio, setBio] = React.useState(props.creature.bio);
+  const [initiative_string, setInitiativeString] = React.useState(
     Dice.format(props.creature.initiative),
   );
-  const [class_, set_class] = React.useState(props.creature.class);
-  const [size, set_size] = React.useState<number>(props.creature.size.x);
-  const [icon_url, set_icon_url] = React.useState(props.creature.icon_url);
+  const [class_, setClass] = React.useState(props.creature.class);
+  const [size, setSize] = React.useState<number>(props.creature.size.x);
+  const [icon_url, setIconUrl] = React.useState(props.creature.icon_url);
+  const classes = M.useState(s =>
+    s.game.classes.valueSeq().toArray().map(class_ => ({
+      id: class_.id,
+      name: class_.name,
+    })), isEqual);
 
   const { onClose } = props;
   const parsed_initiative = Dice.maybeParse(initiative_string);
-  const classes = M.useState(s =>
-    s.game.classes.valueSeq().toArray().map(class_ => ({
-      key: class_.id,
-      // it's probably not good to return elements from useState
-      text: (
-        <>
-          <CV.ClassIcon class_id={class_.id} />
-          {class_.name}
-        </>
-      ),
-      value: class_.id,
-    }))
-  );
-  const form_ok = parsed_initiative.status;
+  const classOptions = classes.map(class_ => ({
+    key: class_.id,
+    value: class_.id,
+    text: (
+      <>
+        <CV.ClassIcon class_id={class_.id} />
+        {class_.name}
+      </>
+    ),
+  }));
+  const formOk = parsed_initiative.status;
   return (
     <Form error={!parsed_initiative.status}>
       <Form.Group>
         <Form.Field style={{ flex: "3" }}>
-          <Form.Input label="Name" value={name} onChange={(_, data) => set_name(data.value)} />
+          <Form.Input label="Name" value={name} onChange={(_, data) => setName(data.value)} />
         </Form.Field>
         <Form.Field style={{ flex: 2 }}>
           <Form.Select
             label="Class"
             value={class_}
-            options={classes}
+            options={classOptions}
             placeholder="Class"
-            onChange={(_, data) => set_class(data.value as string)}
+            onChange={(_, data) => setClass(data.value as string)}
           />
         </Form.Field>
       </Form.Group>
       <Form.Group style={{ width: "100%" }}>
         <Form.Field style={{ flex: "1" }}>
           <label>Icon Image URL:</label>
-          <Input fluid={true} value={icon_url} onChange={(_, data) => set_icon_url(data.value)} />
+          <Input fluid={true} value={icon_url} onChange={(_, data) => setIconUrl(data.value)} />
         </Form.Field>
         {icon_url
           ? <CV.SquareImageIcon url={icon_url} />
@@ -436,29 +472,29 @@ function EditCreatureData(props: EditCreatureDataProps) {
           <label>Portrait Image URL:</label>
           <Input
             fluid={true}
-            value={portrait_url}
-            onChange={(_, data) => set_portrait_url(data.value)}
+            value={portraitUrl}
+            onChange={(_, data) => setPortraitUrl(data.value)}
           />
         </Form.Field>
-        {portrait_url
-          ? <img src={portrait_url} />
+        {portraitUrl
+          ? <img src={portraitUrl} />
           : "Enter an URL for preview"}
       </Form.Group>
-      <Form.Input label="Note" value={note} onChange={(_, data) => set_note(data.value)} />
+      <Form.Input label="Note" value={note} onChange={(_, data) => setNote(data.value)} />
       <Form.Group>
         <Form.Field style={{ flex: 3 }}>
           <Form.Input
             label="Initiative"
             error={!parsed_initiative.status}
             value={initiative_string}
-            onChange={(_, data) => set_initiative_string(data.value)}
+            onChange={(_, data) => setInitiativeString(data.value)}
           />
         </Form.Field>
         <Form.Field style={{ flex: 2 }}>
           <Form.Select
             label="Size"
             value={size}
-            onChange={(_, data) => set_size(Number(data.value))}
+            onChange={(_, data) => setSize(Number(data.value))}
             options={[
               { key: "medium", text: "Medium", value: 1 },
               { key: "large", text: "Large", value: 2 },
@@ -482,10 +518,10 @@ function EditCreatureData(props: EditCreatureDataProps) {
       <Form.TextArea
         label="Bio"
         value={bio}
-        onChange={(_, data) => data.value && set_bio(data.value as string)}
+        onChange={(_, data) => data.value && setBio(data.value as string)}
       />
       <Form.Group>
-        <Form.Button disabled={!form_ok} onClick={save}>
+        <Form.Button disabled={!formOk} onClick={save}>
           Save
         </Form.Button>
         <Form.Button onClick={onClose}>Cancel</Form.Button>
@@ -495,9 +531,10 @@ function EditCreatureData(props: EditCreatureDataProps) {
 
   function save() {
     const creature = {
+      ...props.creature,
       name,
       class: class_,
-      portrait_url,
+      portrait_url: portraitUrl,
       note,
       bio,
       initiative: Dice.parse(initiative_string),

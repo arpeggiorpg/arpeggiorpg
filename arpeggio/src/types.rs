@@ -634,8 +634,7 @@ pub enum GMCommand {
   },
   /// Edit an existing creature.
   EditCreatureDetails {
-    creature_id: CreatureID,
-    details: CreatureCreation,
+    creature: Creature,
   },
   /// Assign a creature's position within a scene.
   SetCreaturePos {
@@ -967,9 +966,13 @@ pub enum GameLog {
     path: FolderPath,
     creature: Creature,
   },
+  // Deprecated: please migrate & remove
   EditCreatureDetails {
     creature_id: CreatureID,
     details: CreatureCreation,
+  },
+  EditCreature {
+    creature: Creature,
   },
   AddCreatureToCombat {
     creature_id: CreatureID,
@@ -1315,11 +1318,11 @@ pub struct CreatureCreation {
 /// creature and get an identical creature. See `Creature::change` and `Creature::change_with`.
 ///
 /// Random note: Serialize and Deserialize on Creature are only for "secondary" representations of
-/// Creatures like in GameLog::CreateCreature. See DynamicCreature and its Serialize impl for the
-/// good stuff.
+/// Creatures like in GameLog::CreateCreature, and persistent storage of games. See DynamicCreature
+/// and its Serialize impl for the good stuff.
 #[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize, TS)]
 // I'm not calling this "Creature" in typescript just to emphasize that DynamicCreature is usually
-// what you want; this is only serialized directly in GameLog
+// what you want; this is only serialized directly in GameLog or for storage.
 #[ts(rename = "CreatureData")]
 pub struct Creature {
   pub id: CreatureID,
@@ -1574,6 +1577,7 @@ impl<'creature, 'game: 'creature> Serialize for DynamicCreature<'creature, 'game
       initiative: self.creature.initiative.clone(),
       size: self.creature.size,
       inventory: self.creature.inventory.clone(),
+      conditions: self.creature.conditions.clone(),
       // overriden fields:
       speed: self.speed(),
       abilities: self.ability_statuses(),
@@ -1615,6 +1619,8 @@ pub struct SerializedCreature {
   #[serde(default)]
   #[ts(type = "CreatureInventory")]
   pub inventory: Inventory,
+  #[ts(type = "CreatureConditions")]
+  pub conditions: HashMap<ConditionID, AppliedCondition>,
 
   // overridden field
   #[ts(type = "Record<AbilityID, AbilityStatus>")]

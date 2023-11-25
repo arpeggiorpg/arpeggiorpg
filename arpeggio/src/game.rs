@@ -178,7 +178,7 @@ impl Game {
     use self::PlayerCommand::*;
     let player =
       self.players.get(&player_id).ok_or_else(|| GameError::PlayerNotFound(player_id.clone()))?;
-    
+
     match cmd {
       ChatFromPlayer { message } => {
         self.change_with(GameLog::ChatFromPlayer { player_id, message: message.to_owned() })
@@ -381,8 +381,8 @@ impl Game {
         let creature = Creature::create(&creature);
         self.change_with(GameLog::CreateCreature { path, creature })
       }
-      EditCreatureDetails { creature_id, details } => {
-        self.change_with(GameLog::EditCreatureDetails { creature_id, details })
+      EditCreatureDetails { creature } => {
+        self.change_with(GameLog::EditCreature { creature })
       }
       PathCreature { scene_id, creature_id, destination } => {
         Ok(self.path_creature(scene_id, creature_id, destination)?.0)
@@ -1087,6 +1087,12 @@ impl Game {
           c.size = details.size;
         });
         mutated.ok_or_else(|| GameError::CreatureNotFound(creature_id.to_string()))?;
+      }
+      EditCreature { ref creature } => {
+        if !self.creatures.contains_key(&creature.id) {
+          return Err(GameError::CreatureNotFound(creature.id.to_string()));
+        }
+        self.creatures.insert(creature.clone());
       }
       AddCreatureToCombat { creature_id, initiative } => {
         let mut combat = self.current_combat.clone().ok_or(GameError::NotInCombat)?;
