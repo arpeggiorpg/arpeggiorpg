@@ -115,7 +115,7 @@ impl<'creature, 'game: 'creature> DynamicCreature<'creature, 'game> {
   }
 
   fn generate_energy(&self, nrg: Energy) -> Vec<CreatureLog> {
-    let delta = self.creature.max_energy - self.creature.cur_energy;
+    let delta = self.creature.max_energy.saturating_sub(self.creature.cur_energy);
     if delta > Energy(0) {
       vec![CreatureLog::GenerateEnergy { energy: cmp::min(delta, nrg) }]
     } else {
