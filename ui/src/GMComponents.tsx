@@ -417,12 +417,16 @@ function EditCreatureForm(props: EditCreatureProps) {
   const [name, setName] = React.useState(props.creature.name);
   const [note, setNote] = React.useState(props.creature.note);
   const [bio, setBio] = React.useState(props.creature.bio);
-  const [initiative_string, setInitiativeString] = React.useState(
+  const [initiativeString, setInitiativeString] = React.useState(
     Dice.format(props.creature.initiative),
   );
+  const [maxHealth, setMaxHealth] = React.useState(props.creature.max_health.toString());
+  const [curHealth, setCurHealth] = React.useState(props.creature.cur_health.toString());
+  const [maxEnergy, setMaxEnergy] = React.useState(props.creature.max_energy.toString());
+  const [curEnergy, setCurEnergy] = React.useState(props.creature.cur_energy.toString());
   const [class_, setClass] = React.useState(props.creature.class);
   const [size, setSize] = React.useState<number>(props.creature.size.x);
-  const [icon_url, setIconUrl] = React.useState(props.creature.icon_url);
+  const [iconUrl, setIconUrl] = React.useState(props.creature.icon_url);
   const classes = M.useState(s =>
     s.game.classes.valueSeq().toArray().map(class_ => ({
       id: class_.id,
@@ -430,7 +434,7 @@ function EditCreatureForm(props: EditCreatureProps) {
     })), isEqual);
 
   const { onClose } = props;
-  const parsed_initiative = Dice.maybeParse(initiative_string);
+  const parsedInitiative = Dice.maybeParse(initiativeString);
   const classOptions = classes.map(class_ => ({
     key: class_.id,
     value: class_.id,
@@ -441,9 +445,10 @@ function EditCreatureForm(props: EditCreatureProps) {
       </>
     ),
   }));
-  const formOk = parsed_initiative.status;
+  const formOk = parsedInitiative.status && isValidQuantity(maxHealth)
+    && isValidQuantity(curHealth) && isValidQuantity(maxEnergy) && isValidQuantity(curEnergy);
   return (
-    <Form error={!parsed_initiative.status}>
+    <Form error={!parsedInitiative.status}>
       <Form.Group>
         <Form.Field style={{ flex: "3" }}>
           <Form.Input label="Name" value={name} onChange={(_, data) => setName(data.value)} />
@@ -458,13 +463,79 @@ function EditCreatureForm(props: EditCreatureProps) {
           />
         </Form.Field>
       </Form.Group>
+      <Form.Group>
+        <Form.Field style={{ flex: 3 }}>
+          <Form.Input
+            label="Initiative"
+            error={!parsedInitiative.status}
+            value={initiativeString}
+            onChange={(_, data) => setInitiativeString(data.value)}
+          />
+        </Form.Field>
+        {parsedInitiative.status
+          ? <Message>Parsed: {Dice.format(parsedInitiative.value)}</Message>
+          : (
+            <Message error={true}>
+              <Message.Header>Couldn't parse dice expression</Message.Header>
+              <Message.Content>
+                Expected {parsedInitiative.expected} at line {parsedInitiative.index.line}, column
+                {" "}
+                {parsedInitiative.index.column}
+              </Message.Content>
+            </Message>
+          )}
+        <Form.Field style={{ flex: 2 }}>
+          <Form.Select
+            label="Size"
+            value={size}
+            onChange={(_, data) => setSize(Number(data.value))}
+            options={[
+              { key: "medium", text: "Medium", value: 1 },
+              { key: "large", text: "Large", value: 2 },
+              { key: "huge", text: "Huge", value: 3 },
+            ]}
+          />
+        </Form.Field>
+      </Form.Group>
+      <Form.Group>
+        <Form.Field style={{ flex: 1 }}>
+          <Form.Input
+            label="Max Energy"
+            value={maxEnergy}
+            onChange={(_, d) => setMaxEnergy(d.value)}
+          />
+        </Form.Field>
+        <Form.Field style={{ flex: 1 }}>
+          <Form.Input
+            label="Current Energy"
+            value={curEnergy}
+            onChange={(_, d) => setCurEnergy(d.value)}
+          />
+        </Form.Field>
+      </Form.Group>
+      <Form.Group>
+        <Form.Field style={{ flex: 1 }}>
+          <Form.Input
+            label="Max Health"
+            value={maxHealth}
+            onChange={(_, d) => setMaxHealth(d.value)}
+          />
+        </Form.Field>
+        <Form.Field style={{ flex: 1 }}>
+          <Form.Input
+            label="Current Health"
+            value={curHealth}
+            onChange={(_, d) => setCurHealth(d.value)}
+          />
+        </Form.Field>
+      </Form.Group>
       <Form.Group style={{ width: "100%" }}>
         <Form.Field style={{ flex: "1" }}>
           <label>Icon Image URL:</label>
-          <Input fluid={true} value={icon_url} onChange={(_, data) => setIconUrl(data.value)} />
+          <Input fluid={true} value={iconUrl} onChange={(_, data) => setIconUrl(data.value)} />
         </Form.Field>
-        {icon_url
-          ? <CV.SquareImageIcon url={icon_url} />
+        {iconUrl
+          ? <CV.SquareImageIcon url={iconUrl} />
           : "Enter an URL for preview"}
       </Form.Group>
       <Form.Group style={{ width: "100%" }}>
@@ -481,40 +552,6 @@ function EditCreatureForm(props: EditCreatureProps) {
           : "Enter an URL for preview"}
       </Form.Group>
       <Form.Input label="Note" value={note} onChange={(_, data) => setNote(data.value)} />
-      <Form.Group>
-        <Form.Field style={{ flex: 3 }}>
-          <Form.Input
-            label="Initiative"
-            error={!parsed_initiative.status}
-            value={initiative_string}
-            onChange={(_, data) => setInitiativeString(data.value)}
-          />
-        </Form.Field>
-        <Form.Field style={{ flex: 2 }}>
-          <Form.Select
-            label="Size"
-            value={size}
-            onChange={(_, data) => setSize(Number(data.value))}
-            options={[
-              { key: "medium", text: "Medium", value: 1 },
-              { key: "large", text: "Large", value: 2 },
-              { key: "huge", text: "Huge", value: 3 },
-            ]}
-          />
-        </Form.Field>
-      </Form.Group>
-      {parsed_initiative.status
-        ? <Message>Parsed dice as {Dice.format(parsed_initiative.value)}</Message>
-        : (
-          <Message error={true}>
-            <Message.Header>Couldn't parse dice expression</Message.Header>
-            <Message.Content>
-              Expected {parsed_initiative.expected} at line {parsed_initiative.index.line}, column
-              {" "}
-              {parsed_initiative.index.column}
-            </Message.Content>
-          </Message>
-        )}
       <Form.TextArea
         label="Bio"
         value={bio}
@@ -529,6 +566,11 @@ function EditCreatureForm(props: EditCreatureProps) {
     </Form>
   );
 
+  function isValidQuantity(s: string) {
+    const n = Number(s);
+    return n && Number.isInteger(n) && n >= 0;
+  }
+
   function save() {
     const creature = {
       ...props.creature,
@@ -537,9 +579,13 @@ function EditCreatureForm(props: EditCreatureProps) {
       portrait_url: portraitUrl,
       note,
       bio,
-      initiative: Dice.parse(initiative_string),
+      initiative: Dice.parse(initiativeString),
       size: { x: size, y: size, z: size },
-      icon_url,
+      icon_url: iconUrl,
+      max_health: Number(maxHealth),
+      cur_health: Number(curHealth),
+      max_energy: Number(maxEnergy),
+      cur_energy: Number(curEnergy),
     };
     props.onSave(creature);
     props.onClose();
