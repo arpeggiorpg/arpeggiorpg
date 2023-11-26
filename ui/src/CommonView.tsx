@@ -1101,10 +1101,10 @@ export class SingleInputForm extends React.Component<
         type="text"
         value={this.state.text}
         onKeyDown={(e: KeyboardEvent) => {
-          if (e.keyCode === 13) {
+          if (e.key === "Enter") {
             this.props.onSubmit(this.state.text);
             this.setState({ text: "" });
-          } else if (e.keyCode === 27) {
+          } else if (e.key === "Escape") {
             if (this.props.onCancel) {
               this.props.onCancel();
             }

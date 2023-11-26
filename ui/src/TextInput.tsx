@@ -24,11 +24,11 @@ export class TextInput extends React.Component<TextInputProps, { value: string }
   }
 
   handleKeyDown(this: TextInput, event: React.KeyboardEvent<HTMLInputElement>): void {
-    if (event.keyCode === 13) {
+    if (event.key === "Enter") {
       if ((this.props.numbersOnly && this.state.value !== "-") || !this.props.numbersOnly) {
         this.props.onSubmit(this.state.value);
       }
-    } else if (event.keyCode === 27) {
+    } else if (event.key === "Escape") {
       this.cancel();
     }
   }
