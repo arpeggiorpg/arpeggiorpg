@@ -857,13 +857,12 @@ export function GMSceneCreatures() {
       inCombat: s.creatureIsInCombat(c.id),
     }));
   });
-  if (!creatures) return <div>no scene</div>;
   const isCombatScene = M.useState(s => {
     const sceneId = s.gridFocus?.scene_id;
     if (!sceneId) return;
     return s.getCombat()?.scene === sceneId;
   });
-
+  if (!creatures) return <div>no scene</div>;
   console.log("[EXPENSIVE:GMSceneCreatures]");
   return (
     <List relaxed={true}>
