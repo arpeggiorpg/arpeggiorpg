@@ -568,7 +568,7 @@ function EditCreatureForm(props: EditCreatureProps) {
 
   function isValidQuantity(s: string) {
     const n = Number(s);
-    return n && Number.isInteger(n) && n >= 0;
+    return n !== undefined && Number.isInteger(n) && n >= 0;
   }
 
   function save() {
