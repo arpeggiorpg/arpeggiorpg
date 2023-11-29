@@ -143,16 +143,8 @@ impl<T> FolderTree<T> {
         let data = self.nodes.remove(path).expect("Node must exist.");
         self.nodes.insert(new_path.clone(), data);
 
-        let descendants = self.walk_paths(path).cloned().collect::<Vec<FolderPath>>();
-        for subpath in descendants {
-          let relative = subpath.relative_to(&path)?;
-          let new_subpath = new_path.descendant(relative.0);
-          let path_data = self
-            .nodes
-            .remove(&subpath)
-            .ok_or_else(|| FolderTreeError::FolderNotFound(subpath.clone()))?;
-          self.nodes.insert(new_subpath, path_data);
-        }
+        self.move_children(path, path, &new_path)?;
+
         Ok(())
       }
       None => Err(FolderTreeError::CannotRenameRoot),
@@ -176,23 +168,30 @@ impl<T> FolderTree<T> {
         if self.nodes.contains_key(&new_parent.child(basename.clone())) {
           return Err(FolderTreeError::FolderExists(new_parent.child(basename)));
         }
-        let descendants = self.walk_paths(path).cloned().collect::<Vec<FolderPath>>();
-        for subpath in descendants {
-          let relative = subpath.relative_to(&old_parent)?;
-          let new_path = new_parent.descendant(relative.0);
-          let path_data = self
-            .nodes
-            .remove(&subpath)
-            .ok_or_else(|| FolderTreeError::FolderNotFound(subpath.clone()))?;
-          self.nodes.insert(new_path, path_data);
-        }
-
+        self.move_children(path, &old_parent, new_parent)?;
         self.nodes.get_mut(&old_parent).expect("Parent node must exist").1.remove(&basename);
         self.nodes.get_mut(new_parent).expect("Target directory must exist").1.insert(basename);
         Ok(())
       }
       None => Err(FolderTreeError::CannotMoveRoot),
     }
+  }
+
+  fn move_children(
+    &mut self, path: &FolderPath, old_parent: &FolderPath, new_parent: &FolderPath,
+  ) -> Result<(), FolderTreeError> {
+    //! When moving or renaming a folder, we need to fix up the paths of all of its children.
+    let descendants = self.walk_paths(path).cloned().collect::<Vec<FolderPath>>();
+    for subpath in descendants {
+      let relative = subpath.relative_to(old_parent)?;
+      let new_path = new_parent.descendant(relative.0);
+      let path_data = self
+        .nodes
+        .remove(&subpath)
+        .ok_or_else(|| FolderTreeError::FolderNotFound(subpath.clone()))?;
+      self.nodes.insert(new_path, path_data);
+    }
+    Ok(())
   }
 
   fn get_data(&self, path: &FolderPath) -> Result<&(T, HashSet<String>), FolderTreeError> {
@@ -679,7 +678,13 @@ mod test {
     let mut ftree = FolderTree::new("Root node!".to_string());
     ftree.make_folder(&fpath(""), "foo".to_string(), "foo folder".to_string()).unwrap();
     ftree.make_folder(&fpath("/foo"), "foo_child".into(), "foo child folder".into()).unwrap();
-    ftree.make_folder(&fpath("/foo/foo_child"), "foo_child_child".into(), "foo child child folder".into()).unwrap();
+    ftree
+      .make_folder(
+        &fpath("/foo/foo_child"),
+        "foo_child_child".into(),
+        "foo child child folder".into(),
+      )
+      .unwrap();
     ftree.rename_folder(&fpath("/foo"), "bar".to_string()).unwrap();
     println!("ok what {:?}", ftree.nodes.keys().map(|fp| fp.to_string()).collect::<Vec<String>>());
     assert_eq!(
