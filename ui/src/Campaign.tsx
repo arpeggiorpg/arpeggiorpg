@@ -42,15 +42,13 @@ export function MultiItemSelector(props: MultiItemSelectorProps) {
     collectAllItems(s).map(([path, { id, name }]) => ({ path, id, name }))
   );
   const selectedItems = M.useState(s => s.getItems(selections.toArray()));
-  const display = ({ path, name }: { name: string; path: T.FolderPath }) =>
-    `${T.folderPathToString(path)}/${name}`;
   return (
     <div>
       {selectedItems.map(item => <Label key={item.id}>{item.name}</Label>)}
       <SearchSelect
         values={items}
         onSelect={({ id }) => setSelections(selections.add(id))}
-        display={display}
+        display={displayPath}
       />
       <Button onClick={() => props.on_selected(selections)}>Select Items</Button>
       <Button onClick={props.on_cancel}>Cancel</Button>
@@ -63,18 +61,16 @@ interface SceneSelectorProps {
   onSelect: (sid: T.SceneID) => void;
 }
 export function SceneSelector(props: SceneSelectorProps) {
-  // RADIX: okay, so this is a case where I think I've actually done a good job at only selecting
-  // the things I need out of the store. Is this actually optimized? Is "shallow" equality actually
-  // sufficient to get this? I kinda doubt it! scenes is an array of objects, and those objects are
-  // created fresh on every render. I suspect we probably need deep equality.
   const scenes: { id: string; name: string; path: T.FolderPath }[] = M.useState(s => {
     return collectAllScenes(s).map(([path, { id, name }]) => ({ path, id, name }));
-  });
-  const display = ({ path, name }: { name: string; path: T.FolderPath }) =>
-    `${T.folderPathToString(path)}/${name}`;
+  }, isEqual);
   return (
     <div>
-      <SearchSelect values={scenes} onSelect={({ id }) => props.onSelect(id)} display={display} />
+      <SearchSelect
+        values={scenes}
+        onSelect={({ id }) => props.onSelect(id)}
+        display={displayPath}
+      />
       <Button onClick={props.onCancel}>Cancel</Button>
     </div>
   );
@@ -95,8 +91,6 @@ export function MultiSceneSelector(props: MultiSceneSelectorProps) {
   const selectedScenes = M.useState(s =>
     s.getScenes(selections.toArray()).map(({ id, name }) => ({ id, name }))
   );
-  const display = ({ path, name }: { name: string; path: T.FolderPath }) =>
-    `${T.folderPathToString(path)}/${name}`;
   return (
     <div>
       <Menu compact={true}>
@@ -117,12 +111,16 @@ export function MultiSceneSelector(props: MultiSceneSelectorProps) {
       <SearchSelect
         values={scenes}
         onSelect={({ id }) => setSelections(selections.add(id))}
-        display={display}
+        display={displayPath}
       />
       <Button onClick={() => props.on_selected(selections)}>Select Scenes</Button>
       <Button onClick={props.on_cancel}>Cancel</Button>
     </div>
   );
+}
+
+function displayPath({ path, name }: { name: string; path: T.FolderPath }) {
+  return `${T.folderPathToString(path)}/${name}`;
 }
 
 interface MultiCreatureSelectorProps {
