@@ -141,7 +141,18 @@ impl<T> FolderTree<T> {
           mut_data.1.insert(new_name);
         }
         let data = self.nodes.remove(path).expect("Node must exist.");
-        self.nodes.insert(new_path, data);
+        self.nodes.insert(new_path.clone(), data);
+
+        let descendants = self.walk_paths(path).cloned().collect::<Vec<FolderPath>>();
+        for subpath in descendants {
+          let relative = subpath.relative_to(&path)?;
+          let new_subpath = new_path.descendant(relative.0);
+          let path_data = self
+            .nodes
+            .remove(&subpath)
+            .ok_or_else(|| FolderTreeError::FolderNotFound(subpath.clone()))?;
+          self.nodes.insert(new_subpath, path_data);
+        }
         Ok(())
       }
       None => Err(FolderTreeError::CannotRenameRoot),
@@ -250,9 +261,7 @@ impl FolderPath {
   }
 
   pub fn from_vec(segs: Vec<String>) -> FolderPath { FolderPath(segs) }
-  pub fn into_vec(self) -> Vec<String> {
-    self.0
-  }
+  pub fn into_vec(self) -> Vec<String> { self.0 }
 
   pub fn root() -> FolderPath { FolderPath::from_vec(vec![]) }
 
@@ -282,15 +291,11 @@ impl FolderPath {
 }
 
 impl From<FolderPath> for Vec<String> {
-    fn from(value: FolderPath) -> Self {
-        value.0
-    }
+  fn from(value: FolderPath) -> Self { value.0 }
 }
 
 impl From<Vec<String>> for FolderPath {
-    fn from(value: Vec<String>) -> Self {
-        FolderPath::from_vec(value)
-    }
+  fn from(value: Vec<String>) -> Self { FolderPath::from_vec(value) }
 }
 
 impl ::std::str::FromStr for FolderPath {
@@ -373,13 +378,13 @@ impl<'a, T: Serialize> Serialize for ChildrenSerializer<'a, T> {
     for child in children {
       let full_path = self.path.child(child.to_string());
       let children_serializer = ChildrenSerializer { tree: self.tree, path: &full_path };
-      let helper = SerializerHelper {
-        data: self
-          .tree
-          .get(&full_path)
-          .expect("Child node should definitely exist here, since children() returned it"),
-        children: children_serializer,
-      };
+      let tree_keys: Vec<String> = self.tree.nodes.keys().map(|fp| fp.to_string()).collect();
+      tracing::info!(event = "children-serializer", ?tree_keys);
+      let data = self
+        .tree
+        .get(&full_path)
+        .expect("Child node should definitely exist here, since get_children() returned it");
+      let helper = SerializerHelper { data, children: children_serializer };
       map.serialize_key(child)?;
       map.serialize_value(&helper)?;
     }
@@ -479,7 +484,6 @@ extern crate serde_json;
 #[cfg(test)]
 mod test {
   use crate::{FolderPath, FolderTree, FolderTreeError};
-  #[cfg(feature = "serde")]
   use std::{collections::HashSet, iter::FromIterator};
 
   fn fpath(s: &str) -> FolderPath { s.parse().expect("Couldn't parse string as FolderPath") }
@@ -662,6 +666,33 @@ mod test {
     assert_eq!(
       ftree.get_children(&fpath("")).unwrap(),
       &HashSet::from_iter(vec!["bar".to_string()])
+    );
+    match ftree.get(&fpath("/foo")) {
+      Err(FolderTreeError::FolderNotFound(p)) => assert_eq!(p, fpath("/foo")),
+      x => panic!("Bad result: {:?}", x),
+    }
+    assert_eq!(ftree.get(&fpath("/bar")).unwrap(), &"foo folder".to_string());
+  }
+
+  #[test]
+  fn rename_folder_with_children() {
+    let mut ftree = FolderTree::new("Root node!".to_string());
+    ftree.make_folder(&fpath(""), "foo".to_string(), "foo folder".to_string()).unwrap();
+    ftree.make_folder(&fpath("/foo"), "foo_child".into(), "foo child folder".into()).unwrap();
+    ftree.make_folder(&fpath("/foo/foo_child"), "foo_child_child".into(), "foo child child folder".into()).unwrap();
+    ftree.rename_folder(&fpath("/foo"), "bar".to_string()).unwrap();
+    println!("ok what {:?}", ftree.nodes.keys().map(|fp| fp.to_string()).collect::<Vec<String>>());
+    assert_eq!(
+      ftree.get_children(&fpath("")).unwrap(),
+      &HashSet::from_iter(vec!["bar".to_string()])
+    );
+    assert_eq!(
+      ftree.get_children(&fpath("/bar")).unwrap(),
+      &HashSet::from_iter(vec!["foo_child".to_string()])
+    );
+    assert_eq!(
+      ftree.get_children(&fpath("/bar/foo_child")).unwrap(),
+      &HashSet::from_iter(vec!["foo_child_child".to_string()])
     );
     match ftree.get(&fpath("/foo")) {
       Err(FolderTreeError::FolderNotFound(p)) => assert_eq!(p, fpath("/foo")),
