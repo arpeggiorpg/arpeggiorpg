@@ -292,6 +292,9 @@ impl Game {
       DeleteFolderItem { path, item_id } => {
         self.change_with(GameLog::DeleteFolderItem { path, item_id })
       }
+      RenameFolderItem { path, item_id, new_name } => {
+        self.change_with(GameLog::RenameFolderItem { path, item_id, new_name })
+      }
 
       CreateItem { path, name } => {
         let item = Item { id: ItemID::gen(), name };
@@ -381,9 +384,7 @@ impl Game {
         let creature = Creature::create(&creature);
         self.change_with(GameLog::CreateCreature { path, creature })
       }
-      EditCreatureDetails { creature } => {
-        self.change_with(GameLog::EditCreature { creature })
-      }
+      EditCreatureDetails { creature } => self.change_with(GameLog::EditCreature { creature }),
       PathCreature { scene_id, creature_id, destination } => {
         Ok(self.path_creature(scene_id, creature_id, destination)?.0)
       }
@@ -883,6 +884,37 @@ impl Game {
             self.campaign.remove(&path)?;
           }
         }
+      }
+
+      RenameFolderItem { ref path, ref item_id, ref new_name} => {
+        match item_id {
+            FolderItemID::SceneID(id) => {
+              self.scenes.mutate(id, |s| s.name = new_name.clone());
+            },
+            FolderItemID::CreatureID(id) => {
+              self.creatures.mutate(id, |c| c.name = new_name.clone());
+            }
+            FolderItemID::NoteID(original_name) => {
+              let node = self.campaign.get_mut(path)?;
+              node.notes.mutate(original_name, move |note| note.name = new_name.clone());
+            }
+            FolderItemID::ItemID(id) => {
+              self.items.mutate(id, |i| i.name = new_name.clone());
+            }
+            FolderItemID::AbilityID(id) => {
+              self.abilities.mutate(id, |ab| ab.name = new_name.clone());
+            },
+            FolderItemID::ClassID(id) => {
+              self.classes.mutate(id, |c| c.name = new_name.clone());
+            }
+            FolderItemID::SubfolderID(id) => {
+              let mut full_path: Vec<String> = path.clone().into();
+              full_path.push(id.clone());
+              let full_path = FolderPath::from_vec(full_path);
+              self.campaign.rename_folder(&full_path, new_name.clone())?
+            }
+        }
+
       }
 
       CreateItem { ref path, item: ref ritem } => {

@@ -609,6 +609,12 @@ export const decodeGameLog: Decoder<GameLog> = Z.discriminatedUnion("t", [
     item_id: decodeFolderItemID,
   }),
   Z.object({
+    t: Z.literal("RenameFolderItem"),
+    path: decodeFolderPath,
+    item_id: decodeFolderItemID,
+    new_name: Z.string(),
+  }),
+  Z.object({
     t: Z.literal("MoveFolderItem"),
     source: decodeFolderPath,
     item_id: decodeFolderItemID,
@@ -887,6 +893,8 @@ export function encodeGMCommand(cmd: GMCommand): object {
       };
     }
     case "DeleteFolderItem":
+      return { ...cmd, path: encodeFolderPath(cmd.path) };
+    case "RenameFolderItem":
       return { ...cmd, path: encodeFolderPath(cmd.path) };
     case "CreateClass":
       return { ...cmd, path: encodeFolderPath(cmd.path) };

@@ -360,7 +360,7 @@ pub enum PlayerCommand {
   },
 
   EditNote {
-    // this FolderPath needs to be scoped to the player's area or something
+    // This FolderPath is scoped to the player's folder.
     path: FolderPath,
     original_name: String,
     note: Note,
@@ -421,7 +421,7 @@ pub enum GMCommand {
   CreateFolder {
     path: FolderPath,
   },
-  /// Rename a folder.
+  /// Rename a folder. DEPRECATED (I think?)
   RenameFolder {
     path: FolderPath,
     new_name: String,
@@ -443,6 +443,11 @@ pub enum GMCommand {
     path: FolderPath,
     item_id: FolderItemID,
   },
+  RenameFolderItem {
+    path: FolderPath,
+    item_id: FolderItemID,
+    new_name: String
+  },
 
   /// Create an Item in a folder. (this will probably take an ItemCreation in the future)
   CreateItem {
@@ -459,7 +464,7 @@ pub enum GMCommand {
     path: FolderPath,
     note: Note,
   },
-  /// Rename a Note inside of a Folder.
+  /// Edit a Note inside of a Folder.
   EditNote {
     path: FolderPath,
     original_name: String,
@@ -789,6 +794,7 @@ pub enum GameLog {
   CreateFolder {
     path: FolderPath,
   },
+  /// Rename a folder. DEPRECATED (I think?)
   RenameFolder {
     path: FolderPath,
     new_name: String,
@@ -807,6 +813,11 @@ pub enum GameLog {
   DeleteFolderItem {
     path: FolderPath,
     item_id: FolderItemID,
+  },
+  RenameFolderItem {
+    path: FolderPath,
+    item_id: FolderItemID,
+    new_name: String
   },
 
   CreateItem {

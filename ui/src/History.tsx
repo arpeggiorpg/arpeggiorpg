@@ -105,6 +105,13 @@ export function GameLog(props: {
         </div>
       );
     }
+    case "RenameFolderItem": {
+      return (
+        <div>
+          Renamed folder item in {T.folderPathToString(log.path)} to {log.new_name}
+        </div>
+      );
+    }
     case "MoveFolderItem": {
       return (
         <div>

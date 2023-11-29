@@ -26,6 +26,7 @@ import * as CF from "./CoolForm";
 import * as GM from "./GMComponents";
 import * as M from "./Model";
 import * as T from "./PTTypes";
+import { TextInput } from "./TextInput";
 
 export function Campaign() {
   return <FolderTree name={"Campaign"} path={[]} start_open={true} />;
@@ -382,13 +383,23 @@ function FolderMenu({ path }: { path: T.FolderPath }) {
               />
               <CV.ModalMaker
                 button={open => (
-                  <Dropdown.Item
-                    text="Move this folder"
-                    icon="font"
-                    onClick={open}
-                  />
+                  <Dropdown.Item text="Rename this folder" onClick={open} icon="font" />
                 )}
                 header={<span>Rename {T.folderPathToString(path)}</span>}
+                content={close => (
+                  <RenameFolderItem
+                    path={path.slice(0, -1)}
+                    itemId={{ SubfolderID: path.at(-1)! }}
+                    onDone={close}
+                  />
+                )}
+              />
+
+              <CV.ModalMaker
+                button={open => (
+                  <Dropdown.Item text="Move this folder" icon="folder" onClick={open} />
+                )}
+                header={<span>Move {T.folderPathToString(path)}</span>}
                 content={close => (
                   <MoveFolderItem
                     source={path.slice(0, -1)}
@@ -605,6 +616,17 @@ function TreeObject({ path, object, selecting }: TreeObjectProps) {
                 source={object.path}
                 onDone={close}
                 item_id={object_to_item_id(object)}
+              />
+            )}
+          />
+          <CV.ModalMaker
+            button={open => <Dropdown.Item onClick={open}>Rename</Dropdown.Item>}
+            header={<span>Rename {name}</span>}
+            content={close => (
+              <RenameFolderItem
+                path={object.path}
+                itemId={object_to_item_id(object)}
+                onDone={close}
               />
             )}
           />
@@ -880,5 +902,23 @@ function MoveFolderItem(props: MoveFolderItemProps) {
   function move(destination: T.FolderPath) {
     A.sendGMCommand({ t: "MoveFolderItem", source, item_id, destination });
     onDone();
+  }
+}
+
+function RenameFolderItem(
+  { path, itemId, onDone }: { path: T.FolderPath; itemId: T.FolderItemID; onDone: () => void },
+) {
+  return (
+    <div>
+      <TextInput
+        onSubmit={save}
+        onCancel={onDone}
+        defaultValue={"Enter new name"}
+      />
+    </div>
+  );
+
+  function save(newName: string) {
+    A.sendGMCommand({ t: "RenameFolderItem", path, new_name: newName, item_id: itemId });
   }
 }
