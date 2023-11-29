@@ -4,7 +4,8 @@ compatibility_date = "2023-03-22"
 logpush = true
 
 [build]
-command = "cargo install -q worker-build && worker-build --release"
+command = "node ./build.js"
+
 
 [durable_objects]
 bindings = [

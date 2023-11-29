@@ -6,7 +6,8 @@ default:
 run-ui:
     cd ui; npm run dev
 
-run-worker:
+# This "ARP_LOCAL_DEV" is used in wrangler.toml (actually, worker/build.js)
+run-worker $ARP_LOCAL_DEV="--dev":
     cd worker; npm run dev
 
 deploy-ui:
