@@ -378,7 +378,6 @@ impl<'a, T: Serialize> Serialize for ChildrenSerializer<'a, T> {
       let full_path = self.path.child(child.to_string());
       let children_serializer = ChildrenSerializer { tree: self.tree, path: &full_path };
       let tree_keys: Vec<String> = self.tree.nodes.keys().map(|fp| fp.to_string()).collect();
-      tracing::info!(event = "children-serializer", ?tree_keys);
       let data = self
         .tree
         .get(&full_path)
