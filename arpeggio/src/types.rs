@@ -6,8 +6,6 @@
 
 use std::collections::{HashMap, HashSet};
 
-use derive_more::{Add, Div, Mul, Sub};
-use num::Saturating;
 use rand::Rng;
 use serde::{
   de,
@@ -171,51 +169,6 @@ impl Dice {
   }
 }
 
-#[derive(
-  Add,
-  Sub,
-  Mul,
-  Div,
-  Clone,
-  Copy,
-  Eq,
-  PartialEq,
-  Ord,
-  PartialOrd,
-  Debug,
-  Hash,
-  Serialize,
-  Deserialize,
-  TS,
-)]
-pub struct HP(pub u8);
-impl Saturating for HP {
-  fn saturating_add(self, other: Self) -> Self { HP(self.0.saturating_add(other.0)) }
-  fn saturating_sub(self, other: Self) -> Self { HP(self.0.saturating_sub(other.0)) }
-}
-
-#[derive(
-  Add,
-  Sub,
-  Mul,
-  Div,
-  Clone,
-  Copy,
-  Eq,
-  PartialEq,
-  Ord,
-  PartialOrd,
-  Debug,
-  Hash,
-  Serialize,
-  Deserialize,
-  TS,
-)]
-pub struct Energy(pub u8);
-impl Saturating for Energy {
-  fn saturating_add(self, other: Self) -> Self { Energy(self.0.saturating_add(other.0)) }
-  fn saturating_sub(self, other: Self) -> Self { Energy(self.0.saturating_sub(other.0)) }
-}
 #[macro_export]
 macro_rules! uuid_id {
   ($type: ident) => {
