@@ -15,7 +15,7 @@ use ts_rs::TS;
 
 use indexed::IndexedHashMap;
 
-pub use arptypes::types::*;
+pub use arptypes::*;
 
 use crate::game::GameExt;
 
