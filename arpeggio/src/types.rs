@@ -216,10 +216,6 @@ impl Saturating for Energy {
   fn saturating_add(self, other: Self) -> Self { Energy(self.0.saturating_add(other.0)) }
   fn saturating_sub(self, other: Self) -> Self { Energy(self.0.saturating_sub(other.0)) }
 }
-
-#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize, TS)]
-pub struct PlayerID(pub String);
-
 #[macro_export]
 macro_rules! uuid_id {
   ($type: ident) => {

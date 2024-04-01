@@ -1,3 +1,5 @@
+use serde::{Deserialize, Serialize};
+use ts_rs::TS;
 use uom::si::length::{centimeter, meter};
 
 pub type Color = String;
@@ -19,4 +21,9 @@ pub fn i64cm<T: Into<i64>>(v: T) -> i64units::Length {
 pub fn i64meter<T: Into<i64>>(v: T) -> i64units::Length { i64units::Length::new::<meter>(v.into()) }
 
 pub fn up_length(v: u32units::Length) -> i64units::Length { i64cm(v.get::<centimeter>()) }
+
+
+#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize, TS)]
+pub struct PlayerID(pub String);
+
 
