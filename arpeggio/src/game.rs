@@ -1666,14 +1666,28 @@ impl GameExt for Game {
   }
 }
 
-impl ChangedGame {
-  pub fn apply(&self, log: &GameLog) -> Result<ChangedGame, GameError> {
+pub trait ChangedGameExt {
+   fn apply(&self, log: &GameLog) -> Result<ChangedGame, GameError>;
+
+   fn apply_combat<'game, F>(&'game self, f: F) -> Result<ChangedGame, GameError>
+  where
+    F: FnOnce(DynamicCombat<'game>) -> Result<ChangedCombat<'game>, GameError>,;
+
+   fn apply_creature<F>(&self, cid: CreatureID, f: F) -> Result<ChangedGame, GameError>
+  where
+    F: FnOnce(DynamicCreature) -> Result<ChangedCreature, GameError>,;
+
+   fn done(self) -> (Game, Vec<GameLog>);
+}
+
+impl ChangedGameExt for ChangedGame {
+   fn apply(&self, log: &GameLog) -> Result<ChangedGame, GameError> {
     let mut new = self.clone();
     new.game = self.game.apply_log(log)?;
     Ok(new)
   }
 
-  pub fn apply_combat<'game, F>(&'game self, f: F) -> Result<ChangedGame, GameError>
+   fn apply_combat<'game, F>(&'game self, f: F) -> Result<ChangedGame, GameError>
   where
     F: FnOnce(DynamicCombat<'game>) -> Result<ChangedCombat<'game>, GameError>,
   {
@@ -1686,7 +1700,7 @@ impl ChangedGame {
     Ok(new)
   }
 
-  pub fn apply_creature<F>(&self, cid: CreatureID, f: F) -> Result<ChangedGame, GameError>
+   fn apply_creature<F>(&self, cid: CreatureID, f: F) -> Result<ChangedGame, GameError>
   where
     F: FnOnce(DynamicCreature) -> Result<ChangedCreature, GameError>,
   {
@@ -1699,7 +1713,7 @@ impl ChangedGame {
     Ok(new)
   }
 
-  pub fn done(self) -> (Game, Vec<GameLog>) { (self.game, self.logs) }
+   fn done(self) -> (Game, Vec<GameLog>) { (self.game, self.logs) }
 }
 
 fn bug<T>(msg: &str) -> Result<T, GameError> { Err(GameError::BuggyProgram(msg.to_string())) }
