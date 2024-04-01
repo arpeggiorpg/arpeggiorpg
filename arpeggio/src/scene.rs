@@ -1,7 +1,7 @@
 use std::collections::{HashMap, HashSet};
 
 use crate::{
-  grid::{make_world, query_world},
+  grid::{make_world, query_world, TileSystemExt},
   types::*,
 };
 

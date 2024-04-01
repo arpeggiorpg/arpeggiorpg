@@ -214,47 +214,6 @@ pub enum FolderItemID {
   SubfolderID(String),
 }
 
-#[derive(Debug, Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Serialize, Deserialize, TS)]
-pub enum SkillLevel {
-  // The way to read these are:
-  // "A {variant} person has a 75% chance of doing this."
-  // If you're unskilled and you are doing a Skilled difficulty challenge: 50%?
-  // Trivial to Expert: 10%?
-  Inept,
-  Unskilled,
-  Skilled,
-  Expert,
-  Supernatural,
-}
-
-impl SkillLevel {
-  pub fn to_ord(&self) -> i8 {
-    match *self {
-      SkillLevel::Inept => -1,
-      SkillLevel::Unskilled => 0,
-      SkillLevel::Skilled => 1,
-      SkillLevel::Expert => 2,
-      SkillLevel::Supernatural => 3,
-    }
-  }
-
-  pub fn difficulty(&self, difficulty_level: SkillLevel) -> u8 {
-    100
-      - match difficulty_level.to_ord() - self.to_ord() {
-        -4 => 100,
-        -3 => 99,
-        -2 => 95,
-        -1 => 85,
-        0 => 75,
-        1 => 50,
-        2 => 10,
-        3 => 1,
-        4 => 0,
-        diff => panic!("[SkillLevel::difficulty] Two skill levels were too far apart: {:?}", diff),
-      }
-  }
-}
-
 // maybe make this a trait in the future
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Serialize, Deserialize, TS)]
 pub enum InventoryOwner {
@@ -377,7 +336,7 @@ pub enum GMCommand {
   RenameFolderItem {
     path: FolderPath,
     item_id: FolderItemID,
-    new_name: String
+    new_name: String,
   },
 
   /// Create an Item in a folder. (this will probably take an ItemCreation in the future)
@@ -748,7 +707,7 @@ pub enum GameLog {
   RenameFolderItem {
     path: FolderPath,
     item_id: FolderItemID,
-    new_name: String
+    new_name: String,
   },
 
   CreateItem {
@@ -1165,13 +1124,6 @@ impl Condition {
   }
 }
 
-/// Serializes as either "Interminate" or {"Rounds": 0}
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize, TS)]
-pub enum Duration {
-  Interminate,
-  Rounds(u8),
-}
-
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, TS)]
 pub struct AppliedCondition {
   pub remaining: Duration,
@@ -1311,9 +1263,6 @@ impl DeriveKey for Item {
   fn derive_key(&self) -> Self::KeyType { self.id }
 }
 
-#[derive(Clone, Hash, Eq, PartialEq, Debug, Serialize, Deserialize, TS)]
-pub struct AttrID(pub String);
-
 #[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize, TS)]
 pub struct Combat {
   pub scene: SceneID,
@@ -1375,14 +1324,6 @@ impl Player {
   pub fn new(name: PlayerID) -> Player {
     Player { player_id: name, scene: None, creatures: HashSet::new() }
   }
-}
-
-#[derive(Clone, PartialEq, Debug, Serialize, Deserialize, TS)]
-pub struct SceneCreation {
-  pub name: String,
-  pub background_image_url: String,
-  pub background_image_offset: Option<(i32, i32)>,
-  pub background_image_scale: (f64, f64),
 }
 
 #[derive(Clone, PartialEq, Debug, Serialize, Deserialize, TS)]
@@ -1455,12 +1396,6 @@ pub struct AttributeCheck {
 impl DeriveKey for Scene {
   type KeyType = SceneID;
   fn derive_key(&self) -> SceneID { self.id }
-}
-
-#[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize, TS)]
-pub enum Visibility {
-  GMOnly,
-  AllPlayers,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -1581,26 +1516,6 @@ pub struct SerializedCreature {
   pub volume_conditions: HashMap<ConditionID, AppliedCondition>,
   pub can_act: bool,
   pub can_move: bool,
-}
-
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, Eq, PartialEq, TS, Default)]
-pub enum TileSystem {
-  /// Square grid with diagonal movement costing 1.41
-  #[default]
-  Realistic,
-  /// Square grid with diagonal movement costing 1
-  DnD,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq, TS)]
-pub struct Note {
-  pub name: String,
-  pub content: String,
-}
-
-impl DeriveKey for Note {
-  type KeyType = String;
-  fn derive_key(&self) -> String { self.name.clone() }
 }
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize, Eq, PartialEq, TS)]

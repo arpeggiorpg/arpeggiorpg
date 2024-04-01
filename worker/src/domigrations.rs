@@ -1,11 +1,11 @@
 use crate::anyhow_str;
 
-use worker::{Storage};
-use tracing::{info};
+use tracing::info;
+use worker::Storage;
 
 const VERSION_KEY: &str = "DURABLEGAME_VERSION";
 
-#[tracing::instrument(name="do-migrate", skip(storage))]
+#[tracing::instrument(name = "do-migrate", skip(storage))]
 pub async fn migrate(storage: Storage) -> anyhow::Result<()> {
   let current_version = storage.get::<usize>(VERSION_KEY).await;
   match current_version {
@@ -22,7 +22,7 @@ async fn migrate_from(_storage: Storage, current_version: usize) -> anyhow::Resu
   // to write some imperative code here instead of iterating through an array of migration
   // functions.
   let latest_migration = 1;
-  info!(event="running-migrations", current_version, latest_migration);
+  info!(event = "running-migrations", current_version, latest_migration);
 
   // if current_version < latest_migration {
   //   run_migration_2(&mut storage)
@@ -33,6 +33,6 @@ async fn migrate_from(_storage: Storage, current_version: usize) -> anyhow::Resu
   //   storage.put(VERSION_KEY, 2).await.map_err(anyhow_str)?;
   // }
 
-  info!(event="migrations-done");
+  info!(event = "migrations-done");
   Ok(())
 }

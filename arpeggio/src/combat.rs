@@ -3,7 +3,7 @@
 use nonempty;
 use num::{Saturating, Zero};
 
-use crate::types::*;
+use crate::{grid::TileSystemExt, types::*};
 
 use std::marker::PhantomData;
 
