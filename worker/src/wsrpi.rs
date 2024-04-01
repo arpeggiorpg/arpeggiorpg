@@ -8,7 +8,10 @@ use serde_json::json;
 use tracing::{error, info};
 use worker::{WebSocket, WebsocketEvent};
 
-use arpeggio::{game::GameExt, types::{ChangedGame, GMCommand, GameError, RPIGame}};
+use arpeggio::{
+  game::GameExt,
+  types::{ChangedGame, GMCommand, GameError, RPIGame},
+};
 use mtarp::types::{GameMetadata, RPIGameRequest, Role};
 
 use crate::{

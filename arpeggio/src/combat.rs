@@ -3,7 +3,12 @@
 use nonempty;
 use num::{Saturating, Zero};
 
-use crate::{game::{ChangedGameExt, GameExt}, grid::TileSystemExt, scene::SceneExt, types::*};
+use crate::{
+  game::{ChangedGameExt, GameExt},
+  grid::TileSystemExt,
+  scene::SceneExt,
+  types::*,
+};
 
 use std::marker::PhantomData;
 

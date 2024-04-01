@@ -1187,8 +1187,6 @@ impl Folder {
   pub fn new() -> Folder { Default::default() }
 }
 
-
-
 #[derive(Debug, Clone, PartialEq, TS, Serialize, Deserialize)]
 pub struct ChangedGame {
   pub game: Game,

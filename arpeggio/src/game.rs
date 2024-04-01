@@ -5,27 +5,31 @@ use std::{
 };
 
 use crate::{
-  combat::*, creature::{ChangedCreature, CreatureExt}, grid::{line_through_point, TileSystemExt}, scene::SceneExt, types::*
+  combat::*,
+  creature::{ChangedCreature, CreatureExt},
+  grid::{line_through_point, TileSystemExt},
+  scene::SceneExt,
+  types::*,
 };
 use foldertree::{FolderPath, FolderTreeError};
 
 pub trait GameExt {
-   fn export_module(&self, export_path: &FolderPath) -> Result<Game, GameError>;
+  fn export_module(&self, export_path: &FolderPath) -> Result<Game, GameError>;
 
   fn import_module(&mut self, import_path: &FolderPath, module: &Game) -> Result<(), GameError>;
 
-   fn validate_campaign(&self) -> Result<(), GameError>;
+  fn validate_campaign(&self) -> Result<(), GameError>;
 
-   fn creatures(&self) -> Result<HashMap<CreatureID, DynamicCreature>, GameError>;
+  fn creatures(&self) -> Result<HashMap<CreatureID, DynamicCreature>, GameError>;
 
-   fn get_item(&self, iid: ItemID) -> Result<&Item, GameError>;
+  fn get_item(&self, iid: ItemID) -> Result<&Item, GameError>;
 
-   fn get_ability(&self, abid: AbilityID) -> Result<&Ability, GameError>;
+  fn get_ability(&self, abid: AbilityID) -> Result<&Ability, GameError>;
 
   fn player_path(&self, suffix: FolderPath, player_id: &PlayerID) -> (FolderPath, Option<GameLog>);
 
   /// Perform a PlayerCommand on the current Game.
-   fn perform_player_command(
+  fn perform_player_command(
     &self, player_id: PlayerID, cmd: PlayerCommand,
   ) -> Result<ChangedGame, GameError>;
 
@@ -38,7 +42,7 @@ pub trait GameExt {
   /// deterministic representation of the changes made to the Game, so they can be used to replay
   /// history and get the same exact result. An Undo operation can be implemented by rolling back to
   /// a previous game Snapshot and replaying until the desired GameLog.
-   fn perform_gm_command(&self, cmd: GMCommand) -> Result<ChangedGame, GameError>;
+  fn perform_gm_command(&self, cmd: GMCommand) -> Result<ChangedGame, GameError>;
 
   fn start_combat(
     &self, scene_id: SceneID, cids: Vec<CreatureID>,
@@ -50,11 +54,11 @@ pub trait GameExt {
     &self, creature_id: CreatureID, check: &AttributeCheck,
   ) -> Result<ChangedGame, GameError>;
 
-   fn path_creature(
+  fn path_creature(
     &self, scene: SceneID, cid: CreatureID, pt: Point3,
   ) -> Result<(ChangedGame, u32units::Length), GameError>;
 
-   fn path_creature_distance(
+  fn path_creature_distance(
     &self, scene_id: SceneID, creature_id: CreatureID, pt: Point3, max_distance: u32units::Length,
   ) -> Result<(ChangedGame, u32units::Length), GameError>;
 
@@ -68,11 +72,11 @@ pub trait GameExt {
     &mut self, path: &FolderPath, item_id: &FolderItemID,
   ) -> Result<(), GameError>;
 
-   fn apply_log(&self, log: &GameLog) -> Result<Game, GameError>;
+  fn apply_log(&self, log: &GameLog) -> Result<Game, GameError>;
 
   fn mutate_owner_inventory<F>(&mut self, owner_id: InventoryOwner, f: F) -> Result<(), GameError>
   where
-    F: FnOnce(&mut Inventory),;
+    F: FnOnce(&mut Inventory);
 
   fn get_owner_inventory(&self, owner_id: InventoryOwner) -> Result<&Inventory, GameError>;
 
@@ -90,22 +94,22 @@ pub trait GameExt {
   // manipulations here work on &mut self.
   fn apply_log_mut(&mut self, log: &GameLog) -> Result<(), GameError>;
 
-   fn check_creature_id(&self, cid: CreatureID) -> Result<(), GameError>;
+  fn check_creature_id(&self, cid: CreatureID) -> Result<(), GameError>;
 
   fn check_scene(&self, scene: SceneID) -> Result<(), GameError>;
 
-   fn is_in_combat(&self, cid: CreatureID) -> bool;
+  fn is_in_combat(&self, cid: CreatureID) -> bool;
 
-   fn get_creature(&self, cid: CreatureID) -> Result<DynamicCreature, GameError>;
+  fn get_creature(&self, cid: CreatureID) -> Result<DynamicCreature, GameError>;
 
   /// Only pub for tests.
-   fn dyn_creature<'creature, 'game: 'creature>(
+  fn dyn_creature<'creature, 'game: 'creature>(
     &'game self, creature: &'creature Creature,
   ) -> Result<DynamicCreature<'creature, 'game>, GameError>;
 
-   fn get_scene(&self, id: SceneID) -> Result<&Scene, GameError>;
+  fn get_scene(&self, id: SceneID) -> Result<&Scene, GameError>;
 
-   fn get_combat(&self) -> Result<DynamicCombat, GameError>;
+  fn get_combat(&self) -> Result<DynamicCombat, GameError>;
 
   // ** CONSIDER ** moving this chunk of code to... Scene.rs?
 
@@ -119,12 +123,12 @@ pub trait GameExt {
     &self, scene: &Scene, cid: CreatureID, abid: AbilityID, target: DecidedTarget, in_combat: bool,
   ) -> Result<ChangedGame, GameError>;
 
-   fn creature_act(
+  fn creature_act(
     &self, creature: &DynamicCreature, scene: &Scene, ability: &Ability, target: DecidedTarget,
     change: ChangedGame, in_combat: bool,
   ) -> Result<ChangedGame, GameError>;
 
-   fn resolve_creature_targets(
+  fn resolve_creature_targets(
     &self, creature: &DynamicCreature, scene: &Scene, target: CreatureTarget,
     decision: DecidedTarget,
   ) -> Result<Vec<CreatureID>, GameError>;
@@ -139,16 +143,16 @@ pub trait GameExt {
 
   /// Calculate which *points* and which *creatures* will be affected by an ability targeted at a
   /// point.
-   fn preview_volume_targets(
+  fn preview_volume_targets(
     &self, scene: &Scene, actor_id: CreatureID, ability_id: AbilityID, pt: Point3,
   ) -> Result<(Vec<CreatureID>, Vec<Point3>), GameError>;
 
-   fn get_movement_options(
+  fn get_movement_options(
     &self, scene: SceneID, creature_id: CreatureID,
   ) -> Result<Vec<Point3>, GameError>;
 
   /// Get a list of possible targets for an ability being used by a creature.
-   fn get_target_options(
+  fn get_target_options(
     &self, scene: SceneID, creature_id: CreatureID, ability_id: AbilityID,
   ) -> Result<PotentialTargets, GameError>;
 
@@ -162,17 +166,17 @@ pub trait GameExt {
 
   // ** END CONSIDERATION **
 
-   fn get_class(&self, class: ClassID) -> Result<&Class, GameError>;
+  fn get_class(&self, class: ClassID) -> Result<&Class, GameError>;
 
-   fn change(&self) -> ChangedGame;
+  fn change(&self) -> ChangedGame;
 
-   fn change_with(&self, log: GameLog) -> Result<ChangedGame, GameError>;
+  fn change_with(&self, log: GameLog) -> Result<ChangedGame, GameError>;
 
-   fn change_with_logs(&self, logs: Vec<GameLog>) -> Result<ChangedGame, GameError>;
+  fn change_with_logs(&self, logs: Vec<GameLog>) -> Result<ChangedGame, GameError>;
 }
 
 impl GameExt for Game {
-   fn export_module(&self, export_path: &FolderPath) -> Result<Game, GameError> {
+  fn export_module(&self, export_path: &FolderPath) -> Result<Game, GameError> {
     let mut new_game: Game = Default::default();
     new_game.tile_system = self.tile_system;
 
@@ -232,7 +236,7 @@ impl GameExt for Game {
     Ok(())
   }
 
-   fn validate_campaign(&self) -> Result<(), GameError> {
+  fn validate_campaign(&self) -> Result<(), GameError> {
     let mut all_abilities = HashSet::new();
     let mut all_creatures = HashSet::new();
     let mut all_scenes = HashSet::new();
@@ -307,7 +311,7 @@ impl GameExt for Game {
     Ok(())
   }
 
-   fn creatures(&self) -> Result<HashMap<CreatureID, DynamicCreature>, GameError> {
+  fn creatures(&self) -> Result<HashMap<CreatureID, DynamicCreature>, GameError> {
     let mut map = HashMap::new();
     for creature in self.creatures.values() {
       map.insert(creature.id, self.dyn_creature(creature)?);
@@ -315,11 +319,11 @@ impl GameExt for Game {
     Ok(map)
   }
 
-   fn get_item(&self, iid: ItemID) -> Result<&Item, GameError> {
+  fn get_item(&self, iid: ItemID) -> Result<&Item, GameError> {
     self.items.get(&iid).ok_or_else(|| GameError::ItemNotFound(iid))
   }
 
-   fn get_ability(&self, abid: AbilityID) -> Result<&Ability, GameError> {
+  fn get_ability(&self, abid: AbilityID) -> Result<&Ability, GameError> {
     self.abilities.get(&abid).ok_or_else(|| GameError::NoAbility(abid))
   }
 
@@ -336,7 +340,7 @@ impl GameExt for Game {
   }
 
   /// Perform a PlayerCommand on the current Game.
-   fn perform_player_command(
+  fn perform_player_command(
     &self, player_id: PlayerID, cmd: PlayerCommand,
   ) -> Result<ChangedGame, GameError> {
     use self::PlayerCommand::*;
@@ -398,7 +402,7 @@ impl GameExt for Game {
   /// deterministic representation of the changes made to the Game, so they can be used to replay
   /// history and get the same exact result. An Undo operation can be implemented by rolling back to
   /// a previous game Snapshot and replaying until the desired GameLog.
-   fn perform_gm_command(&self, cmd: GMCommand) -> Result<ChangedGame, GameError> {
+  fn perform_gm_command(&self, cmd: GMCommand) -> Result<ChangedGame, GameError> {
     use self::GMCommand::*;
     let change = match cmd {
       LoadModule { ref name, ref path, source, game } => self.change_with(GameLog::LoadModule {
@@ -630,14 +634,14 @@ impl GameExt for Game {
     })
   }
 
-   fn path_creature(
+  fn path_creature(
     &self, scene: SceneID, cid: CreatureID, pt: Point3,
   ) -> Result<(ChangedGame, u32units::Length), GameError> {
     let creature = self.get_creature(cid)?;
     self.path_creature_distance(scene, cid, pt, creature.speed())
   }
 
-   fn path_creature_distance(
+  fn path_creature_distance(
     &self, scene_id: SceneID, creature_id: CreatureID, pt: Point3, max_distance: u32units::Length,
   ) -> Result<(ChangedGame, u32units::Length), GameError> {
     let scene = self.get_scene(scene_id)?;
@@ -711,7 +715,7 @@ impl GameExt for Game {
     Ok(())
   }
 
-   fn apply_log(&self, log: &GameLog) -> Result<Game, GameError> {
+  fn apply_log(&self, log: &GameLog) -> Result<Game, GameError> {
     let mut newgame = self.clone();
     newgame.apply_log_mut(log)?;
     Ok(newgame)
@@ -1353,7 +1357,7 @@ impl GameExt for Game {
     Ok(())
   }
 
-   fn check_creature_id(&self, cid: CreatureID) -> Result<(), GameError> {
+  fn check_creature_id(&self, cid: CreatureID) -> Result<(), GameError> {
     if self.creatures.contains_key(&cid) {
       Ok(())
     } else {
@@ -1369,31 +1373,31 @@ impl GameExt for Game {
     }
   }
 
-   fn is_in_combat(&self, cid: CreatureID) -> bool {
+  fn is_in_combat(&self, cid: CreatureID) -> bool {
     match self.get_combat() {
       Ok(combat) => combat.combat.contains_creature(cid),
       Err(_) => false,
     }
   }
 
-   fn get_creature(&self, cid: CreatureID) -> Result<DynamicCreature, GameError> {
+  fn get_creature(&self, cid: CreatureID) -> Result<DynamicCreature, GameError> {
     self.dyn_creature(
       self.creatures.get(&cid).ok_or_else(|| GameError::CreatureNotFound(cid.to_string()))?,
     )
   }
 
   /// Only pub for tests.
-   fn dyn_creature<'creature, 'game: 'creature>(
+  fn dyn_creature<'creature, 'game: 'creature>(
     &'game self, creature: &'creature Creature,
   ) -> Result<DynamicCreature<'creature, 'game>, GameError> {
     DynamicCreature::new(creature, self)
   }
 
-   fn get_scene(&self, id: SceneID) -> Result<&Scene, GameError> {
+  fn get_scene(&self, id: SceneID) -> Result<&Scene, GameError> {
     self.scenes.get(&id).ok_or_else(|| GameError::SceneNotFound(id))
   }
 
-   fn get_combat(&self) -> Result<DynamicCombat, GameError> {
+  fn get_combat(&self) -> Result<DynamicCombat, GameError> {
     let combat = self.current_combat.as_ref().ok_or(GameError::NotInCombat)?;
     let scene = self.get_scene(combat.scene)?;
     Ok(DynamicCombat { scene, combat, game: self })
@@ -1440,7 +1444,7 @@ impl GameExt for Game {
     }
   }
 
-   fn creature_act(
+  fn creature_act(
     &self, creature: &DynamicCreature, scene: &Scene, ability: &Ability, target: DecidedTarget,
     mut change: ChangedGame, in_combat: bool,
   ) -> Result<ChangedGame, GameError> {
@@ -1482,7 +1486,7 @@ impl GameExt for Game {
     Ok(change)
   }
 
-   fn resolve_creature_targets(
+  fn resolve_creature_targets(
     &self, creature: &DynamicCreature, scene: &Scene, target: CreatureTarget,
     decision: DecidedTarget,
   ) -> Result<Vec<CreatureID>, GameError> {
@@ -1544,7 +1548,7 @@ impl GameExt for Game {
 
   /// Calculate which *points* and which *creatures* will be affected by an ability targeted at a
   /// point.
-   fn preview_volume_targets(
+  fn preview_volume_targets(
     &self, scene: &Scene, actor_id: CreatureID, ability_id: AbilityID, pt: Point3,
   ) -> Result<(Vec<CreatureID>, Vec<Point3>), GameError> {
     let ability = self.get_ability(ability_id)?;
@@ -1576,7 +1580,7 @@ impl GameExt for Game {
     Ok((cids, tiles))
   }
 
-   fn get_movement_options(
+  fn get_movement_options(
     &self, scene: SceneID, creature_id: CreatureID,
   ) -> Result<Vec<Point3>, GameError> {
     let scene = self.get_scene(scene)?;
@@ -1594,7 +1598,7 @@ impl GameExt for Game {
   }
 
   /// Get a list of possible targets for an ability being used by a creature.
-   fn get_target_options(
+  fn get_target_options(
     &self, scene: SceneID, creature_id: CreatureID, ability_id: AbilityID,
   ) -> Result<PotentialTargets, GameError> {
     let ability = self.get_ability(ability_id)?;
@@ -1646,18 +1650,18 @@ impl GameExt for Game {
 
   // ** END CONSIDERATION **
 
-   fn get_class(&self, class: ClassID) -> Result<&Class, GameError> {
+  fn get_class(&self, class: ClassID) -> Result<&Class, GameError> {
     self.classes.get(&class).ok_or_else(|| GameError::ClassNotFound(class))
   }
 
-   fn change(&self) -> ChangedGame { ChangedGame { game: self.clone(), logs: vec![] } }
+  fn change(&self) -> ChangedGame { ChangedGame { game: self.clone(), logs: vec![] } }
 
-   fn change_with(&self, log: GameLog) -> Result<ChangedGame, GameError> {
+  fn change_with(&self, log: GameLog) -> Result<ChangedGame, GameError> {
     let game = self.apply_log(&log)?;
     Ok(ChangedGame { game, logs: vec![log] })
   }
 
-   fn change_with_logs(&self, logs: Vec<GameLog>) -> Result<ChangedGame, GameError> {
+  fn change_with_logs(&self, logs: Vec<GameLog>) -> Result<ChangedGame, GameError> {
     let mut game = self.clone();
     for log in logs.iter() {
       game = game.apply_log(log)?;
@@ -1667,27 +1671,27 @@ impl GameExt for Game {
 }
 
 pub trait ChangedGameExt {
-   fn apply(&self, log: &GameLog) -> Result<ChangedGame, GameError>;
+  fn apply(&self, log: &GameLog) -> Result<ChangedGame, GameError>;
 
-   fn apply_combat<'game, F>(&'game self, f: F) -> Result<ChangedGame, GameError>
+  fn apply_combat<'game, F>(&'game self, f: F) -> Result<ChangedGame, GameError>
   where
-    F: FnOnce(DynamicCombat<'game>) -> Result<ChangedCombat<'game>, GameError>,;
+    F: FnOnce(DynamicCombat<'game>) -> Result<ChangedCombat<'game>, GameError>;
 
-   fn apply_creature<F>(&self, cid: CreatureID, f: F) -> Result<ChangedGame, GameError>
+  fn apply_creature<F>(&self, cid: CreatureID, f: F) -> Result<ChangedGame, GameError>
   where
-    F: FnOnce(DynamicCreature) -> Result<ChangedCreature, GameError>,;
+    F: FnOnce(DynamicCreature) -> Result<ChangedCreature, GameError>;
 
-   fn done(self) -> (Game, Vec<GameLog>);
+  fn done(self) -> (Game, Vec<GameLog>);
 }
 
 impl ChangedGameExt for ChangedGame {
-   fn apply(&self, log: &GameLog) -> Result<ChangedGame, GameError> {
+  fn apply(&self, log: &GameLog) -> Result<ChangedGame, GameError> {
     let mut new = self.clone();
     new.game = self.game.apply_log(log)?;
     Ok(new)
   }
 
-   fn apply_combat<'game, F>(&'game self, f: F) -> Result<ChangedGame, GameError>
+  fn apply_combat<'game, F>(&'game self, f: F) -> Result<ChangedGame, GameError>
   where
     F: FnOnce(DynamicCombat<'game>) -> Result<ChangedCombat<'game>, GameError>,
   {
@@ -1700,7 +1704,7 @@ impl ChangedGameExt for ChangedGame {
     Ok(new)
   }
 
-   fn apply_creature<F>(&self, cid: CreatureID, f: F) -> Result<ChangedGame, GameError>
+  fn apply_creature<F>(&self, cid: CreatureID, f: F) -> Result<ChangedGame, GameError>
   where
     F: FnOnce(DynamicCreature) -> Result<ChangedCreature, GameError>,
   {
@@ -1713,7 +1717,7 @@ impl ChangedGameExt for ChangedGame {
     Ok(new)
   }
 
-   fn done(self) -> (Game, Vec<GameLog>) { (self.game, self.logs) }
+  fn done(self) -> (Game, Vec<GameLog>) { (self.game, self.logs) }
 }
 
 fn bug<T>(msg: &str) -> Result<T, GameError> { Err(GameError::BuggyProgram(msg.to_string())) }

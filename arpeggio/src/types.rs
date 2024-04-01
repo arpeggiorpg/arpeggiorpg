@@ -4,16 +4,15 @@
 // that for a while
 #![cfg_attr(feature = "cargo-clippy", allow(clippy::large_enum_variant))]
 
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
 use rand::Rng;
 use serde::{
   ser::{Error as SerError, SerializeStruct},
-  Deserialize, Serialize, Serializer,
+  Serialize, Serializer,
 };
 use ts_rs::TS;
 
-use foldertree::FolderPath;
 use indexed::IndexedHashMap;
 
 pub use arptypes::types::*;
@@ -213,7 +212,7 @@ pub struct SerializedCreature {
 pub mod test {
   use crate::{creature::CreatureExt, grid::test::*, types::*};
   use maplit::hashmap;
-  use std::iter::FromIterator;
+  use std::{collections::HashSet, iter::FromIterator};
   use uuid::Uuid;
 
   use serde_json;
