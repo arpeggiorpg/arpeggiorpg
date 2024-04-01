@@ -8,6 +8,7 @@ description = "Multi-Tenant Arpeggio -- the types & behavior for managing a serv
 [dependencies]
 anyhow = { workspace = true }
 arpeggio = { version = "*", path = "../arpeggio" }
+arptypes = { path = "../arptypes", version = "*" }
 async-trait = "0.1.73"
 clap = { version = "4.4.6", features = ["derive"] }
 foldertree = { version = "*", path = "../foldertree" }

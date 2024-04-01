@@ -2,10 +2,8 @@ use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 use uuid::Uuid;
 
-use arpeggio::{
-  types::{AbilityID, CreatureID, GMCommand, PlayerCommand, PlayerID, Point3, SceneID},
-  uuid_id,
-};
+use arpeggio::types::{AbilityID, CreatureID, GMCommand, PlayerCommand, PlayerID, Point3, SceneID};
+use arptypes::uuid_id;
 
 uuid_id!(GameID);
 uuid_id!(InvitationID);

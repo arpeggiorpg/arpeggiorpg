@@ -1166,6 +1166,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "arpeggio",
+ "arptypes",
  "async-trait",
  "clap 4.4.6",
  "foldertree",

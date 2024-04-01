@@ -3,7 +3,7 @@
 use nonempty;
 use num::{Saturating, Zero};
 
-use crate::{grid::TileSystemExt, types::*};
+use crate::{game::GameExt, grid::TileSystemExt, scene::SceneExt, types::*};
 
 use std::marker::PhantomData;
 
@@ -115,14 +115,31 @@ fn sort_combatants(
     .ok_or_else(|| GameError::CombatMustHaveCreatures)
 }
 
-impl Combat {
-  pub fn new(scene: SceneID, combatants: Vec<(CreatureID, i16)>) -> Result<Combat, GameError> {
+pub trait CombatExt {
+  fn new(scene: SceneID, combatants: Vec<(CreatureID, i16)>) -> Result<Combat, GameError>;
+
+  fn creature_ids(&self) -> Vec<CreatureID>;
+
+  fn roll_initiative(
+    game: &Game, cids: Vec<CreatureID>,
+  ) -> Result<Vec<(CreatureID, i16)>, GameError>;
+
+  fn current_creature_id(&self) -> CreatureID;
+
+  fn contains_creature(&self, cid: CreatureID) -> bool;
+
+  /// the Option<Combat> will be None if you're removing the last creature from a combat.
+  fn remove_from_combat(&self, cid: CreatureID) -> Result<Option<Combat>, GameError>;
+}
+
+impl CombatExt for Combat {
+  fn new(scene: SceneID, combatants: Vec<(CreatureID, i16)>) -> Result<Combat, GameError> {
     Ok(Combat { scene, movement_used: Zero::zero(), creatures: sort_combatants(combatants)? })
   }
 
-  pub fn creature_ids(&self) -> Vec<CreatureID> { self.creatures.iter().map(|&(c, _)| c).collect() }
+  fn creature_ids(&self) -> Vec<CreatureID> { self.creatures.iter().map(|&(c, _)| c).collect() }
 
-  pub fn roll_initiative(
+  fn roll_initiative(
     game: &Game, cids: Vec<CreatureID>,
   ) -> Result<Vec<(CreatureID, i16)>, GameError> {
     cids
@@ -134,14 +151,14 @@ impl Combat {
       .collect::<Result<Vec<(CreatureID, i16)>, GameError>>()
   }
 
-  pub fn current_creature_id(&self) -> CreatureID { self.creatures.get_current().0 }
+  fn current_creature_id(&self) -> CreatureID { self.creatures.get_current().0 }
 
-  pub fn contains_creature(&self, cid: CreatureID) -> bool {
+  fn contains_creature(&self, cid: CreatureID) -> bool {
     self.creatures.iter().any(|&(c, _)| c == cid)
   }
 
   /// the Option<Combat> will be None if you're removing the last creature from a combat.
-  pub fn remove_from_combat(&self, cid: CreatureID) -> Result<Option<Combat>, GameError> {
+  fn remove_from_combat(&self, cid: CreatureID) -> Result<Option<Combat>, GameError> {
     let mut combat = self.clone();
     let idx = combat
       .creatures
