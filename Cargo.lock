@@ -102,6 +102,7 @@ dependencies = [
 name = "arpeggio"
 version = "0.1.0"
 dependencies = [
+ "arptypes",
  "bresenham",
  "criterion",
  "derive_more",
@@ -119,6 +120,24 @@ dependencies = [
  "serde_yaml",
  "thiserror",
  "tracing",
+ "ts-rs",
+ "uom",
+ "uuid",
+]
+
+[[package]]
+name = "arptypes"
+version = "0.1.0"
+dependencies = [
+ "derive_more",
+ "foldertree",
+ "indexed",
+ "nonempty",
+ "num",
+ "num-traits",
+ "serde",
+ "serde_derive",
+ "thiserror",
  "ts-rs",
  "uom",
  "uuid",

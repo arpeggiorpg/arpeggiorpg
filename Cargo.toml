@@ -1,9 +1,11 @@
 [workspace]
-members = ["foldertree", "indexed", "nonempty", "arpeggio", "worker", "mtarp"]
+members = ["foldertree", "indexed", "nonempty", "arpeggio", "worker", "mtarp", "arptypes"]
+exclude = ["arpui"]
 resolver = "2"
 
 [workspace.dependencies]
 anyhow = { version = "1.0.75", features = ["backtrace"] }
+derive_more = "0.99.2"
 serde = "1.0"
 serde_derive = "1.0"
 serde_json = "1.0"
@@ -14,6 +16,14 @@ strum = { version = "0.25.0", features = ["derive"] }
 percent-encoding = "2.3.0"
 thiserror = "1.0.48"
 tracing = { version = "0.1.37", features = ["attributes"] }
+num = "0.2.0"
+num-traits = "0.2.10"
+ts-rs = { version = "7.0.0", features = ["serde-compat", "uuid-impl"] }
+
+[workspace.dependencies.uom]
+version = "0.35"
+default-features = false
+features = ["u32", "i64", "serde", "si"]
 
 [profile.release]
 lto = true

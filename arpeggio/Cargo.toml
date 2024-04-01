@@ -10,24 +10,22 @@ serde_json = "1.0"
 serde_yaml = "0.8"
 
 [dependencies]
+arptypes = { path = "../arptypes", version = "*" }
 bresenham = "0.1.1"
-derive_more = "0.99.2"
+derive_more = { workspace = true }
 foldertree = { version = "*", path = "../foldertree", features = ["serde"] }
 indexed = { version = "*", path = "../indexed", features = ["serde"] }
 maplit = "1.0.2"
 ncollide3d = "0.33"
 nonempty = { version = "*", path = "../nonempty", features = ["use_serde"] }
-num = "0.2.0"
-num-traits = "0.2.10"
+num = { workspace = true }
+num-traits = { workspace = true }
 rand = "0.8.5"
 serde = "1.0.8"
 serde_derive = "1.0.8"
 thiserror = { workspace = true }
 tracing = { workspace = true }
-ts-rs = { version = "7.0.0", features = ["serde-compat", "uuid-impl"] }
-uuid = { workspace = true }
+uom = { workspace = true }
+ts-rs = { workspace = true, features = ["serde-compat", "uuid-impl"] }
 
-[dependencies.uom]
-version = "0.35"
-default-features = false
-features = ["u32", "i64", "serde", "si"]
+uuid = { workspace = true }
