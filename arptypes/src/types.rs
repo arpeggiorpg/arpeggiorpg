@@ -41,6 +41,41 @@ pub struct PlayerID(pub String);
 #[derive(Clone, Hash, Eq, PartialEq, Debug, Serialize, Deserialize, TS)]
 pub struct AttrID(pub String);
 
+#[macro_export]
+macro_rules! uuid_id {
+  ($type: ident) => {
+    #[derive(
+      Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize, TS,
+    )]
+    pub struct $type(pub Uuid);
+    impl $type {
+      pub fn gen() -> $type { $type(Uuid::new_v4()) }
+      pub fn to_string(&self) -> String { self.0.hyphenated().to_string() }
+    }
+
+    impl std::fmt::Display for $type {
+      fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result { self.0.fmt(f) }
+    }
+
+    impl ::std::str::FromStr for $type {
+      type Err = $crate::types::GameError;
+      fn from_str(s: &str) -> Result<$type, $crate::types::GameError> {
+        Uuid::parse_str(s)
+          .map_err(|e| $crate::types::GameError::InvalidID(s.to_string(), e))
+          .map($type)
+      }
+    }
+  };
+}
+
+uuid_id!(ConditionID);
+uuid_id!(CreatureID);
+uuid_id!(ItemID);
+uuid_id!(SceneID);
+uuid_id!(AbilityID);
+uuid_id!(ClassID);
+
+
 #[derive(
   Add,
   Sub,
@@ -168,40 +203,6 @@ pub enum Visibility {
   GMOnly,
   AllPlayers,
 }
-
-#[macro_export]
-macro_rules! uuid_id {
-  ($type: ident) => {
-    #[derive(
-      Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize, TS,
-    )]
-    pub struct $type(pub Uuid);
-    impl $type {
-      pub fn gen() -> $type { $type(Uuid::new_v4()) }
-      pub fn to_string(&self) -> String { self.0.hyphenated().to_string() }
-    }
-
-    impl std::fmt::Display for $type {
-      fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result { self.0.fmt(f) }
-    }
-
-    impl ::std::str::FromStr for $type {
-      type Err = $crate::types::GameError;
-      fn from_str(s: &str) -> Result<$type, $crate::types::GameError> {
-        Uuid::parse_str(s)
-          .map_err(|e| $crate::types::GameError::InvalidID(s.to_string(), e))
-          .map($type)
-      }
-    }
-  };
-}
-
-uuid_id!(ConditionID);
-uuid_id!(CreatureID);
-uuid_id!(ItemID);
-uuid_id!(SceneID);
-uuid_id!(AbilityID);
-uuid_id!(ClassID);
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize, TS)]
 pub enum FolderItemID {
