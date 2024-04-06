@@ -158,12 +158,15 @@ impl<'creature, 'game: 'creature> Serialize for DynamicCreature<'creature, 'game
   }
 }
 
-
 #[cfg(test)]
 pub mod test {
   use crate::{creature::CreatureExt, grid::test::*, types::*};
   use maplit::hashmap;
-  use std::{collections::HashSet, iter::FromIterator};
+  use indexed::IndexedHashMap;
+  use std::{
+    collections::{HashMap, HashSet},
+    iter::FromIterator,
+  };
   use uuid::Uuid;
 
   use serde_json;
