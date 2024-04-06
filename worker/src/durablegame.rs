@@ -2,7 +2,7 @@ use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 use anyhow::{anyhow, Context};
 use arpeggio::types::PlayerID;
-use mtarp::types::{GameID, GameMetadata, InvitationID, Role};
+use arptypes::multitenant::{GameID, GameMetadata, InvitationID, Role};
 use serde_json::json;
 use tracing::{error, info};
 use uuid::Uuid;

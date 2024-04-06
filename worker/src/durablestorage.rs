@@ -12,7 +12,7 @@ use arpeggio::{
   game::GameExt,
   types::{ChangedGame, Game, GameLog},
 };
-use mtarp::types::{GameIndex, ImageType, InvitationID};
+use arptypes::multitenant::{GameIndex, ImageType, InvitationID};
 
 use crate::anyhow_str;
 

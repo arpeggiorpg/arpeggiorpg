@@ -1,8 +1,8 @@
 use std::{fs::File, io::prelude::*};
 use ts_rs::TS;
 
-use arpeggio::types as T;
-use mtarp::types as MT;
+use arptypes as T;
+use arptypes::multitenant as MT;
 
 pub fn main() -> Result<(), anyhow::Error> {
   let mut file = File::create("../ui/src/bindings/bindings.ts")?;

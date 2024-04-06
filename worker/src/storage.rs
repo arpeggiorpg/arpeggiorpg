@@ -2,7 +2,7 @@ use serde::Deserialize;
 use worker::Env;
 
 use arpeggio::types::PlayerID;
-use mtarp::types::{GameID, GameMetadata, GameProfile, Role, UserID};
+use arptypes::multitenant::{GameID, GameMetadata, GameProfile, Role, UserID};
 
 pub async fn check_superuser(env: &Env, user_id: UserID) -> worker::Result<bool> {
   let db = env.d1("DB")?;

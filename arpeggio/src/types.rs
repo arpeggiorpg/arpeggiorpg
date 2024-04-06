@@ -4,16 +4,11 @@
 // that for a while
 #![cfg_attr(feature = "cargo-clippy", allow(clippy::large_enum_variant))]
 
-use std::collections::HashMap;
-
 use rand::Rng;
 use serde::{
   ser::{Error as SerError, SerializeStruct},
   Serialize, Serializer,
 };
-use ts_rs::TS;
-
-use indexed::IndexedHashMap;
 
 pub use arptypes::*;
 
@@ -163,50 +158,6 @@ impl<'creature, 'game: 'creature> Serialize for DynamicCreature<'creature, 'game
   }
 }
 
-/// A Serde Serializer helper
-// This could probably store references instead of owned objects for
-// some more efficiency.
-#[derive(Serialize, TS)]
-#[ts(rename = "DynamicCreature")]
-// I don't really want to make this pub, but I have to since it's used in src/bin/gents.rs
-pub struct SerializedCreature {
-  pub id: CreatureID,
-  pub name: String,
-  pub max_energy: Energy,
-  pub cur_energy: Energy,
-  pub class: ClassID,
-  pub max_health: HP,
-  pub cur_health: HP,
-  pub note: String,
-  #[serde(default)]
-  pub bio: String,
-  pub portrait_url: String,
-  #[serde(default)]
-  pub icon_url: String,
-  #[ts(type = "CreatureAttributes")]
-  pub attributes: HashMap<AttrID, SkillLevel>,
-  pub initiative: Dice,
-  pub size: AABB,
-  #[serde(default)]
-  #[ts(type = "CreatureInventory")]
-  pub inventory: Inventory,
-  #[ts(type = "CreatureConditions")]
-  pub conditions: HashMap<ConditionID, AppliedCondition>,
-
-  // overridden field
-  #[ts(type = "Record<AbilityID, AbilityStatus>")]
-  pub abilities: IndexedHashMap<AbilityStatus>,
-  #[ts(type = "number")]
-  pub speed: u32units::Length,
-
-  // synthesized fields
-  #[ts(type = "CreatureConditions")]
-  pub own_conditions: HashMap<ConditionID, AppliedCondition>,
-  #[ts(type = "CreatureConditions")]
-  pub volume_conditions: HashMap<ConditionID, AppliedCondition>,
-  pub can_act: bool,
-  pub can_move: bool,
-}
 
 #[cfg(test)]
 pub mod test {

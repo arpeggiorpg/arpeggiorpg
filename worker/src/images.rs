@@ -1,11 +1,12 @@
 //! Functions for interacting with the CloudFlare Images API.
 
 use anyhow::anyhow;
-use mtarp::types::GameID;
+use arptypes::multitenant::GameID;
 use serde_json::json;
 use tracing::info;
 use uuid::Uuid;
 use worker::Url;
+use arptypes::multitenant::ImageType;
 
 // Maybe we could make this implement a Trait, and then also implement a version of this that knows
 // how to store images for local development.
@@ -25,7 +26,7 @@ impl CFImageService {
   }
 
   pub async fn upload_from_url(
-    &self, url: &str, purpose: mtarp::types::ImageType,
+    &self, url: &str, purpose: ImageType,
   ) -> anyhow::Result<Url> {
     let api_url =
       format!("https://api.cloudflare.com/client/v4/accounts/{}/images/v1", self.account_id);
@@ -54,7 +55,7 @@ impl CFImageService {
   fn gen_custom_id(&self) -> String { format!("{}/{}", self.game_id, Uuid::new_v4()) }
 
   pub async fn request_upload_image(
-    &self, purpose: mtarp::types::ImageType,
+    &self, purpose: ImageType,
   ) -> anyhow::Result<PendingImage> {
     let api_url = format!(
       "https://api.cloudflare.com/client/v4/accounts/{}/images/v2/direct_upload",

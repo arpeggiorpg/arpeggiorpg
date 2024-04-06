@@ -12,7 +12,7 @@ use arpeggio::{
   game::GameExt,
   types::{ChangedGame, GMCommand, GameError, RPIGame},
 };
-use mtarp::types::{GameMetadata, RPIGameRequest, Role};
+use arptypes::multitenant::{GameMetadata, RPIGameRequest, Role};
 
 use crate::{
   anyhow_str,
