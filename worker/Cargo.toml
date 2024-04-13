@@ -17,8 +17,9 @@ arptypes = { path = "../arptypes", version = "*" }
 console_error_panic_hook = "0.1.6"
 foldertree = { path = "../foldertree" }
 futures-util = { version = "0.3.28", default-features = false }
-# arpeggio depend on rand, which depends on getrandom, which by default does not work on WASM. We need to enable the "js" feature.
-getrandom = { version = "0.2.9", features = ["js"] }
+# arpeggio depend on rand, which depends on getrandom, which by default does not work on WASM. We
+# need to enable the "js" feature.
+getrandom = { workspace = true, features = ["js"] }
 gloo-timers = "0.3.0"
 google-oauth = { version = "1.6.0", features = ["wasm"] }
 percent-encoding = { workspace = true }

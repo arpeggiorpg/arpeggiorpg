@@ -1,6 +1,6 @@
 use std::collections::{HashMap, HashSet};
 
-use derive_more::{Add, Div, Mul, Sub};
+use derive_more::{Add, Div, Mul, Sub, Display};
 use foldertree::{FolderPath, FolderTree, FolderTreeError};
 use indexed::{DeriveKey, IndexedHashMap};
 use nonempty;
@@ -35,7 +35,7 @@ pub fn i64meter<T: Into<i64>>(v: T) -> i64units::Length { i64units::Length::new:
 
 pub fn up_length(v: u32units::Length) -> i64units::Length { i64cm(v.get::<centimeter>()) }
 
-#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize, TS)]
+#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize, TS, Display)]
 pub struct PlayerID(pub String);
 
 #[derive(Clone, Hash, Eq, PartialEq, Debug, Serialize, Deserialize, TS)]
