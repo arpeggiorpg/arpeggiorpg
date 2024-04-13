@@ -7,14 +7,15 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-dioxus = { git = "https://github.com/DioxusLabs/dioxus", features = ["web", "router"] }
 arptypes = { path = "../arptypes", version = "*" }
+console_error_panic_hook = "0.1.7"
+dioxus = { git = "https://github.com/DioxusLabs/dioxus", features = ["web", "router"] }
+dioxus-logger = "0.4.1"
 # arpeggio depend on rand, which depends on getrandom, which by default does not work on WASM. We
 # need to enable the "js" feature. Unfortunately, since arpui is not a workspace member, we have to
 # manually pin the version to the same one. (Wait, why aren't we a workspace member again? mostly
 # because I'm afraid of dependency conflicts between workers-rs and dioxus versions of dependencies)
 getrandom = { version = "0.2.9", features = ["js"] }
 log = "0.4.19"
-dioxus-logger = "0.4.1"
-console_error_panic_hook = "0.1.7"
 reqwest = { version = "0.12.3", features = ["json"] }
+wasm-cookies = { version = "0.2.1" }

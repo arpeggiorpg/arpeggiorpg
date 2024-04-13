@@ -38,17 +38,31 @@ fn Blog(id: i32) -> Element {
 
 const RPI_URL: &'static str = "http://localhost:8787";
 
-static AUTH_TOKEN: GlobalSignal<String> = Signal::global(|| "".to_owned());
+static AUTH_TOKEN: GlobalSignal<String> = Signal::global(String::new);
+
+fn auth_token() -> String {
+  wasm_cookies::get("arpeggio-token").unwrap_or(Ok(String::new())).unwrap_or(String::new())
+}
 
 #[component]
 fn Main() -> Element {
+
+  // Mirror the cookie to the GlobalSignal so things can reactively respond to it changing.
+  if AUTH_TOKEN() != auth_token() {
+    *AUTH_TOKEN.write() = auth_token();
+  }
+
   rsx! {
     div { Link { to: Route::Test, "Test stuff" } }
+    div { "Oh no, the cookie {AUTH_TOKEN():?} "}
     div {
       "Enter your auth token:"
       input {
         value: "{AUTH_TOKEN}",
-        oninput: move |event| *AUTH_TOKEN.write() = event.value()
+        oninput: move |event| {
+          *AUTH_TOKEN.write() = event.value();
+          wasm_cookies::set("arpeggio-token", &event.value(), &Default::default())
+        }
       }
     }
     GameList {}
