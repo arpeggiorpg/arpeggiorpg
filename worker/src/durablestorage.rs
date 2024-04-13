@@ -8,8 +8,11 @@ use anyhow::anyhow;
 use tracing::{info, warn};
 use worker::{ListOptions, State};
 
-use arpeggio::types::{ChangedGame, Game, GameLog};
-use mtarp::types::{GameIndex, ImageType, InvitationID};
+use arpeggio::{
+  game::GameExt,
+  types::{ChangedGame, Game, GameLog},
+};
+use arptypes::multitenant::{GameIndex, ImageType, InvitationID};
 
 use crate::anyhow_str;
 

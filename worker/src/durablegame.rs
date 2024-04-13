@@ -2,7 +2,7 @@ use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 use anyhow::{anyhow, Context};
 use arpeggio::types::PlayerID;
-use mtarp::types::{GameID, GameMetadata, InvitationID, Role};
+use arptypes::multitenant::{GameID, GameMetadata, InvitationID, Role};
 use serde_json::json;
 use tracing::{error, info};
 use uuid::Uuid;
@@ -120,9 +120,9 @@ impl ArpeggioGame {
           let account_id = self.env.var("CF_ACCOUNT_ID").map_err(anyhow_str)?.to_string();
           let image_delivery_prefix =
             self.env.var("CF_IMAGE_DELIVERY_PREFIX").map_err(anyhow_str)?.to_string();
-          let images_token =
-            self.env.var("CF_IMAGES_TOKEN").map_err(anyhow_str)?.to_string();
-          let image_service = CFImageService::new(account_id, images_token, &image_delivery_prefix, game_id)?;
+          let images_token = self.env.var("CF_IMAGES_TOKEN").map_err(anyhow_str)?.to_string();
+          let image_service =
+            CFImageService::new(account_id, images_token, &image_delivery_prefix, game_id)?;
           let session = wsrpi::GameSession::new(
             image_service,
             game_storage,

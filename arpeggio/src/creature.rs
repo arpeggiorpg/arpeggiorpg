@@ -2,7 +2,7 @@ use std::{cmp, collections::HashMap};
 
 use num::Saturating;
 
-use crate::types::*;
+use crate::{game::GameExt, scene::SceneExt, types::*};
 use indexed::*;
 
 /// `STANDARD_CREATURE_SPEED` is carefully chosen to allow for circular-looking movement options.
@@ -129,13 +129,7 @@ impl<'creature, 'game: 'creature> DynamicCreature<'creature, 'game> {
     if amt >= self.creature.cur_health {
       let mut logs = vec![];
       logs.push(CreatureLog::Damage { hp: self.creature.cur_health, rolls });
-      if self
-        .creature
-        .conditions
-        .values()
-        .find(|ac| matches!(ac.condition, Condition::Dead))
-        .is_none()
-      {
+      if !self.creature.conditions.values().any(|ac| matches!(ac.condition, Condition::Dead)) {
         logs.push(Self::apply_condition_log(Duration::Interminate, Condition::Dead));
       }
       logs
@@ -199,8 +193,28 @@ impl<'creature, 'game: 'creature> DynamicCreature<'creature, 'game> {
   }
 }
 
-impl Creature {
-  pub fn create(spec: &CreatureCreation) -> Creature {
+pub trait CreatureExt {
+  fn create(spec: &CreatureCreation) -> Creature;
+
+  fn apply_log(&self, item: &CreatureLog) -> Result<Creature, GameError>;
+
+  fn id(&self) -> CreatureID;
+
+  fn cur_health(&self) -> HP;
+
+  fn reduce_energy(&self, energy: Energy) -> Result<ChangedCreature, GameError>;
+
+  fn change(&self) -> ChangedCreature;
+
+  fn change_with(&self, log: CreatureLog) -> Result<ChangedCreature, GameError>;
+
+  fn get_attribute_score(&self, attr: &AttrID) -> Result<SkillLevel, GameError>;
+
+  fn attribute_check(&self, check: &AttributeCheck) -> Result<(u8, bool), GameError>;
+}
+
+impl CreatureExt for Creature {
+  fn create(spec: &CreatureCreation) -> Creature {
     Creature {
       id: CreatureID::gen(),
       name: spec.name.to_string(),
@@ -223,7 +237,7 @@ impl Creature {
     }
   }
 
-  pub fn apply_log(&self, item: &CreatureLog) -> Result<Creature, GameError> {
+  fn apply_log(&self, item: &CreatureLog) -> Result<Creature, GameError> {
     let mut new = self.clone();
     match *item {
       CreatureLog::Damage { ref hp, .. } => new.cur_health = new.cur_health.saturating_sub(*hp),
@@ -263,24 +277,22 @@ impl Creature {
     Ok(new)
   }
 
-  pub fn id(&self) -> CreatureID { self.id }
+  fn id(&self) -> CreatureID { self.id }
 
-  pub fn cur_health(&self) -> HP { self.cur_health }
+  fn cur_health(&self) -> HP { self.cur_health }
 
-  pub fn reduce_energy(&self, energy: Energy) -> Result<ChangedCreature, GameError> {
+  fn reduce_energy(&self, energy: Energy) -> Result<ChangedCreature, GameError> {
     self.change_with(CreatureLog::ReduceEnergy { energy })
   }
 
-  pub fn change(&self) -> ChangedCreature {
-    ChangedCreature { creature: self.clone(), logs: vec![] }
-  }
+  fn change(&self) -> ChangedCreature { ChangedCreature { creature: self.clone(), logs: vec![] } }
 
-  pub fn change_with(&self, log: CreatureLog) -> Result<ChangedCreature, GameError> {
+  fn change_with(&self, log: CreatureLog) -> Result<ChangedCreature, GameError> {
     let creature = self.apply_log(&log)?;
     Ok(ChangedCreature { creature, logs: vec![log] })
   }
 
-  pub fn get_attribute_score(&self, attr: &AttrID) -> Result<SkillLevel, GameError> {
+  fn get_attribute_score(&self, attr: &AttrID) -> Result<SkillLevel, GameError> {
     self
       .attributes
       .get(attr)
@@ -288,7 +300,7 @@ impl Creature {
       .ok_or_else(|| GameError::AttributeNotFound(self.id, attr.clone()))
   }
 
-  pub fn attribute_check(&self, check: &AttributeCheck) -> Result<(u8, bool), GameError> {
+  fn attribute_check(&self, check: &AttributeCheck) -> Result<(u8, bool), GameError> {
     let my_skill = self.get_attribute_score(&check.attr)?;
     if check.reliable && check.target <= my_skill {
       Ok((100, true))

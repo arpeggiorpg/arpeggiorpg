@@ -84,11 +84,61 @@ pub fn point3_add_vec(pt: Point3, diff: Point3) -> Point3 {
 
 fn is_open(terrain: &Terrain, pt: Point3) -> bool { terrain.contains(&pt) }
 
-impl TileSystem {
+pub trait TileSystemExt {
   /// Get the distance between two points, considering the system being used.
   /// In DnD, an angular distance is "equivalent" to a horizontal/vertical distance.
   /// i.e., The distance from 0,0 to 1,1 is sqrt(2) in Realistic and 1.0 in DnD.
-  pub fn point3_distance(&self, pos1: Point3, pos2: Point3) -> u32units::Length {
+  fn point3_distance(&self, pos1: Point3, pos2: Point3) -> u32units::Length;
+
+  /// Check whether two points are within some distance of each other.
+  fn points_within_distance(&self, c1: Point3, c2: Point3, d: u32units::Length) -> bool;
+
+  /// Garbage Function
+  fn items_within_volume<I: Clone + Eq + Hash>(
+    &self, volume: Volume, pt: Point3, items: &HashMap<I, Point3>,
+  ) -> Vec<I>;
+
+  fn open_points_in_range(
+    &self, start: Point3, terrain: &Terrain, speed: u32units::Length,
+  ) -> Vec<Point3>;
+
+  /// Get the set of points which can be pathed to from some point.
+  fn get_all_accessible(
+    &self, start: Point3, terrain: &Terrain, volume: Volume, speed: u32units::Length,
+  ) -> Vec<Point3>;
+
+  /// Find a path from some start point to some destination point. If one can be found, a Vec of
+  /// points on the way to the destination is returned, along with the total length of that path.
+  fn find_path(
+    &self, start: Point3, speed: u32units::Length, terrain: &Terrain, volume: Volume,
+    destination: Point3,
+  ) -> Option<(Vec<Point3>, u32units::Length)>;
+
+  /// Determine which points a volume occupies.
+  /// The way a volume fits at a point is specific to the volume type.
+  /// AABB: top-left
+  /// Sphere: center
+  /// Line: origin
+  /// VerticalCylinder: center of base
+  // TODO FIXME XXX: Implement for more volume types.
+  // TODO: Should this use ncollide?
+  fn points_in_volume(&self, volume: Volume, pt: Point3) -> Vec<Point3>;
+
+  /// Determine whether a volume will not collide *with terrain* if it is placed at a point.
+  /// Note that this doesn't consider other creatures or other map objects.
+  fn volume_fits_at_point(&self, volume: Volume, terrain: &Terrain, pt: Point3) -> bool;
+
+  /// Find neighbors of the given point that the given volume can fit in, given the terrain.
+  fn point3_neighbors(
+    &self, terrain: &Terrain, volume: Volume, pt: Point3,
+  ) -> Vec<(Point3, u32units::Length)>;
+}
+
+impl TileSystemExt for TileSystem {
+  /// Get the distance between two points, considering the system being used.
+  /// In DnD, an angular distance is "equivalent" to a horizontal/vertical distance.
+  /// i.e., The distance from 0,0 to 1,1 is sqrt(2) in Realistic and 1.0 in DnD.
+  fn point3_distance(&self, pos1: Point3, pos2: Point3) -> u32units::Length {
     match *self {
       TileSystem::Realistic => {
         let meaningless = Cuboid::new(Vector3::new(0.0, 0.0, 0.0));
@@ -106,12 +156,12 @@ impl TileSystem {
   }
 
   /// Check whether two points are within some distance of each other.
-  pub fn points_within_distance(&self, c1: Point3, c2: Point3, d: u32units::Length) -> bool {
+  fn points_within_distance(&self, c1: Point3, c2: Point3, d: u32units::Length) -> bool {
     self.point3_distance(c1, c2) <= d
   }
 
   /// Garbage Function
-  pub fn items_within_volume<I: Clone + Eq + Hash>(
+  fn items_within_volume<I: Clone + Eq + Hash>(
     &self, volume: Volume, pt: Point3, items: &HashMap<I, Point3>,
   ) -> Vec<I> {
     // TODO: unimplemented! this doesn't support non-1x1 items
@@ -146,7 +196,7 @@ impl TileSystem {
     results
   }
 
-  pub fn open_points_in_range(
+  fn open_points_in_range(
     &self, start: Point3, terrain: &Terrain, speed: u32units::Length,
   ) -> Vec<Point3> {
     let speed = up_length(speed);
@@ -169,7 +219,7 @@ impl TileSystem {
   }
 
   /// Get the set of points which can be pathed to from some point.
-  pub fn get_all_accessible(
+  fn get_all_accessible(
     &self, start: Point3, terrain: &Terrain, volume: Volume, speed: u32units::Length,
   ) -> Vec<Point3> {
     let points_to_check = self.open_points_in_range(start, terrain, speed);
@@ -200,7 +250,7 @@ impl TileSystem {
 
   /// Find a path from some start point to some destination point. If one can be found, a Vec of
   /// points on the way to the destination is returned, along with the total length of that path.
-  pub fn find_path(
+  fn find_path(
     &self, start: Point3, speed: u32units::Length, terrain: &Terrain, volume: Volume,
     destination: Point3,
   ) -> Option<(Vec<Point3>, u32units::Length)> {

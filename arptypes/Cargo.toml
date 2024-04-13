@@ -1,0 +1,22 @@
+[package]
+name = "arptypes"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+anyhow = { workspace = true }
+derive_more = { workspace = true }
+foldertree = { path = "../foldertree", version = "*", features = ["serde"] }
+indexed = { version = "*", path = "../indexed", features = ["serde"] }
+nonempty = { version = "*", path = "../nonempty", features = ["use_serde"] }
+num = { workspace = true }
+num-traits = { workspace = true }
+serde = { workspace = true }
+serde_derive = { workspace = true }
+strum = { workspace = true }
+thiserror = { workspace = true }
+ts-rs = { version = "7.0.0", features = ["serde-compat", "uuid-impl"] }
+uom = { workspace = true }
+uuid = { workspace = true, features = ["v4", "serde"] }

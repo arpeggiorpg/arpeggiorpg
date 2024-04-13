@@ -4,8 +4,8 @@ use serde_json::json;
 use tracing::{error, info};
 use worker::{event, Context, Cors, Env, Method, Request, Response, Result};
 
-use crate::{rust_error, storage, anyhow_str};
-use mtarp::types::{GameID, GameList, GameMetadata, GameProfile, Role, UserID};
+use crate::{anyhow_str, rust_error, storage};
+use arptypes::multitenant::{GameID, GameList, GameMetadata, GameProfile, Role, UserID};
 
 /// The main cloudflare Worker for Arpeggio. Handles routes for listing &
 /// creating games, etc, and forwarding websockets to the Durable Object.
