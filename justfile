@@ -7,6 +7,7 @@ run-ui:
     cd ui; npm run dev
 
 run-dxui:
+    cd arpui; cp index.dev.html index.html
     cd arpui; dx serve --hot-reload
 
 # This "ARP_LOCAL_DEV" is used in wrangler.toml (actually, worker/build.js)
@@ -18,6 +19,7 @@ deploy-ui:
     cd ui; ./node_modules/.bin/wrangler pages deployment create --env production ./dist/
 
 deploy-dioxus:
+    cd arpui; cp index.prod.html index.html
     cd arpui; dx build --release
     cd arpui; ../ui/node_modules/.bin/wrangler pages deploy ./dist --project-name arpeggio
 

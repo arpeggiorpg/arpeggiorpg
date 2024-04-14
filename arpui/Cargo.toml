@@ -18,4 +18,15 @@ dioxus-logger = "0.4.1"
 getrandom = { version = "0.2.9", features = ["js"] }
 log = "0.4.19"
 reqwest = { version = "0.12.3", features = ["json"] }
-wasm-cookies = { version = "0.2.1" }
+wasm-bindgen = "0.2.92"
+wasm-cookies = "0.2.1"
+
+[dependencies.web-sys]
+version = "0.3.69"
+features = [
+  "Document",
+  "Element",
+  "HtmlElement",
+  "Node",
+  "Window",
+]
