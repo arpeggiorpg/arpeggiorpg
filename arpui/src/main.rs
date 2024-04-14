@@ -1,5 +1,6 @@
 #![allow(non_snake_case)]
 
+use arptypes::multitenant::{self, Role};
 use dioxus::prelude::*;
 use log::{info, LevelFilter};
 use uuid::Uuid;
@@ -50,7 +51,7 @@ fn Layout() -> Element {
           class: "rightNavThing",
           Link { to: Route::GameList {}, "Game List"}
           button {
-            onclick: move |event| {
+            onclick: move |_event| {
               info!("Log Off");
               *AUTH_TOKEN.write() = String::new();
               wasm_cookies::set("arpeggio-token", "", &Default::default())
@@ -78,18 +79,41 @@ fn GameList() -> Element {
 
   match &*list.read_unchecked() {
     Some(Ok(list)) => rsx! {
-      "got a list!"
-      ul {
-        for (profile, metadata) in &list.games {
-          li {
-            a {
-              href: "/{profile.role.to_string().to_lowercase()}/{profile.game_id}",
-              "{profile.profile_name} @ {metadata.name} (as {profile.role})" } }
-        }
-      }
+      GameListList {list: list.clone()}
     },
     Some(Err(e)) => rsx! { "Error! {e:?}" },
     None => rsx! {"Loading games!"},
+  }
+}
+
+#[component]
+fn GameListList(list: multitenant::GameList) -> Element {
+  let gm_games = list.games.iter().filter(|(profile, _)| profile.role == Role::GM);
+  let player_games = list.games.iter().filter(|(profile, _)| profile.role == Role::Player);
+
+  rsx! {
+    h1 { "You are GM of these games" }
+    ul {
+      for (profile, metadata) in gm_games {
+        li {
+          a {
+            href: "/{profile.role.to_string().to_lowercase()}/{profile.game_id}",
+            "{metadata.name} (as {profile.profile_name})"
+          }
+        }
+      }
+    }
+    h1 { "You are a Player of these games" }
+    ul {
+      for (profile, metadata) in player_games {
+        li {
+          a {
+            href: "/{profile.role.to_string().to_lowercase()}/{profile.game_id}",
+            "{metadata.name} (as {profile.profile_name})"
+          }
+        }
+      }
+    }
   }
 }
 
