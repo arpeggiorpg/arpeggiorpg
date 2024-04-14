@@ -102,6 +102,7 @@ dependencies = [
  "getrandom",
  "log",
  "reqwest",
+ "uuid",
  "wasm-bindgen",
  "wasm-cookies",
  "web-sys",
