@@ -5,16 +5,18 @@ use log::{info, LevelFilter};
 use uuid::Uuid;
 
 mod rpi;
-use rpi::{auth_token, AUTH_TOKEN, list_games};
+use rpi::{auth_token, list_games, AUTH_TOKEN};
 
 #[derive(Clone, Routable, Debug, PartialEq)]
+#[rustfmt::skip]
 enum Route {
-  #[route("/")]
-  Main,
-  #[route("/gm/:id")]
-  GMGame { id: Uuid },
-  #[route("/player/:id")]
-  PlayerGame { id: Uuid },
+  #[layout(Layout)]
+    #[route("/")]
+    GameList,
+    #[route("/gm/:id")]
+    GMGame { id: Uuid },
+    #[route("/player/:id")]
+    PlayerGame { id: Uuid },
 }
 
 fn main() {
@@ -29,18 +31,34 @@ fn App() -> Element {
   rsx! { Router::<Route> {} }
 }
 
-
 #[component]
-fn Main() -> Element {
-
+fn Layout() -> Element {
   // Mirror the cookie to the GlobalSignal so things can reactively respond to it changing.
   if AUTH_TOKEN() != auth_token() {
     *AUTH_TOKEN.write() = auth_token();
   }
 
   rsx! {
-    div { "Oh no, the cookie {AUTH_TOKEN():?} "}
     div {
+      style: "display: flex; flex-direction: column; height: 100%",
+      div {
+        style: "display: flex; justify-content: space-between;",
+        h1 {
+          Link { to: Route::GameList {}, "ArpeggioRPG" }
+        }
+        div {
+          class: "rightNavThing",
+          Link { to: Route::GameList {}, "Game List"}
+          button {
+            onclick: move |event| {
+              info!("Log Off");
+              *AUTH_TOKEN.write() = String::new();
+              wasm_cookies::set("arpeggio-token", "", &Default::default())
+            },
+            "Log Off"
+          }
+        }
+      }
       "Enter your auth token:"
       input {
         value: "{AUTH_TOKEN}",
@@ -49,11 +67,10 @@ fn Main() -> Element {
           wasm_cookies::set("arpeggio-token", &event.value(), &Default::default())
         }
       }
+      Outlet::<Route> {}
     }
-    GameList {}
   }
 }
-
 
 #[component]
 fn GameList() -> Element {
@@ -72,11 +89,9 @@ fn GameList() -> Element {
       }
     },
     Some(Err(e)) => rsx! { "Error! {e:?}" },
-    None => rsx! {"Loading games!"}
+    None => rsx! {"Loading games!"},
   }
-
 }
-
 
 #[component]
 fn GMGame(id: Uuid) -> Element {
