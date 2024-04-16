@@ -3,10 +3,11 @@
 use arptypes::multitenant::{self, Role};
 use dioxus::prelude::*;
 use log::{info, LevelFilter};
+use reqwest_websocket::RequestBuilderExt;
 use uuid::Uuid;
 
 mod rpi;
-use rpi::{auth_token, list_games, AUTH_TOKEN};
+use rpi::{auth_token, list_games, Connector, AUTH_TOKEN};
 
 #[derive(Clone, Routable, Debug, PartialEq)]
 #[rustfmt::skip]
@@ -119,10 +120,22 @@ fn GameListList(list: multitenant::GameList) -> Element {
 
 #[component]
 fn GMGame(id: Uuid) -> Element {
-  rsx! { "id: {id:?}"}
+  rsx! {
+    "id: {id:?}"
+    Connector {
+      role: Role::GM, game_id: id,
+      "child"
+    }
+  }
 }
 
 #[component]
 fn PlayerGame(id: Uuid) -> Element {
-  rsx! { "id: {id:?}"}
+  rsx! {
+    "id: {id:?}"
+    Connector {
+      role: Role::Player, game_id: id,
+      "child"
+    }
+  }
 }
