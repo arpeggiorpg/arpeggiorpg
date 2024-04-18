@@ -20,7 +20,7 @@ futures-util = { version = "*" }
 getrandom = { version = "0.2.9", features = ["js"] }
 log = "0.4.19"
 reqwest = { version = "0.12.3", features = ["json"] }
-reqwest-websocket = { path = "../../reqwest-websocket", version = "*" }
+reqwest-websocket = { version = "0.3" }
 serde = { version = "*" }
 serde_json = { version = "*" }
 uuid = { version = "1.1.2", features = ["v4", "serde"] }

@@ -2125,7 +2125,9 @@ dependencies = [
 
 [[package]]
 name = "reqwest-websocket"
-version = "0.2.0"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f577b873973670ae646078b04ca30fc5af08f40af0160af3242684c12d575983"
 dependencies = [
  "async-tungstenite",
  "futures-util",
