@@ -14,11 +14,11 @@ use rpi::{auth_token, list_games, Connector, AUTH_TOKEN};
 enum Route {
   #[layout(Layout)]
     #[route("/")]
-    GameList,
+    GameListPage,
     #[route("/gm/:id")]
-    GMGame { id: Uuid },
+    GMGamePage { id: Uuid },
     #[route("/player/:id")]
-    PlayerGame { id: Uuid },
+    PlayerGamePage { id: Uuid },
 }
 
 fn main() {
@@ -46,11 +46,11 @@ fn Layout() -> Element {
       div {
         style: "display: flex; justify-content: space-between;",
         h1 {
-          Link { to: Route::GameList {}, "ArpeggioRPG" }
+          Link { to: Route::GameListPage {}, "ArpeggioRPG" }
         }
         div {
           class: "rightNavThing",
-          Link { to: Route::GameList {}, "Game List"}
+          Link { to: Route::GameListPage {}, "Game List"}
           button {
             onclick: move |_event| {
               info!("Log Off");
@@ -75,12 +75,12 @@ fn Layout() -> Element {
 }
 
 #[component]
-fn GameList() -> Element {
+fn GameListPage() -> Element {
   let list = use_resource(move || list_games());
 
   match &*list.read_unchecked() {
     Some(Ok(list)) => rsx! {
-      GameListList {list: list.clone()}
+      GameList {list: list.clone()}
     },
     Some(Err(e)) => rsx! { "Error! {e:?}" },
     None => rsx! {"Loading games!"},
@@ -88,7 +88,7 @@ fn GameList() -> Element {
 }
 
 #[component]
-fn GameListList(list: multitenant::GameList) -> Element {
+fn GameList(list: multitenant::GameList) -> Element {
   let gm_games = list.games.iter().filter(|(profile, _)| profile.role == Role::GM);
   let player_games = list.games.iter().filter(|(profile, _)| profile.role == Role::Player);
 
@@ -119,23 +119,35 @@ fn GameListList(list: multitenant::GameList) -> Element {
 }
 
 #[component]
-fn GMGame(id: Uuid) -> Element {
+fn GMGamePage(id: Uuid) -> Element {
   rsx! {
     "id: {id:?}"
     Connector {
       role: Role::GM, game_id: id,
-      "child"
+      GMGame {}
     }
   }
 }
 
 #[component]
-fn PlayerGame(id: Uuid) -> Element {
+fn PlayerGamePage(id: Uuid) -> Element {
   rsx! {
     "id: {id:?}"
     Connector {
       role: Role::Player, game_id: id,
-      "child"
+      PlayerGame {}
     }
   }
+}
+
+#[component]
+fn GMGame() -> Element {
+  rsx! {
+    "Hi GM"
+  }
+}
+
+#[component]
+fn PlayerGame() -> Element {
+  rsx! { "Hi Player" }
 }

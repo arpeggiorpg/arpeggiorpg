@@ -50,14 +50,6 @@ async fn connect_coroutine(role: Role, game_id: Uuid) -> anyhow::Result<()> {
   let get_game_json = serde_json::to_string(&get_game_json)?;
   websocket.send(Message::Text(get_game_json)).await?;
 
-
-  // RADIX: send the initial request for game state!
-  // const { logs, game, metadata } = await sendRequest(
-  //   { t: "GMGetGame" },
-  //   Z.object({ logs: T.decodeGameLogs, game: T.decodeGame, metadata: T.decodeGameMetadata }),
-  // );
-
-
   while let Some(message) = websocket.try_next().await? {
     match message {
       Message::Text(text) => info!("WS Text Message: {text}"),
