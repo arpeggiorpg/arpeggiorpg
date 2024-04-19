@@ -1,11 +1,15 @@
+use std::{cell::RefCell, collections::HashMap, rc::Rc};
+
 use anyhow::format_err;
+use futures::channel::oneshot::Sender;
 use dioxus::prelude::*;
 use futures_util::{stream::StreamExt, SinkExt, TryStreamExt};
 use log::info;
-use reqwest_websocket::{Message, RequestBuilderExt};
+use reqwest_websocket::{Message, RequestBuilderExt, WebSocket};
 use uuid::Uuid;
+use wasm_bindgen_futures::spawn_local;
 
-use arptypes::multitenant::{self, Role};
+use arptypes::{multitenant::{self, RPIGameRequest, Role}, Game};
 
 pub static AUTH_TOKEN: GlobalSignal<String> = Signal::global(String::new);
 
@@ -27,7 +31,7 @@ pub async fn list_games() -> Result<multitenant::GameList, anyhow::Error> {
   rpi_get("g/list").await
 }
 
-async fn connect_coroutine(role: Role, game_id: Uuid) -> anyhow::Result<()> {
+async fn connect_coroutine(role: Role, game_id: Uuid) -> anyhow::Result<WebSocket> {
   let response =
     rpi_get::<serde_json::Value>(&format!("request-websocket/{game_id}/{role}")).await?;
   let token = response
@@ -40,34 +44,80 @@ async fn connect_coroutine(role: Role, game_id: Uuid) -> anyhow::Result<()> {
   let ws_url = format!("ws://localhost:8787/ws/{game_id}/{token}");
   let response = reqwest::Client::default().get(ws_url).upgrade().send().await?;
   let mut websocket = response.into_websocket().await?;
-
-  let get_game_json = serde_json::json!({
-    "id": uuid::Uuid::new_v4().to_string(),
-    "request": {
-      "t": "GMGetGame"
-    }
-  });
-  let get_game_json = serde_json::to_string(&get_game_json)?;
-  websocket.send(Message::Text(get_game_json)).await?;
-
-  while let Some(message) = websocket.try_next().await? {
-    match message {
-      Message::Text(text) => info!("WS Text Message: {text}"),
-      Message::Binary(vecu8) => info!("WS Binary Message: {vecu8:?}"),
-    }
-  }
-
-  Ok(())
+  Ok(websocket)
 }
+
+pub static GAME: GlobalSignal<Game> = Signal::global(|| Default::default());
 
 #[component]
 pub fn Connector(role: Role, game_id: Uuid, children: Element) -> Element {
   // let connection_count = use_signal(|| 0);
   let mut error = use_signal(|| None);
-  let ws: Coroutine<()> = use_coroutine(|rx| async move {
-    match connect_coroutine(role, game_id).await {
-      Ok(x) => info!("Succeeded?"),
-      Err(e) => error.set(Some(e.to_string())),
+  let _coro = use_coroutine(|mut rx: UnboundedReceiver<UIRequest>| async move {
+    let response_handlers: HashMap<uuid::Uuid, Sender<serde_json::Value>> = HashMap::new();
+    let response_handlers = Rc::new(RefCell::new(response_handlers));
+    let websocket = match connect_coroutine(role, game_id).await {
+      Ok(ws) => ws,
+      Err(e) => {
+        error.set(Some(e.to_string()));
+        return;
+      }
+    };
+
+    let (mut websocket_tx, mut websocket_rx) = websocket.split();
+    let receiver_response_handlers = response_handlers.clone();
+    spawn_local(async move {
+      while let Some(message) = websocket_rx.try_next().await.expect("websocket.try_next") {
+        match message {
+          Message::Text(text) => {
+            info!("WS Text Message: {text}");
+            let json: serde_json::Value = serde_json::from_str(&text).expect("parse JSON");
+            if let Some(id_val) = json.as_object().expect("json must be an object").get("id") {
+              let id: uuid::Uuid = id_val.as_str().expect("id must be a string").parse().expect("parse UUID in websocket response");
+              // TODO: handle "error" in response
+              if let Some(handler) = receiver_response_handlers.borrow_mut().remove(&id) {
+                handler.send(json).expect("couldn't send result to one-shot");
+              }
+            }
+            // TODO: else! Handle server-sent events (like refresh_game)
+
+          },
+          Message::Binary(vecu8) => info!("WS Binary Message: {vecu8:?}"),
+        }
+      }
+    });
+
+
+    // TODO RADIX: figure out what I'm doing here. Should I send the game here? How am I
+    // communicating it to the outside world? (well, I guess obviously a GlobalSignal...)
+
+    // I think it would be pretty cool to split out WSConnector as something that is 100% unrelated
+    // to Arpeggio to show as an example of how to integrate Dioxus and reqwest-websocket.
+    // This would require to parameterize the type of the Coroutine and also parameterize the
+    // handler for general non-response events.
+    // But I don't really care about that for now. Let's just get this working!
+
+    // let get_game_json = serde_json::json!({
+    //   "id": uuid::Uuid::new_v4().to_string(),
+    //   "request": {
+    //     "t": "GMGetGame"
+    //   }
+    // });
+    // let get_game_json = serde_json::to_string(&get_game_json)?;
+    // websocket.send(Message::Text(get_game_json)).await?;
+
+    while let Some(ui_req) = rx.next().await {
+      let request_id = uuid::Uuid::new_v4();
+      let request = serde_json::json!({
+        "id": request_id.to_string(),
+        "request": &ui_req.game_request
+      });
+      let cmd_json =
+        serde_json::to_string(&request).expect("must be able to serialize RPIGameRequests");
+      if let Some(callback) = ui_req.callback {
+        response_handlers.borrow_mut().insert(request_id, callback);
+      }
+      websocket_tx.send(Message::Text(cmd_json)).await.expect("Couldn't send command to websocket");
     }
   });
   if let Some(error) = error() {
@@ -76,6 +126,13 @@ pub fn Connector(role: Role, game_id: Uuid, children: Element) -> Element {
     children
   }
 }
+
+pub struct UIRequest {
+  game_request: RPIGameRequest,
+  callback: Option<Sender<serde_json::Value>>,
+}
+
+pub fn use_ws() -> Coroutine<UIRequest> { use_coroutine_handle::<UIRequest>() }
 
 async fn rpi_get<T: serde::de::DeserializeOwned>(path: &str) -> Result<T, anyhow::Error> {
   let rpi_url = rpi_url();

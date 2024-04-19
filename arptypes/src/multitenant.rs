@@ -73,7 +73,7 @@ pub enum ImageType {
 /// The various kinds of requests that a frontend can make of the RPI in the context of a game.
 /// These are scoped to a specific game, so you won't see things like "Auth" or "ListGames" here,
 /// just the commands that related to one specific game.
-#[derive(Deserialize, TS, Debug)]
+#[derive(Serialize, Deserialize, TS, Debug)]
 #[serde(tag = "t")]
 pub enum RPIGameRequest {
   GMGetGame,

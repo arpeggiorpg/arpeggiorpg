@@ -100,6 +100,7 @@ dependencies = [
  "console_error_panic_hook",
  "dioxus",
  "dioxus-logger",
+ "futures",
  "futures-util",
  "getrandom",
  "log",
@@ -108,7 +109,7 @@ dependencies = [
  "serde",
  "serde_json",
  "uuid",
- "wasm-bindgen",
+ "wasm-bindgen-futures",
  "wasm-cookies",
  "web-sys",
 ]

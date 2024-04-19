@@ -4,14 +4,13 @@ version = "0.1.0"
 authors = ["Christopher Armstrong <227068+radix@users.noreply.github.com>"]
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
 anyhow = { version = "1.0.75", features = ["backtrace"] }
 arptypes = { path = "../arptypes", version = "*" }
 console_error_panic_hook = "0.1.7"
 dioxus = { version = "0.5.1", features = ["web", "router"] }
 dioxus-logger = "0.4.1"
+futures = "0.3.30"
 futures-util = { version = "*" }
 # arpeggio depend on rand, which depends on getrandom, which by default does not work on WASM. We
 # need to enable the "js" feature. Unfortunately, since arpui is not a workspace member, we have to
@@ -24,7 +23,7 @@ reqwest-websocket = { version = "0.3" }
 serde = { version = "*" }
 serde_json = { version = "*" }
 uuid = { version = "1.1.2", features = ["v4", "serde"] }
-wasm-bindgen = "0.2.92"
+wasm-bindgen-futures = "0.4.42"
 wasm-cookies = "0.2.1"
 
 [dependencies.web-sys]
