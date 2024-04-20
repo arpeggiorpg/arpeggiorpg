@@ -1,9 +1,8 @@
 #![allow(non_snake_case)]
 
-use anyhow::anyhow;
 use arptypes::{
-  multitenant::{self, GameMetadata, RPIGameRequest, Role},
-  Game,
+  multitenant::{self, GameAndMetadata, RPIGameRequest, Role},
+  SerializedGame,
 };
 use dioxus::prelude::*;
 use log::{error, info, LevelFilter};
@@ -153,23 +152,18 @@ fn GMGame() -> Element {
   }
 }
 
-pub static GAME: GlobalSignal<Game> = Signal::global(|| Default::default());
+pub static GAME: GlobalSignal<SerializedGame> = Signal::global(|| Default::default());
 pub static GAME_NAME: GlobalSignal<String> = Signal::global(|| String::new());
 
 #[component]
 fn PlayerGame() -> Element {
   let ws = use_ws();
-  let future: Resource<Result<Game, anyhow::Error>> = use_resource(move || async move {
+  let future: Resource<Result<SerializedGame, anyhow::Error>> = use_resource(move || async move {
     info!("GMGetGame!!!!!!!!");
-    let response = send_request(RPIGameRequest::GMGetGame, ws).await?;
-    let game = response
-      .get("game")
-      .ok_or(anyhow!("no game"))?;
-    let game: Game = serde_json::from_value(game.clone())?;
+    let response = send_request::<GameAndMetadata>(RPIGameRequest::GMGetGame, ws).await?;
+    let game = response.game;
     *GAME.write() = game.clone();
-    let metadata = response.get("metadata").ok_or(anyhow!("No metadata??"))?;
-    let metadata: GameMetadata = serde_json::from_value(metadata.clone())?;
-    *GAME_NAME.write() = metadata.name.clone();
+    *GAME_NAME.write() = response.metadata.name.clone();
     Ok(game)
   });
   match &*future.read_unchecked() {
