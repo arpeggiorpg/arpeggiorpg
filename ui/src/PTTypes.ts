@@ -152,6 +152,7 @@ export type SceneAttributeChecks = Map<string, AttributeCheck>;
 export type SceneFocusedCreatures = List<CreatureID>;
 export type GameAbilities = Record<AbilityID, Ability>;
 export type GameCreatures = Map<CreatureID, Creature>;
+export type GameCreaturesData = Map<CreatureID, CreatureData>;
 export type GameClasses = Map<ClassID, Class>;
 export type GameScenes = Map<SceneID, Scene>;
 export type GameItems = Record<ItemID, Item>;
@@ -778,7 +779,7 @@ export const decodeGameLog: Decoder<GameLog> = Z.discriminatedUnion("t", [
 if (typeof window !== "undefined") (window as any).decodeGameLog = decodeGameLog;
 
 export const decodeChangedGame: Decoder<ChangedGame> = Z.object({
-  game: decodeGame,
+  game: decodeGame, // RADIX: I think this is wrong, it should actually be decodeGameData or smth.
   logs: Z.array(decodeGameLog),
 });
 

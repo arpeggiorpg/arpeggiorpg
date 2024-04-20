@@ -67,6 +67,7 @@ pub fn main() -> Result<(), anyhow::Error> {
     <T::SceneID as TS>::decl(),
     <T::SceneTarget as TS>::decl(),
     <T::SerializedCreature as TS>::decl(),
+    <T::SerializedGame as TS>::decl(),
     <T::SkillLevel as TS>::decl(),
     <T::TileSystem as TS>::decl(),
     <T::Visibility as TS>::decl(),
@@ -77,7 +78,7 @@ pub fn main() -> Result<(), anyhow::Error> {
   import type { Map } from 'immutable';
   import type {
      Point3, Highlights, NonEmpty, Annotations, SceneHotspots, RelatedScenes, SceneAttributeChecks, SceneCreatures, SceneInventory, SceneVolumeConditions, Terrain, SceneFocusedCreatures,
-     GameAbilities, GameCreatures, GameClasses, GameScenes, GameItems, GamePlayers,
+     GameAbilities, GameCreatures, GameCreaturesData, GameClasses, GameScenes, GameItems, GamePlayers,
      CreatureAttributes, CreatureConditions, CreatureInventory
 
   } from '../PTTypes';

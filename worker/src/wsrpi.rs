@@ -12,7 +12,7 @@ use arpeggio::{
   game::GameExt,
   types::{ChangedGame, GMCommand, GameError, RPIGame},
 };
-use arptypes::multitenant::{GameMetadata, RPIGameRequest, Role};
+use arptypes::multitenant::{GameAndMetadata, GameMetadata, RPIGameRequest, Role};
 
 use crate::{
   anyhow_str,
@@ -177,11 +177,13 @@ impl GameSession {
         // RADIX: TODO: we need separate GMGetGame and PlayerGetGame commands, where the player only
         // gets information about the current scene. This is going to be a big change, though.
 
-        // RADIX TODO! Include the last 100 GameLogs here, keyed by GameIndexes. I guess this means
-        // we should probably store the last 100 GameLogs in GameStorage, probably in a VecDeque.
         let rpi_game = RPIGame(&game);
-        let json = json!({"game": rpi_game, "logs": self.game_storage.recent_logs(), "metadata": self.metadata});
-        Ok(serde_json::to_value(json)?)
+        let result = GameAndMetadata {
+          game: rpi_game.serialize_game()?,
+          metadata: self.metadata.clone(),
+          logs: self.game_storage.recent_logs(),
+        };
+        Ok(serde_json::to_value(result)?)
       }
       (Role::Player, PlayerCommand { command }) => {
         let changed_game = game.perform_player_command(self.ws_user.player_id.clone(), command);

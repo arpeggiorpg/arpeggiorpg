@@ -5,10 +5,7 @@
 #![cfg_attr(feature = "cargo-clippy", allow(clippy::large_enum_variant))]
 
 use rand::Rng;
-use serde::{
-  ser::{Error as SerError, SerializeStruct},
-  Serialize, Serializer,
-};
+use serde::{ser::Error as SerError, Serialize, Serializer};
 
 pub use arptypes::*;
 
@@ -97,37 +94,9 @@ pub struct DynamicCreature<'creature, 'game: 'creature> {
   pub class: &'game Class,
 }
 
-/// A newtype wrapper over Game that has a special Serialize implementation, which includes extra
-/// data dynamically as a convenience for the client.
-pub struct RPIGame<'a>(pub &'a Game);
-
-impl<'a> Serialize for RPIGame<'a> {
-  fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-    let mut str = serializer.serialize_struct("Game", 11)?;
-    let game = self.0;
-
-    str.serialize_field("current_combat", &game.current_combat)?;
-    str.serialize_field("abilities", &game.abilities)?;
-    str.serialize_field(
-      "creatures",
-      &game
-        .creatures()
-        .map_err(|e| S::Error::custom(format!("Oh no! Couldn't serialize creatures!? {:?}", e)))?,
-    )?;
-    str.serialize_field("classes", &game.classes)?;
-    str.serialize_field("tile_system", &game.tile_system)?;
-    str.serialize_field("scenes", &game.scenes)?;
-    str.serialize_field("campaign", &game.campaign)?;
-    str.serialize_field("items", &game.items)?;
-    str.serialize_field("players", &game.players)?;
-    str.serialize_field("active_scene", &game.active_scene)?;
-    str.end()
-  }
-}
-
-impl<'creature, 'game: 'creature> Serialize for DynamicCreature<'creature, 'game> {
-  fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-    let screature = SerializedCreature {
+impl<'c, 'g> DynamicCreature<'c, 'g> {
+  pub fn serialize_creature(&self) -> SerializedCreature {
+    SerializedCreature {
       id: self.creature.id,
       name: self.creature.name.clone(),
       max_energy: self.creature.max_energy,
@@ -153,7 +122,50 @@ impl<'creature, 'game: 'creature> Serialize for DynamicCreature<'creature, 'game
       volume_conditions: self.volume_conditions(),
       can_act: self.can_act(),
       can_move: self.can_move(),
+    }
+  }
+}
+
+/// A newtype wrapper over Game that has a special Serialize implementation, which includes extra
+/// data dynamically as a convenience for the client.
+pub struct RPIGame<'a>(pub &'a Game);
+
+impl<'a> RPIGame<'a> {
+  pub fn serialize_game(&self) -> Result<SerializedGame, GameError> {
+    let game = self.0;
+    let creatures = game
+      .creatures()?
+      .iter()
+      .map(|(creature_id, creature)| (*creature_id, creature.serialize_creature()))
+      .collect();
+    let sgame = SerializedGame {
+      current_combat: game.current_combat.clone(),
+      abilities: game.abilities.clone(),
+      creatures,
+      classes: game.classes.clone(),
+      tile_system: game.tile_system.clone(),
+      scenes: game.scenes.clone(),
+      campaign: game.campaign.clone(),
+      items: game.items.clone(),
+      players: game.players.clone(),
+      active_scene: game.active_scene.clone(),
     };
+    Ok(sgame)
+  }
+}
+
+impl<'a> Serialize for RPIGame<'a> {
+  fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+    let sgame = self
+      .serialize_game()
+      .map_err(|e| S::Error::custom(format!("Oh no! Couldn't serialize Game!? {:?}", e)))?;
+    SerializedGame::serialize(&sgame, serializer)
+  }
+}
+
+impl<'creature, 'game: 'creature> Serialize for DynamicCreature<'creature, 'game> {
+  fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+    let screature = self.serialize_creature();
     SerializedCreature::serialize(&screature, serializer)
   }
 }
@@ -161,8 +173,8 @@ impl<'creature, 'game: 'creature> Serialize for DynamicCreature<'creature, 'game
 #[cfg(test)]
 pub mod test {
   use crate::{creature::CreatureExt, grid::test::*, types::*};
-  use maplit::hashmap;
   use indexed::IndexedHashMap;
+  use maplit::hashmap;
   use std::{
     collections::{HashMap, HashSet},
     iter::FromIterator,

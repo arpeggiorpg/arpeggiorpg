@@ -1,3 +1,5 @@
+use std::collections::VecDeque;
+
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 use uuid::Uuid;
@@ -20,6 +22,14 @@ impl UserID {
 pub struct GameMetadata {
   pub name: String,
 }
+
+#[derive(Clone, PartialEq, Serialize, Deserialize, Debug)]
+pub struct GameAndMetadata {
+  pub game: crate::SerializedGame,
+  pub metadata: GameMetadata,
+  pub logs: VecDeque<(GameIndex, crate::GameLog)>
+}
+
 
 /// The indices stored by GameIndex are a little weird.
 ///

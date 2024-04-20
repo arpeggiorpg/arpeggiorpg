@@ -1,6 +1,6 @@
 use std::collections::{HashMap, HashSet};
 
-use derive_more::{Add, Div, Mul, Sub, Display};
+use derive_more::{Add, Display, Div, Mul, Sub};
 use foldertree::{FolderPath, FolderTree, FolderTreeError};
 use indexed::{DeriveKey, IndexedHashMap};
 use nonempty;
@@ -35,7 +35,9 @@ pub fn i64meter<T: Into<i64>>(v: T) -> i64units::Length { i64units::Length::new:
 
 pub fn up_length(v: u32units::Length) -> i64units::Length { i64cm(v.get::<centimeter>()) }
 
-#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize, TS, Display)]
+#[derive(
+  Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize, TS, Display,
+)]
 pub struct PlayerID(pub String);
 
 #[derive(Clone, Hash, Eq, PartialEq, Debug, Serialize, Deserialize, TS)]
@@ -74,7 +76,6 @@ uuid_id!(ItemID);
 uuid_id!(SceneID);
 uuid_id!(AbilityID);
 uuid_id!(ClassID);
-
 
 #[derive(
   Add,
@@ -717,11 +718,12 @@ impl DeriveKey for Creature {
 }
 
 #[derive(Clone, Default, PartialEq, Debug, Serialize, Deserialize, TS)]
+#[ts(rename = "GameData")]
 pub struct Game {
   pub current_combat: Option<Combat>,
   #[ts(type = "GameAbilities")]
   pub abilities: IndexedHashMap<Ability>,
-  #[ts(type = "GameCreatures")]
+  #[ts(type = "GameCreaturesData")]
   pub creatures: IndexedHashMap<Creature>,
   #[ts(type = "GameClasses")]
   pub classes: IndexedHashMap<Class>,
@@ -847,15 +849,38 @@ pub struct ChangedGame {
   pub logs: Vec<GameLog>,
 }
 
+/// Serde Serializer helpers
+// These could probably store references instead of owned objects for some more efficiency, but I'm
+// not sure if that would work on the client?
 
+#[derive(Clone, PartialEq, Debug, Serialize, Deserialize, TS)]
+#[ts(rename = "Game")]
+pub struct SerializedGame {
+  pub current_combat: Option<Combat>,
+  #[ts(type = "GameAbilities")]
+  pub abilities: IndexedHashMap<Ability>,
+  #[ts(type = "GameCreatures")]
+  pub creatures: HashMap<CreatureID, SerializedCreature>,
+  #[ts(type = "GameClasses")]
+  pub classes: IndexedHashMap<Class>,
+  pub tile_system: TileSystem,
+  #[ts(type = "GameScenes")]
+  pub scenes: IndexedHashMap<Scene>,
+  #[serde(default)]
+  #[ts(type = "GameItems")]
+  pub items: IndexedHashMap<Item>,
+  pub campaign: FolderTree<Folder>,
+  #[serde(default)]
+  #[ts(type = "GamePlayers")]
+  pub players: IndexedHashMap<Player>,
+  // The "active scene" determines which scene has mechanical effect as far as game simulation
+  // goes.
+  #[serde(default)]
+  pub active_scene: Option<SceneID>,
+}
 
-
-/// A Serde Serializer helper
-// This could probably store references instead of owned objects for
-// some more efficiency.
-#[derive(Serialize, TS)]
+#[derive(Clone, PartialEq, Debug, Serialize, Deserialize, TS)]
 #[ts(rename = "DynamicCreature")]
-// I don't really want to make this pub, but I have to since it's used in src/bin/gents.rs
 pub struct SerializedCreature {
   pub id: CreatureID,
   pub name: String,
