@@ -35,7 +35,7 @@ pub struct GameIndex {
 }
 
 /// A GameProfile is a specific user's association with a game.
-#[derive(Clone, Serialize, Deserialize, Debug, TS)]
+#[derive(Clone, PartialEq, Eq, Serialize, Deserialize, Debug, TS)]
 pub struct GameProfile {
   pub user_id: UserID,
   pub game_id: GameID,
@@ -52,7 +52,7 @@ pub enum Role {
 }
 
 /// The result from listing a game. Includes a name (and maybe other data)
-#[derive(Clone, Serialize, Deserialize, Debug, TS)]
+#[derive(PartialEq, Eq, Clone, Serialize, Deserialize, Debug, TS)]
 pub struct GameList {
   pub games: Vec<(GameProfile, GameMetadata)>,
 }
@@ -73,7 +73,7 @@ pub enum ImageType {
 /// The various kinds of requests that a frontend can make of the RPI in the context of a game.
 /// These are scoped to a specific game, so you won't see things like "Auth" or "ListGames" here,
 /// just the commands that related to one specific game.
-#[derive(Deserialize, TS, Debug)]
+#[derive(Serialize, Deserialize, TS, Debug)]
 #[serde(tag = "t")]
 pub enum RPIGameRequest {
   GMGetGame,
