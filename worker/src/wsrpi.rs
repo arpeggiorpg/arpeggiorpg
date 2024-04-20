@@ -251,8 +251,9 @@ impl GameSession {
       Ok(changed_game) => {
         let logs_with_indices = self.game_storage.store_game(changed_game.clone()).await?;
         let rpi_game = RPIGame(&changed_game.game);
+        let game = rpi_game.serialize_game()?;
         self
-          .broadcast(&json!({"t": "refresh_game", "game": rpi_game, "logs": logs_with_indices}))?;
+          .broadcast(&json!({"t": "refresh_game", "game": game, "logs": logs_with_indices}))?;
         Ok(changed_game.logs)
       }
       Err(e) => Err(format!("{e:?}")),

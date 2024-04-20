@@ -154,22 +154,6 @@ impl<'a> RPIGame<'a> {
   }
 }
 
-impl<'a> Serialize for RPIGame<'a> {
-  fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-    let sgame = self
-      .serialize_game()
-      .map_err(|e| S::Error::custom(format!("Oh no! Couldn't serialize Game!? {:?}", e)))?;
-    SerializedGame::serialize(&sgame, serializer)
-  }
-}
-
-impl<'creature, 'game: 'creature> Serialize for DynamicCreature<'creature, 'game> {
-  fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-    let screature = self.serialize_creature();
-    SerializedCreature::serialize(&screature, serializer)
-  }
-}
-
 #[cfg(test)]
 pub mod test {
   use crate::{creature::CreatureExt, grid::test::*, types::*};
