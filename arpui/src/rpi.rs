@@ -79,7 +79,9 @@ pub fn Connector(role: Role, game_id: Uuid, children: Element) -> Element {
                 .expect("parse UUID in websocket response");
               // TODO: handle "error" in response
               if let Some(handler) = receiver_response_handlers.borrow_mut().remove(&id) {
-                handler.send(Ok(json)).expect("couldn't send result to one-shot");
+                let payload =
+                  json.get("payload").expect("any response with an id must also have a payload");
+                handler.send(Ok(payload.clone())).expect("couldn't send result to one-shot");
               }
             }
             // TODO: else! Handle server-sent events (like refresh_game)

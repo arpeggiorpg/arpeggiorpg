@@ -2,7 +2,7 @@
 
 use anyhow::anyhow;
 use arptypes::{
-  multitenant::{self, RPIGameRequest, Role},
+  multitenant::{self, GameMetadata, RPIGameRequest, Role},
   Game,
 };
 use dioxus::prelude::*;
@@ -52,6 +52,7 @@ fn Layout() -> Element {
         style: "display: flex; justify-content: space-between;",
         h1 {
           Link { to: Route::GameListPage {}, "ArpeggioRPG" }
+          " — {GAME_NAME}"
         }
         div {
           class: "rightNavThing",
@@ -153,6 +154,7 @@ fn GMGame() -> Element {
 }
 
 pub static GAME: GlobalSignal<Game> = Signal::global(|| Default::default());
+pub static GAME_NAME: GlobalSignal<String> = Signal::global(|| String::new());
 
 #[component]
 fn PlayerGame() -> Element {
@@ -161,11 +163,13 @@ fn PlayerGame() -> Element {
     info!("GMGetGame!!!!!!!!");
     let response = send_request(RPIGameRequest::GMGetGame, ws).await?;
     let game = response
-      .get("payload")
-      .ok_or(anyhow!("no payload"))?
       .get("game")
       .ok_or(anyhow!("no game"))?;
     let game: Game = serde_json::from_value(game.clone())?;
+    *GAME.write() = game.clone();
+    let metadata = response.get("metadata").ok_or(anyhow!("No metadata??"))?;
+    let metadata: GameMetadata = serde_json::from_value(metadata.clone())?;
+    *GAME_NAME.write() = metadata.name.clone();
     Ok(game)
   });
   match &*future.read_unchecked() {
