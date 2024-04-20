@@ -1,13 +1,18 @@
 #![allow(non_snake_case)]
 
-use arptypes::multitenant::{self, Role};
+use anyhow::anyhow;
+use arptypes::{
+  multitenant::{self, RPIGameRequest, Role},
+  Game,
+};
 use dioxus::prelude::*;
-use log::{info, LevelFilter};
-use reqwest_websocket::RequestBuilderExt;
+use log::{error, info, LevelFilter};
 use uuid::Uuid;
 
 mod rpi;
 use rpi::{auth_token, list_games, Connector, AUTH_TOKEN};
+
+use crate::rpi::{send_request, use_ws};
 
 #[derive(Clone, Routable, Debug, PartialEq)]
 #[rustfmt::skip]
@@ -147,7 +152,33 @@ fn GMGame() -> Element {
   }
 }
 
+pub static GAME: GlobalSignal<Game> = Signal::global(|| Default::default());
+
 #[component]
 fn PlayerGame() -> Element {
-  rsx! { "Hi Player" }
+  let ws = use_ws();
+  let future: Resource<Result<Game, anyhow::Error>> = use_resource(move || async move {
+    info!("GMGetGame!!!!!!!!");
+    let response = send_request(RPIGameRequest::GMGetGame, ws).await?;
+    let game = response
+      .get("payload")
+      .ok_or(anyhow!("no payload"))?
+      .get("game")
+      .ok_or(anyhow!("no game"))?;
+    let game: Game = serde_json::from_value(game.clone())?;
+    Ok(game)
+  });
+  match &*future.read_unchecked() {
+    Some(Ok(game)) => {
+      info!("got a SUCCESSFUL future {:?}", game);
+      rsx! { "got a SUCCESSFUL future", "{game:?}" }
+    }
+    Some(Err(err)) => {
+      error!("Got a FAILING future {:?}", err);
+      rsx! { "Got a FAILING future", "{err:?}"}
+    }
+    None => {
+      rsx! { "Future is None"}
+    }
+  }
 }

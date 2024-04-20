@@ -1,15 +1,15 @@
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 use anyhow::format_err;
-use futures::channel::oneshot::Sender;
 use dioxus::prelude::*;
+use futures::channel::oneshot::{self, Sender};
 use futures_util::{stream::StreamExt, SinkExt, TryStreamExt};
 use log::info;
 use reqwest_websocket::{Message, RequestBuilderExt, WebSocket};
 use uuid::Uuid;
 use wasm_bindgen_futures::spawn_local;
 
-use arptypes::{multitenant::{self, RPIGameRequest, Role}, Game};
+use arptypes::multitenant::{self, RPIGameRequest, Role};
 
 pub static AUTH_TOKEN: GlobalSignal<String> = Signal::global(String::new);
 
@@ -43,18 +43,17 @@ async fn connect_coroutine(role: Role, game_id: Uuid) -> anyhow::Result<WebSocke
 
   let ws_url = format!("ws://localhost:8787/ws/{game_id}/{token}");
   let response = reqwest::Client::default().get(ws_url).upgrade().send().await?;
-  let mut websocket = response.into_websocket().await?;
+  let websocket = response.into_websocket().await?;
   Ok(websocket)
 }
-
-pub static GAME: GlobalSignal<Game> = Signal::global(|| Default::default());
 
 #[component]
 pub fn Connector(role: Role, game_id: Uuid, children: Element) -> Element {
   // let connection_count = use_signal(|| 0);
   let mut error = use_signal(|| None);
   let _coro = use_coroutine(|mut rx: UnboundedReceiver<UIRequest>| async move {
-    let response_handlers: HashMap<uuid::Uuid, Sender<serde_json::Value>> = HashMap::new();
+    let response_handlers: HashMap<uuid::Uuid, Sender<anyhow::Result<serde_json::Value>>> =
+      HashMap::new();
     let response_handlers = Rc::new(RefCell::new(response_handlers));
     let websocket = match connect_coroutine(role, game_id).await {
       Ok(ws) => ws,
@@ -73,20 +72,22 @@ pub fn Connector(role: Role, game_id: Uuid, children: Element) -> Element {
             info!("WS Text Message: {text}");
             let json: serde_json::Value = serde_json::from_str(&text).expect("parse JSON");
             if let Some(id_val) = json.as_object().expect("json must be an object").get("id") {
-              let id: uuid::Uuid = id_val.as_str().expect("id must be a string").parse().expect("parse UUID in websocket response");
+              let id: uuid::Uuid = id_val
+                .as_str()
+                .expect("id must be a string")
+                .parse()
+                .expect("parse UUID in websocket response");
               // TODO: handle "error" in response
               if let Some(handler) = receiver_response_handlers.borrow_mut().remove(&id) {
-                handler.send(json).expect("couldn't send result to one-shot");
+                handler.send(Ok(json)).expect("couldn't send result to one-shot");
               }
             }
             // TODO: else! Handle server-sent events (like refresh_game)
-
-          },
+          }
           Message::Binary(vecu8) => info!("WS Binary Message: {vecu8:?}"),
         }
       }
     });
-
 
     // TODO RADIX: figure out what I'm doing here. Should I send the game here? How am I
     // communicating it to the outside world? (well, I guess obviously a GlobalSignal...)
@@ -129,10 +130,19 @@ pub fn Connector(role: Role, game_id: Uuid, children: Element) -> Element {
 
 pub struct UIRequest {
   game_request: RPIGameRequest,
-  callback: Option<Sender<serde_json::Value>>,
+  callback: Option<Sender<anyhow::Result<serde_json::Value>>>,
 }
 
 pub fn use_ws() -> Coroutine<UIRequest> { use_coroutine_handle::<UIRequest>() }
+
+pub async fn send_request(
+  req: RPIGameRequest, coro: Coroutine<UIRequest>,
+) -> anyhow::Result<serde_json::Value> {
+  let (sender, receiver) = oneshot::channel::<anyhow::Result<serde_json::Value>>();
+  let ui_req = UIRequest { game_request: req, callback: Some(sender) };
+  coro.send(ui_req);
+  receiver.await?
+}
 
 async fn rpi_get<T: serde::de::DeserializeOwned>(path: &str) -> Result<T, anyhow::Error> {
   let rpi_url = rpi_url();
