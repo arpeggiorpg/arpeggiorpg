@@ -853,7 +853,7 @@ pub struct ChangedGame {
 // These could probably store references instead of owned objects for some more efficiency, but I'm
 // not sure if that would work on the client?
 
-#[derive(Clone, PartialEq, Debug, Serialize, Deserialize, TS)]
+#[derive(Clone, PartialEq, Debug, Serialize, Deserialize, TS, Default)]
 #[ts(rename = "Game")]
 pub struct SerializedGame {
   pub current_combat: Option<Combat>,
