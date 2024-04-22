@@ -691,6 +691,31 @@ pub struct Creature {
   pub inventory: Inventory,
 }
 
+impl Creature {
+  pub fn from_serialized_creature(sc: SerializedCreature) -> Creature {
+    Creature {
+      id: sc.id,
+      name: sc.name,
+      speed: sc.speed,
+      max_energy: sc.max_energy,
+      cur_energy: sc.cur_energy,
+      abilities: sc.abilities,
+      class: sc.class,
+      max_health: sc.max_health,
+      cur_health: sc.cur_health,
+      conditions: sc.conditions,
+      note: sc.note,
+      bio: sc.bio,
+      portrait_url: sc.portrait_url,
+      icon_url: sc.icon_url,
+      attributes: sc.attributes,
+      initiative: sc.initiative,
+      size: sc.size,
+      inventory: sc.inventory
+    }
+  }
+}
+
 /// A definition of an Item, which can be referenced by creatures' inventories.
 #[derive(Clone, Hash, Eq, PartialEq, Debug, Serialize, Deserialize, TS)]
 pub struct Item {
@@ -741,6 +766,32 @@ pub struct Game {
   // goes.
   #[serde(default)]
   pub active_scene: Option<SceneID>,
+}
+
+impl Game {
+  pub fn get_scene(&self, id: SceneID) -> Result<&Scene, GameError> {
+    self.scenes.get(&id).ok_or_else(|| GameError::SceneNotFound(id))
+  }
+
+  pub fn from_serialized_game(sg: SerializedGame) -> Game {
+    let creatures: IndexedHashMap<Creature> = sg
+      .creatures
+      .into_iter()
+      .map(|(_key, value)| Creature::from_serialized_creature(value))
+      .collect();
+    return Game {
+      current_combat: sg.current_combat,
+      abilities: sg.abilities,
+      creatures,
+      classes: sg.classes,
+      tile_system: sg.tile_system,
+      scenes: sg.scenes,
+      items: sg.items,
+      campaign: sg.campaign,
+      players: sg.players,
+      active_scene: sg.active_scene,
+    };
+  }
 }
 
 #[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize, TS)]
@@ -905,7 +956,7 @@ pub struct SerializedCreature {
   #[ts(type = "CreatureConditions")]
   pub conditions: HashMap<ConditionID, AppliedCondition>,
 
-  // overridden field
+  // overridden fields
   #[ts(type = "Record<AbilityID, AbilityStatus>")]
   pub abilities: IndexedHashMap<AbilityStatus>,
   #[ts(type = "number")]

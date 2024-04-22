@@ -107,8 +107,6 @@ pub trait GameExt {
     &'game self, creature: &'creature Creature,
   ) -> Result<DynamicCreature<'creature, 'game>, GameError>;
 
-  fn get_scene(&self, id: SceneID) -> Result<&Scene, GameError>;
-
   fn get_combat(&self) -> Result<DynamicCombat, GameError>;
 
   // ** CONSIDER ** moving this chunk of code to... Scene.rs?
@@ -1391,10 +1389,6 @@ impl GameExt for Game {
     &'game self, creature: &'creature Creature,
   ) -> Result<DynamicCreature<'creature, 'game>, GameError> {
     DynamicCreature::new(creature, self)
-  }
-
-  fn get_scene(&self, id: SceneID) -> Result<&Scene, GameError> {
-    self.scenes.get(&id).ok_or_else(|| GameError::SceneNotFound(id))
   }
 
   fn get_combat(&self) -> Result<DynamicCombat, GameError> {

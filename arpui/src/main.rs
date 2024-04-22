@@ -1,8 +1,7 @@
 #![allow(non_snake_case)]
 
 use arptypes::{
-  multitenant::{self, GameAndMetadata, RPIGameRequest, Role},
-  SerializedGame,
+  multitenant::{self, GameAndMetadata, RPIGameRequest, Role}, Game, Scene, SceneID, SerializedGame
 };
 use dioxus::prelude::*;
 use log::{error, info, LevelFilter};
@@ -152,7 +151,7 @@ fn GMGame() -> Element {
   }
 }
 
-pub static GAME: GlobalSignal<SerializedGame> = Signal::global(|| Default::default());
+pub static GAME: GlobalSignal<Game> = Signal::global(|| Default::default());
 pub static GAME_NAME: GlobalSignal<String> = Signal::global(|| String::new());
 
 #[component]
@@ -162,14 +161,38 @@ fn PlayerGame() -> Element {
     info!("GMGetGame!!!!!!!!");
     let response = send_request::<GameAndMetadata>(RPIGameRequest::GMGetGame, ws).await?;
     let game = response.game;
-    *GAME.write() = game.clone();
+    *GAME.write() = Game::from_serialized_game(game.clone());
     *GAME_NAME.write() = response.metadata.name.clone();
     Ok(game)
   });
+
+  let mut current_scene_id = use_signal(|| SceneID(uuid::Uuid::default()));
+  let current_scene = use_signal(|| {
+    if current_scene_id() != SceneID(uuid::Uuid::default()) {
+      Some(GAME().get_scene(current_scene_id()).expect("no scene found!?").clone())
+    } else {
+      None
+    }
+  });
+
   match &*future.read_unchecked() {
     Some(Ok(game)) => {
       info!("got a SUCCESSFUL future {:?}", game);
-      rsx! { "got a SUCCESSFUL future", "{game:?}" }
+      let scenes = &game.scenes;
+      rsx! {
+        h1 { "A game! {GAME_NAME}" }
+        ul {
+          for scene in scenes {
+            button {
+              onclick: move |_| {*current_scene_id.write() = scene.id},
+              "Scene: {scene.name}"
+            }
+          }
+        }
+        if let Some(current_scene) = current_scene() {
+          SceneView {scene: current_scene.clone()}
+        }
+       }
     }
     Some(Err(err)) => {
       error!("Got a FAILING future {:?}", err);
@@ -179,4 +202,18 @@ fn PlayerGame() -> Element {
       rsx! { "Future is None"}
     }
   }
+}
+
+
+#[component]
+fn SceneView(scene: Scene) -> Element {
+  rsx! {
+    h2 {
+      "{scene.name}"
+    }
+    div {
+      "A cool scene!"
+    }
+  }
+
 }
