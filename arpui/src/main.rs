@@ -1,12 +1,11 @@
 #![allow(non_snake_case)]
 
 use arptypes::{
-  multitenant::{self, GameAndMetadata, RPIGameRequest, Role},
-  Game, Scene, SceneID,
+  multitenant::{self, GameAndMetadata, GameID, RPIGameRequest, Role},
+  Game, PlayerID, Scene, SceneID,
 };
 use dioxus::prelude::*;
 use log::{error, info, LevelFilter};
-use uuid::Uuid;
 
 mod rpi;
 use rpi::{auth_token, list_games, Connector, AUTH_TOKEN};
@@ -20,9 +19,9 @@ enum Route {
     #[route("/")]
     GameListPage,
     #[route("/gm/:id")]
-    GMGamePage { id: Uuid },
-    #[route("/player/:id")]
-    PlayerGamePage { id: Uuid },
+    GMGamePage { id: GameID },
+    #[route("/player/:id/:player_id")]
+    PlayerGamePage { id: GameID, player_id: PlayerID },
 }
 
 fn main() {
@@ -102,10 +101,7 @@ fn GameList(list: multitenant::GameList) -> Element {
     ul {
       for (profile, metadata) in gm_games {
         li {
-          a {
-            href: "/{profile.role.to_string().to_lowercase()}/{profile.game_id}",
-            "{metadata.name} (as {profile.profile_name})"
-          }
+          Link { to: Route::GMGamePage {id: profile.game_id}, "{metadata.name} (as {profile.profile_name})"}
         }
       }
     }
@@ -114,7 +110,7 @@ fn GameList(list: multitenant::GameList) -> Element {
       for (profile, metadata) in player_games {
         li {
           a {
-            href: "/{profile.role.to_string().to_lowercase()}/{profile.game_id}",
+            href: "/{profile.role.to_string().to_lowercase()}/{profile.game_id}/{profile.profile_name}",
             "{metadata.name} (as {profile.profile_name})"
           }
         }
@@ -124,7 +120,7 @@ fn GameList(list: multitenant::GameList) -> Element {
 }
 
 #[component]
-fn GMGamePage(id: Uuid) -> Element {
+fn GMGamePage(id: GameID) -> Element {
   rsx! {
     "id: {id:?}"
     Connector {
@@ -135,12 +131,12 @@ fn GMGamePage(id: Uuid) -> Element {
 }
 
 #[component]
-fn PlayerGamePage(id: Uuid) -> Element {
+fn PlayerGamePage(id: GameID, player_id: PlayerID) -> Element {
   rsx! {
     "id: {id:?}"
     Connector {
       role: Role::Player, game_id: id,
-      PlayerGame {}
+      PlayerGame {player_id}
     }
   }
 }
@@ -156,7 +152,7 @@ pub static GAME: GlobalSignal<Game> = Signal::global(|| Default::default());
 pub static GAME_NAME: GlobalSignal<String> = Signal::global(|| String::new());
 
 #[component]
-fn PlayerGame() -> Element {
+fn PlayerGame(player_id: PlayerID) -> Element {
   let ws = use_ws();
   let future: Resource<Result<Game, anyhow::Error>> = use_resource(move || async move {
     info!("GMGetGame!!!!!!!!");
@@ -168,30 +164,14 @@ fn PlayerGame() -> Element {
     Ok(game)
   });
 
-  let mut current_scene_id: Signal<Option<SceneID>> = use_signal(|| None);
-  let current_scene = if let Some(scene_id) = current_scene_id() {
-    Some(GAME().get_scene(scene_id).expect("no scene found!?").clone())
-  } else {
-    None
-  };
-
   match &*future.read_unchecked() {
     Some(Ok(game)) => {
+      let scene_id = game.players.get(&player_id).and_then(|p| p.scene);
+
       rsx! {
        h1 { "A game! {GAME_NAME}" }
-       ul {
-         for scene in game.scenes.iter().cloned() {
-           button {
-             onclick: move |_| {
-               info!("Setting current scene to {} ({:?})", scene.name, scene.id);
-               *current_scene_id.write() = Some(scene.id);
-             },
-             "Scene: {scene.name}"
-           }
-         }
-       }
-       if let Some(current_scene) = current_scene.clone() {
-         SceneView {scene: current_scene}
+       if let Some(scene_id) = scene_id {
+         SceneView {scene_id}
        }
       }
     }
@@ -206,14 +186,18 @@ fn PlayerGame() -> Element {
 }
 
 #[component]
-fn SceneView(scene: Scene) -> Element {
-  info!("Rendering a SceneView!!! {}", scene.name);
-  rsx! {
-    h2 {
-      "{scene.name}"
-    }
-    div {
-      "A cool scene!"
-    }
+fn SceneView(scene_id: SceneID) -> Element {
+  match GAME().get_scene(scene_id) {
+    Ok(scene) => rsx! {
+      h2 {
+        "{scene.name}"
+      }
+      div {
+        "A cool scene!"
+      }
+    },
+    Err(_) => rsx! {
+      div { "Couldn't find scene!" }
+    },
   }
 }

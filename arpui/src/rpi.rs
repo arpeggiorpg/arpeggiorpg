@@ -9,7 +9,7 @@ use reqwest_websocket::{Message, RequestBuilderExt, WebSocket};
 use uuid::Uuid;
 use wasm_bindgen_futures::spawn_local;
 
-use arptypes::multitenant::{self, RPIGameRequest, Role};
+use arptypes::multitenant::{self, GameID, RPIGameRequest, Role};
 
 pub static AUTH_TOKEN: GlobalSignal<String> = Signal::global(String::new);
 
@@ -35,7 +35,7 @@ type ResponseHandler = Sender<anyhow::Result<serde_json::Value>>;
 type ResponseHandlers = HashMap<uuid::Uuid, ResponseHandler>;
 
 #[component]
-pub fn Connector(role: Role, game_id: Uuid, children: Element) -> Element {
+pub fn Connector(role: Role, game_id: GameID, children: Element) -> Element {
   // let connection_count = use_signal(|| 0);
   let mut error = use_signal(|| None);
   let _coro = use_coroutine(|mut rx: UnboundedReceiver<UIRequest>| async move {
@@ -83,7 +83,6 @@ async fn ws_receiver(
   while let Some(message) = websocket_rx.try_next().await? {
     match message {
       Message::Text(text) => {
-        info!("WS Text Message: {text}");
         let json: serde_json::Value = serde_json::from_str(&text)?;
         if let Some(id_val) =
           json.as_object().ok_or(format_err!("json must be an object"))?.get("id")
@@ -105,7 +104,7 @@ async fn ws_receiver(
   Ok(())
 }
 
-async fn connect_coroutine(role: Role, game_id: Uuid) -> anyhow::Result<WebSocket> {
+async fn connect_coroutine(role: Role, game_id: GameID) -> anyhow::Result<WebSocket> {
   let response =
     rpi_get::<serde_json::Value>(&format!("request-websocket/{game_id}/{role}")).await?;
   let token = response

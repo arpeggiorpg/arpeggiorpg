@@ -15,7 +15,7 @@ use serde::de;
 use serde::ser::{Error, Serialize, SerializeMap, Serializer};
 use thiserror::Error;
 
-#[derive(Debug, Error)]
+#[derive(Debug, Error, PartialEq)]
 pub enum FolderTreeError {
   #[error("The string {0:?} is not a valid folder path")]
   InvalidFolderPath(String),
