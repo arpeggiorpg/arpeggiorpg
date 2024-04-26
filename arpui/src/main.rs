@@ -1,7 +1,8 @@
 #![allow(non_snake_case)]
 
 use arptypes::{
-  multitenant::{self, GameAndMetadata, RPIGameRequest, Role}, Game, Scene, SceneID, SerializedGame
+  multitenant::{self, GameAndMetadata, RPIGameRequest, Role},
+  Game, Scene, SceneID,
 };
 use dioxus::prelude::*;
 use log::{error, info, LevelFilter};
@@ -157,42 +158,42 @@ pub static GAME_NAME: GlobalSignal<String> = Signal::global(|| String::new());
 #[component]
 fn PlayerGame() -> Element {
   let ws = use_ws();
-  let future: Resource<Result<SerializedGame, anyhow::Error>> = use_resource(move || async move {
+  let future: Resource<Result<Game, anyhow::Error>> = use_resource(move || async move {
     info!("GMGetGame!!!!!!!!");
     let response = send_request::<GameAndMetadata>(RPIGameRequest::GMGetGame, ws).await?;
     let game = response.game;
-    *GAME.write() = Game::from_serialized_game(game.clone());
+    let game = Game::from_serialized_game(game);
+    *GAME.write() = game.clone();
     *GAME_NAME.write() = response.metadata.name.clone();
     Ok(game)
   });
 
-  let mut current_scene_id = use_signal(|| SceneID(uuid::Uuid::default()));
-  let current_scene = use_signal(|| {
-    if current_scene_id() != SceneID(uuid::Uuid::default()) {
-      Some(GAME().get_scene(current_scene_id()).expect("no scene found!?").clone())
-    } else {
-      None
-    }
-  });
+  let mut current_scene_id: Signal<Option<SceneID>> = use_signal(|| None);
+  let current_scene = if let Some(scene_id) = current_scene_id() {
+    Some(GAME().get_scene(scene_id).expect("no scene found!?").clone())
+  } else {
+    None
+  };
 
   match &*future.read_unchecked() {
     Some(Ok(game)) => {
-      info!("got a SUCCESSFUL future {:?}", game);
-      let scenes = &game.scenes;
       rsx! {
-        h1 { "A game! {GAME_NAME}" }
-        ul {
-          for scene in scenes {
-            button {
-              onclick: move |_| {*current_scene_id.write() = scene.id},
-              "Scene: {scene.name}"
-            }
-          }
-        }
-        if let Some(current_scene) = current_scene() {
-          SceneView {scene: current_scene.clone()}
-        }
+       h1 { "A game! {GAME_NAME}" }
+       ul {
+         for scene in game.scenes.iter().cloned() {
+           button {
+             onclick: move |_| {
+               info!("Setting current scene to {} ({:?})", scene.name, scene.id);
+               *current_scene_id.write() = Some(scene.id);
+             },
+             "Scene: {scene.name}"
+           }
+         }
        }
+       if let Some(current_scene) = current_scene.clone() {
+         SceneView {scene: current_scene}
+       }
+      }
     }
     Some(Err(err)) => {
       error!("Got a FAILING future {:?}", err);
@@ -204,9 +205,9 @@ fn PlayerGame() -> Element {
   }
 }
 
-
 #[component]
 fn SceneView(scene: Scene) -> Element {
+  info!("Rendering a SceneView!!! {}", scene.name);
   rsx! {
     h2 {
       "{scene.name}"
@@ -215,5 +216,4 @@ fn SceneView(scene: Scene) -> Element {
       "A cool scene!"
     }
   }
-
 }
