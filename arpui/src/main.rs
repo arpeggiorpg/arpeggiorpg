@@ -12,7 +12,7 @@ use rpi::{auth_token, list_games, Connector, AUTH_TOKEN};
 
 use crate::rpi::{send_request, use_ws};
 
-#[derive(Clone, Routable, Debug, PartialEq)]
+#[derive(Clone, Routable, Debug)]
 #[rustfmt::skip]
 enum Route {
   #[layout(Layout)]

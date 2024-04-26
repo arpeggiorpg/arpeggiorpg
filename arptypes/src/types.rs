@@ -40,21 +40,10 @@ pub fn up_length(v: u32units::Length) -> i64units::Length { i64cm(v.get::<centim
 )]
 pub struct PlayerID(pub String);
 impl std::str::FromStr for PlayerID {
-  type Err = Infallible;
-  fn from_str(s: &str) -> Result<PlayerID, Infallible> {
+  type Err = std::convert::Infallible;
+  fn from_str(s: &str) -> Result<Self, Self::Err> {
     Ok(PlayerID(s.to_owned()))
   }
-}
-
-// Ok, so first I tried to just set FromStr<PlayerID>::Err to "()", but because I'm using PlayerID
-// in Dioxus routes, for some reason the Err type needs to be Display!? So I made this Infallible
-// type and gave it a Display implementation.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Infallible {}
-impl std::fmt::Display for Infallible {
-    fn fmt(&self, _f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        unreachable!();
-    }
 }
 
 #[derive(Clone, Hash, Eq, PartialEq, Debug, Serialize, Deserialize, TS)]
