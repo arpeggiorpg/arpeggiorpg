@@ -92,8 +92,7 @@ impl ArpeggioGame {
             Some(metadata) => metadata,
             None => {
               let metadata = storage::get_game_metadata(&self.env, game_id)
-                .await
-                .map_err(anyhow_str)?
+                .await?
                 .ok_or(anyhow!("No metadata!?"))?;
               *self.metadata.borrow_mut() = Some(metadata.clone());
               metadata
@@ -101,13 +100,13 @@ impl ArpeggioGame {
           };
           info!(event = "ws-game-metadata", ?metadata);
 
-          let pair = WebSocketPair::new().map_err(anyhow_str)?;
+          let pair = WebSocketPair::new()?;
           let server = pair.server;
           // To avoid racking up DO bills, let's close the socket after a while in case someone
           // leaves their browser on the page. This should NOT be necessary! We should be using
           // Hibernatable Websockets!
 
-          server.accept().map_err(anyhow_str)?;
+          server.accept()?;
 
           // We have *two* asynchronous tasks here:
           // 1. listen for messages from the client and act on the game
@@ -116,10 +115,10 @@ impl ArpeggioGame {
 
           self.sessions.borrow_mut().push(server.clone());
 
-          let account_id = self.env.var("CF_ACCOUNT_ID").map_err(anyhow_str)?.to_string();
+          let account_id = self.env.var("CF_ACCOUNT_ID")?.to_string();
           let image_delivery_prefix =
-            self.env.var("CF_IMAGE_DELIVERY_PREFIX").map_err(anyhow_str)?.to_string();
-          let images_token = self.env.var("CF_IMAGES_TOKEN").map_err(anyhow_str)?.to_string();
+            self.env.var("CF_IMAGE_DELIVERY_PREFIX")?.to_string();
+          let images_token = self.env.var("CF_IMAGES_TOKEN")?.to_string();
           let image_service =
             CFImageService::new(account_id, images_token, &image_delivery_prefix, game_id)?;
           let session = wsrpi::GameSession::new(
@@ -169,7 +168,7 @@ impl ArpeggioGame {
 async fn dump_storage(state: &State) -> anyhow::Result<Response> {
   // TODO: STREAM!
   let mut result = HashMap::new();
-  let items = state.storage().list().await.map_err(anyhow_str)?;
+  let items = state.storage().list().await?;
   for key in items.keys() {
     let key = key.map_err(anyhow_str).context("just resolving the key...")?;
     let value = items.get(&key);

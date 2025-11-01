@@ -33,7 +33,6 @@ mod wsrpi;
 
 #[event(start)]
 fn start() {
-  console_error_panic_hook::set_once();
   let fmt_layer = tracing_subscriber::fmt::layer()
     .json()
     .with_ansi(false) // Only partially supported across JavaScript runtimes

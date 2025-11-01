@@ -3,10 +3,6 @@ name = "worker-rust"
 version = "0.1.0"
 edition = "2021"
 
-# https://github.com/rustwasm/wasm-pack/issues/1247
-[package.metadata.wasm-pack.profile.release]
-wasm-opt = false
-
 [lib]
 crate-type = ["cdylib"]
 
@@ -14,14 +10,15 @@ crate-type = ["cdylib"]
 anyhow.workspace = true
 arpeggio = { version = "*", path = "../arpeggio" }
 arptypes = { path = "../arptypes", version = "*" }
-console_error_panic_hook = "0.1.6"
 foldertree = { path = "../foldertree" }
 futures-util = { version = "0.3.28", default-features = false }
 # arpeggio depend on rand, which depends on getrandom, which by default does not work on WASM. We
 # need to enable the "js" feature.
 getrandom = { workspace = true, features = ["js"] }
+# TODO: apparently workers-rs uses tokio now! We should try replacing gloo-timers with regular tokio
+# time code.
 gloo-timers = "0.3.0"
-google-oauth = { version = "1.6.0", features = ["wasm"] }
+google-oauth = { version = "1.11.3", features = ["wasm"] }
 percent-encoding.workspace = true
 reqwest = { version = "0.11.22", features = ["json", "multipart"] }
 serde.workspace = true
