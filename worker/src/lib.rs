@@ -42,9 +42,9 @@ fn start() {
   tracing_subscriber::registry().with(fmt_layer).with(perf_layer).init();
 }
 
-/// For some reason I can't just convert a workers::Error to an anyhow::Error because I get crazy
-/// errors about how a *mut u8 might escape an async closure or something. So this converts the
-/// error to a string before converting it to an anyhow Error.
-pub fn anyhow_str<T: std::fmt::Debug>(e: T) -> anyhow::Error { anyhow!("{e:?}") }
+/// Some JsValue-based Error types (like the one in serde-wasm-bindgen) can't be converted to an
+/// anyhow with ?, giving errors about how a *mut u8 isn't Send or something. So this converts just
+/// buildn an anyhow error out of the Debug representation of a value.
+pub fn anydbg<T: std::fmt::Debug>(e: T) -> anyhow::Error { anyhow!("{e:?}") }
 
 pub fn rust_error<T: std::fmt::Debug>(e: T) -> Error { Error::RustError(format!("{e:?}")) }

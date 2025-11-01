@@ -12,7 +12,7 @@ use worker::{
 };
 
 use crate::{
-  anyhow_str, durablestorage::GameStorage, images::CFImageService, rust_error, storage, wsrpi,
+  anydbg, durablestorage::GameStorage, images::CFImageService, rust_error, storage, wsrpi,
 };
 
 #[durable_object]
@@ -169,14 +169,14 @@ async fn dump_storage(state: &State) -> anyhow::Result<Response> {
   let mut result = HashMap::new();
   let items = state.storage().list().await?;
   for key in items.keys() {
-    let key = key.map_err(anyhow_str).context("just resolving the key...")?;
+    let key = key.map_err(anydbg).context("just resolving the key...")?;
     let value = items.get(&key);
     info!(event = "dump-storage-key-value", ?key, ?value);
     let value: serde_json::Value = serde_wasm_bindgen::from_value(value)
-      .map_err(anyhow_str)
+      .map_err(anydbg)
       .context("parsing the value as a Value")?;
     let key: String = serde_wasm_bindgen::from_value(key)
-      .map_err(anyhow_str)
+      .map_err(anydbg)
       .context("parsing the key as a string")?;
     result.insert(key, value);
   }

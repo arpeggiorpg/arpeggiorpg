@@ -14,7 +14,7 @@ use arpeggio::{
 };
 use arptypes::multitenant::{GameIndex, ImageType, InvitationID};
 
-use crate::anyhow_str;
+use crate::anydbg;
 
 type RecentGameLogs = VecDeque<(GameIndex, GameLog)>;
 /// The state of the game.
@@ -104,10 +104,10 @@ impl GameStorage {
     }
     info!(event = "loading-logs", num = items.size());
     for key in items.keys() {
-      let key = key.map_err(anyhow_str)?;
+      let key = key.map_err(anydbg)?;
       let value = items.get(&key);
-      let value: String = serde_wasm_bindgen::from_value(value).map_err(anyhow_str)?;
-      let key: String = serde_wasm_bindgen::from_value(key).map_err(anyhow_str)?;
+      let value: String = serde_wasm_bindgen::from_value(value).map_err(anydbg)?;
+      let key: String = serde_wasm_bindgen::from_value(key).map_err(anydbg)?;
       info!(event = "found-log", ?key);
       if let ["log", _, "idx", log_idx_str] = key.split('-').collect::<Vec<_>>()[..] {
         let log: GameLog = serde_json::from_str(&value).map_err(|e| {
