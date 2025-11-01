@@ -7,8 +7,8 @@ use serde_json::json;
 use tracing::{error, info};
 use uuid::Uuid;
 use worker::{
-  async_trait, durable_object, js_sys, wasm_bindgen, wasm_bindgen_futures, worker_sys, Env, Method,
-  Request, Response, Result, State, WebSocket, WebSocketPair,
+  durable_object, wasm_bindgen, wasm_bindgen_futures, Env, Method, Request, Response, Result,
+  State, WebSocket, WebSocketPair,
 };
 
 use crate::{
@@ -18,10 +18,10 @@ use crate::{
 #[durable_object]
 pub struct ArpeggioGame {
   state: Rc<State>,
-  game_storage: Option<Rc<GameStorage>>,
+  game_storage: RefCell<Option<Rc<GameStorage>>>,
   sessions: Sessions,
-  ws_tokens: HashMap<Uuid, WSUser>,
-  metadata: Option<GameMetadata>,
+  ws_tokens: RefCell<HashMap<Uuid, WSUser>>,
+  metadata: RefCell<Option<GameMetadata>>,
   env: Env,
 }
 
@@ -33,28 +33,28 @@ pub struct WSUser {
 
 pub type Sessions = Rc<RefCell<Vec<WebSocket>>>;
 
-#[durable_object]
 impl DurableObject for ArpeggioGame {
   fn new(state: State, env: Env) -> Self {
     Self {
-      game_storage: None,
+      game_storage: RefCell::new(None),
       state: Rc::new(state),
       sessions: Rc::new(RefCell::new(vec![])),
-      ws_tokens: HashMap::new(),
-      metadata: None,
+      ws_tokens: RefCell::new(HashMap::new()),
+      metadata: RefCell::new(None),
       env,
     }
   }
 
   #[tracing::instrument(name = "DO", skip(self, req))]
-  async fn fetch(&mut self, req: Request) -> Result<Response> {
+  async fn fetch(&self, req: Request) -> Result<Response> {
     crate::domigrations::migrate(self.state.storage()).await.map_err(rust_error)?;
-    let game_storage = match self.game_storage {
-      Some(ref game_storage) => game_storage.clone(),
+    let game_storage = self.game_storage.borrow().clone();
+    let game_storage = match game_storage {
+      Some(game_storage) => game_storage,
       None => {
         let storage = GameStorage::load(self.state.clone()).await.map_err(rust_error)?;
         let rc_storage = Rc::new(storage);
-        self.game_storage = Some(rc_storage.clone());
+        *self.game_storage.borrow_mut() = Some(rc_storage.clone());
         rc_storage
       }
     };
@@ -63,9 +63,7 @@ impl DurableObject for ArpeggioGame {
 }
 
 impl ArpeggioGame {
-  async fn route(
-    &mut self, req: Request, game_storage: Rc<GameStorage>,
-  ) -> anyhow::Result<Response> {
+  async fn route(&self, req: Request, game_storage: Rc<GameStorage>) -> anyhow::Result<Response> {
     let path = req.path();
     info!(event="request", method=?req.method(), path=?path);
 
@@ -81,22 +79,23 @@ impl ArpeggioGame {
         let player_id = percent_encoding::percent_decode_str(player_id).decode_utf8()?;
         let player_id: PlayerID = PlayerID(player_id.to_string());
         info!(event = "request-websocket", ?player_id);
-        self.ws_tokens.insert(token, WSUser { role, player_id });
+        self.ws_tokens.borrow_mut().insert(token, WSUser { role, player_id });
         Response::from_json(&json!({"token": token})).map_err(anyhow_str)
       }
       ["ws", game_id, ws_token] => {
         let ws_token: Uuid = ws_token.parse()?;
-        if let Some(ws_user) = self.ws_tokens.remove(&ws_token) {
+        if let Some(ws_user) = self.ws_tokens.borrow_mut().remove(&ws_token) {
           info!(event = "ws-connect", ?path, ?game_id);
           let game_id = game_id.parse::<GameID>()?;
-          let metadata = match &self.metadata {
-            Some(metadata) => metadata.clone(),
+          let metadata = self.metadata.borrow().clone();
+          let metadata = match metadata {
+            Some(metadata) => metadata,
             None => {
               let metadata = storage::get_game_metadata(&self.env, game_id)
                 .await
                 .map_err(anyhow_str)?
                 .ok_or(anyhow!("No metadata!?"))?;
-              self.metadata = Some(metadata.clone());
+              *self.metadata.borrow_mut() = Some(metadata.clone());
               metadata
             }
           };
