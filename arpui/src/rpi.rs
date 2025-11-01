@@ -38,7 +38,7 @@ type ResponseHandlers = HashMap<uuid::Uuid, ResponseHandler>;
 pub fn Connector(role: Role, game_id: GameID, children: Element) -> Element {
   // let connection_count = use_signal(|| 0);
   let mut error = use_signal(|| None);
-  let _coro = use_coroutine(|mut rx: UnboundedReceiver<UIRequest>| async move {
+  let _coro = use_coroutine(move |mut rx: UnboundedReceiver<UIRequest>| async move {
     let response_handlers: ResponseHandlers = HashMap::new();
     let response_handlers = Rc::new(RefCell::new(response_handlers));
     let websocket = match connect_coroutine(role, game_id).await {
