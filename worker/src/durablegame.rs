@@ -48,8 +48,9 @@ impl DurableObject for ArpeggioGame {
   #[tracing::instrument(name = "DO", skip(self, req))]
   async fn fetch(&self, req: Request) -> Result<Response> {
     crate::domigrations::migrate(self.state.storage()).await.map_err(rust_error)?;
-    let game_storage = match &*self.game_storage.borrow() {
-      Some(game_storage) => game_storage.clone(),
+    let game_storage = self.game_storage.borrow().clone();
+    let game_storage = match game_storage {
+      Some(game_storage) => game_storage,
       None => {
         let storage = GameStorage::load(self.state.clone()).await.map_err(rust_error)?;
         let rc_storage = Rc::new(storage);
@@ -86,8 +87,9 @@ impl ArpeggioGame {
         if let Some(ws_user) = self.ws_tokens.borrow_mut().remove(&ws_token) {
           info!(event = "ws-connect", ?path, ?game_id);
           let game_id = game_id.parse::<GameID>()?;
-          let metadata = match &*self.metadata.borrow() {
-            Some(metadata) => metadata.clone(),
+          let metadata = self.metadata.borrow().clone();
+          let metadata = match metadata {
+            Some(metadata) => metadata,
             None => {
               let metadata = storage::get_game_metadata(&self.env, game_id)
                 .await
