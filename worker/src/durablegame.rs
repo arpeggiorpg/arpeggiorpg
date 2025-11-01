@@ -80,7 +80,7 @@ impl ArpeggioGame {
         let player_id: PlayerID = PlayerID(player_id.to_string());
         info!(event = "request-websocket", ?player_id);
         self.ws_tokens.borrow_mut().insert(token, WSUser { role, player_id });
-        Response::from_json(&json!({"token": token})).map_err(anyhow_str)
+        Ok(Response::from_json(&json!({"token": token}))?)
       }
       ["ws", game_id, ws_token] => {
         let ws_token: Uuid = ws_token.parse()?;
@@ -116,8 +116,7 @@ impl ArpeggioGame {
           self.sessions.borrow_mut().push(server.clone());
 
           let account_id = self.env.var("CF_ACCOUNT_ID")?.to_string();
-          let image_delivery_prefix =
-            self.env.var("CF_IMAGE_DELIVERY_PREFIX")?.to_string();
+          let image_delivery_prefix = self.env.var("CF_IMAGE_DELIVERY_PREFIX")?.to_string();
           let images_token = self.env.var("CF_IMAGES_TOKEN")?.to_string();
           let image_service =
             CFImageService::new(account_id, images_token, &image_delivery_prefix, game_id)?;
@@ -134,10 +133,10 @@ impl ArpeggioGame {
             info!(event = "ws-session-done");
           });
 
-          Response::from_websocket(pair.client).map_err(anyhow_str)
+          Ok(Response::from_websocket(pair.client)?)
         } else {
           error!(event = "invalid-ws-token", ?ws_token);
-          Response::error("Bad WS token", 404).map_err(anyhow_str)
+          Ok(Response::error("Bad WS token", 404)?)
         }
       }
       ["g", "invitations", _game_id, invitation_id] if req.method() == Method::Get => {
@@ -145,7 +144,7 @@ impl ArpeggioGame {
       }
       _ => {
         error!(event = "unknown-route", ?path);
-        Response::error(format!("bad URL to DO: {path:?}"), 404).map_err(anyhow_str)
+        Ok(Response::error(format!("bad URL to DO: {path:?}"), 404)?)
       }
     }
   }
@@ -161,7 +160,7 @@ impl ArpeggioGame {
         vec![]
       }
     };
-    Response::from_json(&json!(invitations.contains(&invitation_id))).map_err(anyhow_str)
+    Ok(Response::from_json(&json!(invitations.contains(&invitation_id)))?)
   }
 }
 
@@ -181,5 +180,5 @@ async fn dump_storage(state: &State) -> anyhow::Result<Response> {
       .context("parsing the key as a string")?;
     result.insert(key, value);
   }
-  Response::from_json(&result).map_err(anyhow_str)
+  Ok(Response::from_json(&result)?)
 }

@@ -31,7 +31,7 @@ tracing.workspace = true
 tracing-subscriber = { version = "0.3.17", features = ["time", "json"] }
 tracing-web = "0.1.2"
 # futures-channel = "0.3.28"
-uuid.workspace = true
+uuid = { workspace = true, features = ["js"] }
 # Depending on a git rev of workers-rs to get some unreleased changes (notably a dependency on
 # wasm-bindgen which they for some reason pin to a specific patch version)
 worker = { version = "0.6.7", features = ["d1"] }

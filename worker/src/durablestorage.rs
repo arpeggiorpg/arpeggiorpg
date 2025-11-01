@@ -42,8 +42,12 @@ const RECENT_LOGS_SIZE: usize = 100;
 /// storage API for Durable Objects within a few months, so I am not going to bother trying to make
 /// this storage system too robust for now; it's far too onerous.
 impl GameStorage {
-  pub fn game(&self) -> Game { self.cached_game.borrow().clone() }
-  pub fn recent_logs(&self) -> RecentGameLogs { self.recent_logs.borrow().clone() }
+  pub fn game(&self) -> Game {
+    self.cached_game.borrow().clone()
+  }
+  pub fn recent_logs(&self) -> RecentGameLogs {
+    self.recent_logs.borrow().clone()
+  }
 
   pub async fn load(state: Rc<State>) -> anyhow::Result<Self> {
     // TODO: support muiltple snapshots? Or maybe just wait until SQLite support exists...
@@ -56,11 +60,7 @@ impl GameStorage {
         None => {
           info!(event = "new-game");
           let default_game = Default::default();
-          state
-            .storage()
-            .put("snapshot-0-chunk-0", serde_json::to_string(&default_game)?)
-            .await
-            .map_err(anyhow_str)?;
+          state.storage().put("snapshot-0-chunk-0", serde_json::to_string(&default_game)?).await?;
           (default_game, VecDeque::new())
         }
       };
@@ -81,7 +81,7 @@ impl GameStorage {
     match state.storage().get::<T>(key).await {
       Ok(v) => Ok(Some(v)),
       Err(worker::Error::JsError(e)) if e == "No such value in storage." => Ok(None),
-      Err(e) => Err(anyhow_str(e)),
+      Err(e) => Err(e)?,
     }
   }
 
@@ -97,7 +97,7 @@ impl GameStorage {
 
     let storage = state.storage();
     let list_options = ListOptions::new().prefix("log-");
-    let items = storage.list_with_options(list_options).await.map_err(anyhow_str)?;
+    let items = storage.list_with_options(list_options).await?;
     let mut recent_logs = VecDeque::new();
     if items.size() == 0 {
       return Ok((game, recent_logs));
@@ -147,7 +147,7 @@ impl GameStorage {
       let key =
         format!("log-{:09}-idx-{:09}", self.current_snapshot_idx.get(), self.next_log_idx.get());
       info!(event = "storing-log", ?key);
-      self.state.storage().put(&key, serialized_log).await.map_err(anyhow_str)?;
+      self.state.storage().put(&key, serialized_log).await?;
       logs_with_indices.push((GameIndex { game_idx: 0, log_idx: self.next_log_idx.get() }, log));
 
       self.next_log_idx.set(self.next_log_idx.get() + 1);
@@ -166,7 +166,7 @@ impl GameStorage {
 
     let mut invitations = self.list_invitations().await?;
     invitations.push(invitation_id);
-    self.state.storage().put("invitations", invitations).await.map_err(anyhow_str)?;
+    self.state.storage().put("invitations", invitations).await?;
     Ok(invitation_id)
   }
 
@@ -180,7 +180,7 @@ impl GameStorage {
   ) -> anyhow::Result<Vec<InvitationID>> {
     let mut invitations = self.list_invitations().await?;
     invitations.retain_mut(|inv| inv != &invitation_id);
-    self.state.storage().put("invitations", invitations.clone()).await.map_err(anyhow_str)?;
+    self.state.storage().put("invitations", invitations.clone()).await?;
     Ok(invitations)
   }
 
@@ -191,7 +191,7 @@ impl GameStorage {
     let images_key = format!("images-{image_type}");
     let mut images: Vec<String> = self.get_key(&images_key).await?.unwrap_or(vec![]);
     images.push(url.to_string());
-    self.state.storage().put(&images_key, images).await.map_err(anyhow_str)?;
+    self.state.storage().put(&images_key, images).await?;
     Ok(())
   }
 }

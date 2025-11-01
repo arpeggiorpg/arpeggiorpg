@@ -15,7 +15,6 @@ use arpeggio::{
 use arptypes::multitenant::{GameAndMetadata, GameMetadata, RPIGameRequest, Role};
 
 use crate::{
-  anyhow_str,
   durablegame::{Sessions, WSUser},
   durablestorage::GameStorage,
   images::CFImageService,
@@ -68,10 +67,10 @@ impl GameSession {
 
   pub async fn handle_stream(&self) -> anyhow::Result<()> {
     self.ensure_player().await?;
-    let mut event_stream = self.socket.events().map_err(anyhow_str)?;
+    let mut event_stream = self.socket.events()?;
 
     while let Some(event) = event_stream.next().await {
-      let event = event.map_err(anyhow_str)?;
+      let event = event?;
       // every time we receive an event, we need to restart the timeout
       self.reset_timeout();
       match self.handle_event(event).await {
@@ -160,7 +159,7 @@ impl GameSession {
       }
       WebsocketEvent::Close(close_event) => {
         info!(event = "reciprocating-close", ?close_event);
-        self.socket.close(Some(1000), Some("closing as requested")).map_err(anyhow_str)?;
+        self.socket.close(Some(1000), Some("closing as requested"))?;
         return Ok(true);
       }
     }
@@ -252,8 +251,7 @@ impl GameSession {
         let logs_with_indices = self.game_storage.store_game(changed_game.clone()).await?;
         let rpi_game = RPIGame(&changed_game.game);
         let game = rpi_game.serialize_game()?;
-        self
-          .broadcast(&json!({"t": "refresh_game", "game": game, "logs": logs_with_indices}))?;
+        self.broadcast(&json!({"t": "refresh_game", "game": game, "logs": logs_with_indices}))?;
         Ok(changed_game.logs)
       }
       Err(e) => Err(format!("{e:?}")),

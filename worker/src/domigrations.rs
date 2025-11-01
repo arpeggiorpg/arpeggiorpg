@@ -1,5 +1,3 @@
-use crate::anyhow_str;
-
 use tracing::info;
 use worker::Storage;
 
@@ -13,7 +11,7 @@ pub async fn migrate(storage: Storage) -> anyhow::Result<()> {
     Err(worker::Error::JsError(e)) if e == "No such value in storage." => {
       Ok(migrate_from(storage, 0).await?)
     }
-    Err(e) => Err(anyhow_str(e)),
+    Err(e) => Err(e)?,
   }
 }
 
@@ -27,10 +25,9 @@ async fn migrate_from(_storage: Storage, current_version: usize) -> anyhow::Resu
   // if current_version < latest_migration {
   //   run_migration_2(&mut storage)
   //     .await
-  //     .map_err(anyhow_str)
   //     .with_context(|| format!("Running migration 2"))?;
   //   console_log!("[DO migration] Ran migration 2 successfully!");
-  //   storage.put(VERSION_KEY, 2).await.map_err(anyhow_str)?;
+  //   storage.put(VERSION_KEY, 2).await?;
   // }
 
   info!(event = "migrations-done");

@@ -4,7 +4,7 @@ use serde_json::json;
 use tracing::{error, info};
 use worker::{event, Context, Cors, Env, Method, Request, Response, Result};
 
-use crate::{anyhow_str, rust_error, storage};
+use crate::{rust_error, storage};
 use arptypes::multitenant::{GameID, GameList, GameMetadata, GameProfile, Role, UserID};
 
 /// The main cloudflare Worker for Arpeggio. Handles routes for listing &
@@ -206,6 +206,7 @@ async fn list_games(_req: Request, env: Env, user_id: UserID) -> Result<Response
 
 async fn validate_google_token(id_token: &str, client_id: String) -> anyhow::Result<UserID> {
   let client = google_oauth::Client::new(client_id);
-  let payload = client.validate_id_token(id_token.to_string()).await.map_err(anyhow_str)?;
+  let payload =
+    client.validate_id_token(id_token.to_string()).await.map_err(|s| anyhow::anyhow!(s))?;
   Ok(UserID(format!("google_{}", payload.sub)))
 }
