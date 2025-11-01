@@ -8,9 +8,13 @@ use dioxus::prelude::*;
 use log::{error, info, LevelFilter};
 
 mod rpi;
+mod components;
 use rpi::{auth_token, list_games, Connector, AUTH_TOKEN};
 
-use crate::rpi::{send_request, use_ws};
+use crate::{components::button::{Button,ButtonVariant}, rpi::{send_request, use_ws}};
+
+static COMPONENT_THEME_CSS: Asset = asset!("/assets/dx-components-theme.css");
+
 
 #[derive(Clone, Routable, Debug)]
 #[rustfmt::skip]
@@ -32,7 +36,10 @@ fn main() {
 }
 
 fn App() -> Element {
-  rsx! { Router::<Route> {} }
+  rsx! {
+      document::Stylesheet { href: COMPONENT_THEME_CSS }
+      Router::<Route> {}
+  }
 }
 
 #[component]
@@ -54,7 +61,8 @@ fn Layout() -> Element {
         div {
           class: "rightNavThing",
           Link { to: Route::GameListPage {}, "Game List"}
-          button {
+          Button {
+            variant: ButtonVariant::Ghost,
             onclick: move |_event| {
               info!("Log Off");
               *AUTH_TOKEN.write() = String::new();
