@@ -29,9 +29,6 @@ enum Route {
 }
 
 fn main() {
-  // Init debug
-  console_error_panic_hook::set_once();
-
   launch(App);
 }
 
