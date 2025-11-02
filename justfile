@@ -8,7 +8,7 @@ run-ui:
 
 run-dxui:
     cd arpui; cp index.dev.html index.html
-    cd arpui; dx serve --hot-reload
+    cd arpui; dx serve
 
 # This "ARP_LOCAL_DEV" is used in wrangler.toml (actually, worker/build.js)
 run-worker $ARP_LOCAL_DEV="--dev":
