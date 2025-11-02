@@ -12,7 +12,6 @@ use crate::{
 
 pub static GAME: GlobalSignal<Game> = Signal::global(|| Default::default());
 pub static GAME_NAME: GlobalSignal<String> = Signal::global(|| String::new());
-pub static PLAYER_VIEW_PLAYER_LABEL: GlobalSignal<String> = Signal::global(|| String::new());
 
 #[component]
 pub fn PlayerGamePage(id: GameID, player_id: PlayerID) -> Element {
@@ -59,10 +58,7 @@ fn PlayerGameView(player_id: PlayerID) -> Element {
 
 #[component]
 fn PlayerGameScaffold(player_id: PlayerID, scene_id: Option<SceneID>) -> Element {
-    let player_label = player_id.to_string();
     let active_scene = scene_id.map(|sid| sid.to_string());
-
-    *PLAYER_VIEW_PLAYER_LABEL.write() = player_label.clone();
 
     rsx! {
       div {
@@ -86,7 +82,7 @@ fn PlayerGameScaffold(player_id: PlayerID, scene_id: Option<SceneID>) -> Element
                   TabTrigger { value: "notes".to_string(), index: 1usize, "Notes" }
               }
               TabContent { index: 0usize, value: "creatures".to_string(),
-                  PlayerCreaturesTab {}
+                  PlayerCreaturesTab { player_id: player_id.clone() }
               }
               TabContent { index: 1usize, value: "notes".to_string(),
                   PlayerNotesTab {}
@@ -102,13 +98,36 @@ fn PlayerGameScaffold(player_id: PlayerID, scene_id: Option<SceneID>) -> Element
 }
 
 #[component]
-fn PlayerCreaturesTab() -> Element {
-    let name = PLAYER_VIEW_PLAYER_LABEL();
-    rsx! {
-        div { class: "player-view-tab player-view-tab--creatures",
-            p { "Overview for {name} goes here." }
-            ul {
-                li { "Creatures panel coming soon." }
+fn PlayerCreaturesTab(player_id: PlayerID) -> Element {
+    let game = GAME.read();
+
+    if let Some(player) = game.players.get(&player_id) {
+        if player.creatures.is_empty() {
+            rsx! {
+                div { class: "player-view-tab player-view-tab--creatures",
+                    p { "Overview for {player_id}" }
+                    p { "You have no creatures in your control yet." }
+                }
+            }
+        } else {
+            rsx! {
+                div { class: "player-view-tab player-view-tab--creatures",
+                    p { "Overview for {player_id}" }
+                    h3 { "Your Creatures:" }
+                    ul {
+                        for creature_id in &player.creatures {
+                            if let Some(creature) = game.creatures.get(creature_id) {
+                                li { key: "{creature_id}", "{creature.name}" }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    } else {
+        rsx! {
+            div { class: "player-view-tab player-view-tab--creatures",
+                p { "Player {player_id} not found" }
             }
         }
     }
