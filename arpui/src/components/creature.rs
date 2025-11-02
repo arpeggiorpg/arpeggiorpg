@@ -72,24 +72,17 @@ pub fn SquareImageIcon(url: String, size: Option<u32>) -> Element {
 pub fn ClassIcon(class_id: ClassID) -> Element {
     let game = GAME.read();
     let class = game.classes.get(&class_id);
-
+    
     if let Some(class) = class {
-        let emoji = match class.name.as_str() {
-            "Healer" => "💉",
-            "Rogue" => "🗡️",
-            "Archer" => "🏹",
-            "Mage" => "🔮",
-            "Knight" => "🛡️",
-            "Creature" => "🙂",
-            "Baddie" => "👹",
-            _ => return rsx! { span {} },
-        };
-
-        rsx! {
-            span {
-                class: "text-xl",
-                "{emoji}"
+        if let Some(emoji) = &class.emoji {
+            rsx! {
+                span { 
+                    class: "text-xl",
+                    "{emoji}"
+                }
             }
+        } else {
+            rsx! { span {} }
         }
     } else {
         rsx! { span {} }
