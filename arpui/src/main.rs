@@ -1,20 +1,22 @@
 #![allow(non_snake_case)]
 
 use arptypes::{
-  multitenant::{self, GameAndMetadata, GameID, RPIGameRequest, Role},
-  Game, PlayerID, SceneID,
+  multitenant::{self, GameID, Role},
+  PlayerID,
 };
 use dioxus::prelude::*;
 use js_sys::encode_uri_component;
-use tracing::{error, info};
+use tracing::info;
 
 mod components;
+mod player_view;
 mod rpi;
+use player_view::{PlayerGamePage, GAME_NAME};
 use rpi::{auth_token, list_games, Connector, AUTH_TOKEN};
 
 use crate::{
   components::button::{Button, ButtonVariant},
-  rpi::{rpi_url, send_request, use_ws},
+  rpi::rpi_url,
 };
 
 static COMPONENT_THEME_CSS: Asset = asset!("/assets/dx-components-theme.css");
@@ -178,73 +180,8 @@ fn GMGamePage(id: GameID) -> Element {
 }
 
 #[component]
-fn PlayerGamePage(id: GameID, player_id: PlayerID) -> Element {
-  rsx! {
-    "id: {id:?}"
-    Connector {
-      role: Role::Player, game_id: id,
-      PlayerGame {player_id}
-    }
-  }
-}
-
-#[component]
 fn GMGame() -> Element {
   rsx! {
     "Hi GM"
-  }
-}
-
-pub static GAME: GlobalSignal<Game> = Signal::global(|| Default::default());
-pub static GAME_NAME: GlobalSignal<String> = Signal::global(|| String::new());
-
-#[component]
-fn PlayerGame(player_id: PlayerID) -> Element {
-  let ws = use_ws();
-  let future: Resource<Result<Game, anyhow::Error>> = use_resource(move || async move {
-    info!("GMGetGame!!!!!!!!");
-    let response = send_request::<GameAndMetadata>(RPIGameRequest::GMGetGame, ws).await?;
-    let game = response.game;
-    let game = Game::from_serialized_game(game);
-    *GAME.write() = game.clone();
-    *GAME_NAME.write() = response.metadata.name.clone();
-    Ok(game)
-  });
-
-  match &*future.read_unchecked() {
-    Some(Ok(game)) => {
-      let scene_id = game.players.get(&player_id).and_then(|p| p.scene);
-
-      rsx! {
-       h1 { "A game! {GAME_NAME}" }
-       if let Some(scene_id) = scene_id {
-         SceneView {scene_id}
-       }
-      }
-    }
-    Some(Err(err)) => {
-      error!("Got a FAILING future {:?}", err);
-      rsx! { "Got a FAILING future", "{err:?}"}
-    }
-    None => {
-      rsx! { "Future is None"}
-    }
-  }
-}
-
-#[component]
-fn SceneView(scene_id: SceneID) -> Element {
-  match GAME().get_scene(scene_id) {
-    Ok(scene) => rsx! {
-      h2 {
-        "{scene.name}"
-      }
-      div {
-        "A cool scene!"
-      }
-    },
-    Err(_) => rsx! {
-      div { "Couldn't find scene!" }
-    },
   }
 }
