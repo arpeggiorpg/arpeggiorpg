@@ -6,7 +6,10 @@ use dioxus::prelude::*;
 use tracing::{error, info};
 
 use crate::{
-    components::tabs::{TabContent, TabList, TabTrigger, Tabs},
+    components::{
+        creature::CreatureCard,
+        tabs::{TabContent, TabList, TabTrigger, Tabs},
+    },
     rpi::{send_request, use_ws, Connector},
 };
 
@@ -114,10 +117,13 @@ fn PlayerCreaturesTab(player_id: PlayerID) -> Element {
                 div { class: "player-view-tab player-view-tab--creatures",
                     p { "Overview for {player_id}" }
                     h3 { "Your Creatures:" }
-                    ul {
+                    div {
+                        class: "space-y-3",
                         for creature_id in &player.creatures {
                             if let Some(creature) = game.creatures.get(creature_id) {
-                                li { key: "{creature_id}", "{creature.name}" }
+                                div { key: "{creature_id}",
+                                    CreatureCard { creature: creature.clone() }
+                                }
                             }
                         }
                     }
