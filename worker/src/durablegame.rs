@@ -90,65 +90,59 @@ impl ArpeggioGame {
             }
             ["ws", game_id, ws_token] => {
                 let ws_token: Uuid = ws_token.parse()?;
-                if let Some(ws_user) = self.ws_tokens.borrow_mut().remove(&ws_token) {
-                    info!(event = "ws-connect", ?path, ?game_id);
-                    let game_id = game_id.parse::<GameID>()?;
-                    let metadata = self.metadata.borrow().clone();
-                    let metadata = match metadata {
-                        Some(metadata) => metadata,
-                        None => {
-                            let metadata = storage::get_game_metadata(&self.env, game_id)
-                                .await?
-                                .ok_or(anyhow!("No metadata!?"))?;
-                            *self.metadata.borrow_mut() = Some(metadata.clone());
-                            metadata
-                        }
-                    };
-                    info!(event = "ws-game-metadata", ?metadata);
-
-                    let pair = WebSocketPair::new()?;
-                    let server = pair.server;
-                    // To avoid racking up DO bills, let's close the socket after a while in case someone
-                    // leaves their browser on the page. This should NOT be necessary! We should be using
-                    // Hibernatable Websockets!
-
-                    server.accept()?;
-
-                    // We have *two* asynchronous tasks here:
-                    // 1. listen for messages from the client and act on the game
-                    // 2. listen for broadcasts from the first task and sends a message to all sessions
-                    // Maybe there's a simpler way to do this that doesn't involve a channel and two tasks?
-
-                    self.sessions.borrow_mut().push(server.clone());
-
-                    let account_id = self.env.var("CF_ACCOUNT_ID")?.to_string();
-                    let image_delivery_prefix =
-                        self.env.var("CF_IMAGE_DELIVERY_PREFIX")?.to_string();
-                    let images_token = self.env.var("CF_IMAGES_TOKEN")?.to_string();
-                    let image_service = CFImageService::new(
-                        account_id,
-                        images_token,
-                        &image_delivery_prefix,
-                        game_id,
-                    )?;
-                    let session = wsrpi::GameSession::new(
-                        image_service,
-                        game_storage,
-                        server,
-                        self.sessions.clone(),
-                        ws_user,
-                        metadata,
-                    );
-                    wasm_bindgen_futures::spawn_local(async move {
-                        session.run().await;
-                        info!(event = "ws-session-done");
-                    });
-
-                    Ok(Response::from_websocket(pair.client)?)
-                } else {
+                let Some(ws_user) = self.ws_tokens.borrow_mut().remove(&ws_token) else {
                     error!(event = "invalid-ws-token", ?ws_token);
-                    Ok(Response::error("Bad WS token", 404)?)
-                }
+                    return Ok(Response::error("Bad WS token", 404)?);
+                };
+                info!(event = "ws-connect", ?path, ?game_id);
+                let game_id = game_id.parse::<GameID>()?;
+                let metadata = self.metadata.borrow().clone();
+                let metadata = match metadata {
+                    Some(metadata) => metadata,
+                    None => {
+                        let metadata = storage::get_game_metadata(&self.env, game_id)
+                            .await?
+                            .ok_or(anyhow!("No metadata!?"))?;
+                        *self.metadata.borrow_mut() = Some(metadata.clone());
+                        metadata
+                    }
+                };
+                info!(event = "ws-game-metadata", ?metadata);
+
+                let pair = WebSocketPair::new()?;
+                let server = pair.server;
+                // To avoid racking up DO bills, let's close the socket after a while in case someone
+                // leaves their browser on the page. This should NOT be necessary! We should be using
+                // Hibernatable Websockets!
+
+                server.accept()?;
+
+                // We have *two* asynchronous tasks here:
+                // 1. listen for messages from the client and act on the game
+                // 2. listen for broadcasts from the first task and sends a message to all sessions
+                // Maybe there's a simpler way to do this that doesn't involve a channel and two tasks?
+
+                self.sessions.borrow_mut().push(server.clone());
+
+                let account_id = self.env.var("CF_ACCOUNT_ID")?.to_string();
+                let image_delivery_prefix = self.env.var("CF_IMAGE_DELIVERY_PREFIX")?.to_string();
+                let images_token = self.env.var("CF_IMAGES_TOKEN")?.to_string();
+                let image_service =
+                    CFImageService::new(account_id, images_token, &image_delivery_prefix, game_id)?;
+                let session = wsrpi::GameSession::new(
+                    image_service,
+                    game_storage,
+                    server,
+                    self.sessions.clone(),
+                    ws_user,
+                    metadata,
+                );
+                wasm_bindgen_futures::spawn_local(async move {
+                    session.run().await;
+                    info!(event = "ws-session-done");
+                });
+
+                Ok(Response::from_websocket(pair.client)?)
             }
             ["g", "invitations", _game_id, invitation_id] if req.method() == Method::Get => {
                 self.check_invitation(req, invitation_id).await
