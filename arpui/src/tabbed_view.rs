@@ -1,103 +1,76 @@
-use std::rc::Rc;
-
 use dioxus::prelude::*;
 
 use crate::components::toolbar::{Toolbar, ToolbarButton};
 
-#[derive(Clone)]
+#[derive(Clone, Copy)]
 pub struct TabDefinition {
-    key: String,
-    label: String,
-
-    // Not totally sure about this but it seems like it should be fine to ensure we lazily evaluate
-    // the tab contents. I think this means if you have a dynamic closure it will not update
-    // properly.
-    render: Rc<dyn Fn() -> Element>,
+    pub key: &'static str,
+    pub label: &'static str,
 }
 
 impl TabDefinition {
-    pub fn new<F>(key: impl Into<String>, label: impl Into<String>, render: F) -> Self
+    pub const fn new(key: &'static str, label: &'static str) -> Self {
+        Self { key, label }
+    }
+}
+
+pub trait TabbedContent: Clone {
+    fn key(&self) -> &'static str;
+    fn definitions() -> Vec<TabDefinition>
     where
-        F: Fn() -> Element + 'static,
-    {
-        Self {
-            key: key.into(),
-            label: label.into(),
-            render: Rc::new(render),
-        }
-    }
+        Self: Sized;
 
-    pub fn label(&self) -> &str {
-        &self.label
-    }
+    fn switch(position: usize) -> Option<Self>
+    where
+        Self: Sized;
 
-    pub fn render(&self) -> Element {
-        (self.render)()
-    }
-}
-
-impl PartialEq for TabDefinition {
-    fn eq(&self, other: &Self) -> bool {
-        self.key == other.key && self.label == other.label
-    }
-}
-
-#[derive(Props, Clone, PartialEq)]
-pub struct TabbedViewProps {
-    pub tabs: Vec<TabDefinition>,
-    #[props(default = 0)]
-    pub initial_active: usize,
-    #[props(default)]
-    pub aria_label: Option<String>,
+    fn render(&self) -> Element;
 }
 
 #[component]
-pub fn TabbedView(props: TabbedViewProps) -> Element {
-    let tab_count = props.tabs.len();
-    let initial_index = if tab_count == 0 {
-        0
-    } else {
-        props.initial_active.min(tab_count.saturating_sub(1))
-    };
-    let mut active_index = use_signal(|| initial_index);
+pub fn TabbedView<T>(tab: Signal<T>, #[props(default)] aria_label: Option<String>) -> Element
+where
+    T: TabbedContent + 'static,
+{
+    let definitions = T::definitions();
 
-    use_effect(move || {
-        if tab_count == 0 {
-            active_index.set(0);
-        } else if active_index() >= tab_count {
-            active_index.set(tab_count.saturating_sub(1));
-        }
-    });
+    let current = tab();
+    let current_position = definitions
+        .iter()
+        .position(|d| d.key == current.key())
+        .unwrap();
+    let content = current.render();
 
-    let tabs = props.tabs.clone();
-    let current_index = active_index();
-    let current_content = tabs
-        .get(current_index)
-        .map(|tab| tab.render())
-        .unwrap_or_else(|| rsx!(div { "No tabs available." }).into());
+    let buttons: Vec<_> = definitions
+        .iter()
+        .enumerate()
+        .map(|(index, definition)| {
+            let key = definition.key;
+            let label = definition.label;
+            let aria_pressed = (current_position == index).to_string();
+            rsx! {
+              ToolbarButton {
+                index,
+                key: "{key}",
+                aria_pressed,
+                on_click: move |_| {
+                  if let Some(next) = T::switch(index) {
+                    tab.set(next);
+                  }
+                },
+                "{label}"
+              }
+            }
+        })
+        .collect();
 
     rsx! {
       div { class: "tabbed-view",
         Toolbar {
-          aria_label: props.aria_label,
-          children: {
-            let mut active_signal = active_index;
-            rsx! {
-              for (idx, tab) in tabs.iter().enumerate() {
-                ToolbarButton {
-                  index: idx,
-                  on_click: move |_| {
-                    active_signal.set(idx);
-                  },
-                  aria_pressed: (current_index == idx).to_string(),
-                  "{tab.label()}"
-                }
-              }
-            }
-            .into()
-          }
+          aria_label,
+          {buttons.into_iter()}
         }
-        div { class: "tabbed-view__content", {current_content} }
+        div { class: "tabbed-view__content", {content} }
       }
     }
 }
