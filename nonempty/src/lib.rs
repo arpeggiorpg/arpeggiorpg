@@ -219,19 +219,13 @@ impl<T> NonEmptyWithCursor<T> {
 
     /// Iterate over the elements, providing &T.
     #[inline]
-    pub fn iter(&self) -> std::slice::Iter<T> {
+    pub fn iter(&self) -> impl Iterator<Item = &T> {
         self.data.iter()
-    }
-
-    /// Consume the NonEmptyWithCursor and iterate over the owned elements, providing T.
-    #[inline]
-    pub fn into_iter(self) -> std::vec::IntoIter<T> {
-        self.data.into_iter()
     }
 
     /// Iterate over the elements, providing &mut T.
     #[inline]
-    pub fn iter_mut(&mut self) -> std::slice::IterMut<T> {
+    pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut T> {
         self.data.iter_mut()
     }
 
@@ -260,6 +254,15 @@ impl<T> NonEmptyWithCursor<T> {
         T: PartialEq<T>,
     {
         self.data.contains(el)
+    }
+}
+
+impl<T> IntoIterator for NonEmptyWithCursor<T> {
+    type Item = T;
+    type IntoIter = std::vec::IntoIter<T>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.data.into_iter()
     }
 }
 
@@ -331,19 +334,13 @@ impl<T> NonEmpty<T> {
 
     /// Iterate over the elements, providing &T.
     #[inline]
-    pub fn iter(&self) -> std::slice::Iter<T> {
+    pub fn iter(&self) -> impl Iterator<Item = &T> {
         self.0.iter()
-    }
-
-    /// Consume the NonEmpty and iterate over the owned elements, providing T.
-    #[inline]
-    pub fn into_iter(self) -> std::vec::IntoIter<T> {
-        self.0.into_iter()
     }
 
     /// Iterate over the elements, providing &mut T.
     #[inline]
-    pub fn iter_mut(&mut self) -> std::slice::IterMut<T> {
+    pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut T> {
         self.0.iter_mut()
     }
 
@@ -441,6 +438,15 @@ impl<T> NonEmpty<T> {
         T: PartialEq<T>,
     {
         self.0.contains(el)
+    }
+}
+
+impl<T> IntoIterator for NonEmpty<T> {
+    type Item = T;
+    type IntoIter = std::vec::IntoIter<T>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.into_iter()
     }
 }
 

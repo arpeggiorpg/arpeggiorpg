@@ -20,7 +20,7 @@ pub trait GameExt {
 
     fn validate_campaign(&self) -> Result<(), GameError>;
 
-    fn creatures(&self) -> Result<HashMap<CreatureID, DynamicCreature>, GameError>;
+    fn creatures(&self) -> Result<HashMap<CreatureID, DynamicCreature<'_, '_>>, GameError>;
 
     fn get_item(&self, iid: ItemID) -> Result<&Item, GameError>;
 
@@ -131,7 +131,7 @@ pub trait GameExt {
 
     fn is_in_combat(&self, cid: CreatureID) -> bool;
 
-    fn get_creature(&self, cid: CreatureID) -> Result<DynamicCreature, GameError>;
+    fn get_creature(&self, cid: CreatureID) -> Result<DynamicCreature<'_, '_>, GameError>;
 
     /// Only pub for tests.
     fn dyn_creature<'creature, 'game: 'creature>(
@@ -139,7 +139,7 @@ pub trait GameExt {
         creature: &'creature Creature,
     ) -> Result<DynamicCreature<'creature, 'game>, GameError>;
 
-    fn get_combat(&self) -> Result<DynamicCombat, GameError>;
+    fn get_combat(&self) -> Result<DynamicCombat<'_>, GameError>;
 
     // ** CONSIDER ** moving this chunk of code to... Scene.rs?
 
@@ -243,11 +243,12 @@ pub trait GameExt {
 
 impl GameExt for Game {
     fn export_module(&self, export_path: &FolderPath) -> Result<Game, GameError> {
-        let mut new_game: Game = Default::default();
-        new_game.tile_system = self.tile_system;
-
-        // First the easy part: create a subtree of the campaign to use as the new campaign folder tree.
-        new_game.campaign = self.campaign.subtree(export_path)?;
+        let mut new_game: Game = Game {
+            tile_system: self.tile_system,
+            // First the easy part: create a subtree of the campaign to use as the new campaign folder tree.
+            campaign: self.campaign.subtree(export_path)?,
+            ..Default::default()
+        };
         // Now, walk that campaign and copy over the actual data to the new game.
         for path in new_game.campaign.walk_paths(&FolderPath::root()) {
             let folder = new_game
@@ -394,7 +395,7 @@ impl GameExt for Game {
         Ok(())
     }
 
-    fn creatures(&self) -> Result<HashMap<CreatureID, DynamicCreature>, GameError> {
+    fn creatures(&self) -> Result<HashMap<CreatureID, DynamicCreature<'_, '_>>, GameError> {
         let mut map = HashMap::new();
         for creature in self.creatures.values() {
             map.insert(creature.id, self.dyn_creature(creature)?);
@@ -1825,7 +1826,7 @@ impl GameExt for Game {
         }
     }
 
-    fn get_creature(&self, cid: CreatureID) -> Result<DynamicCreature, GameError> {
+    fn get_creature(&self, cid: CreatureID) -> Result<DynamicCreature<'_, '_>, GameError> {
         self.dyn_creature(
             self.creatures
                 .get(&cid)
@@ -1841,7 +1842,7 @@ impl GameExt for Game {
         DynamicCreature::new(creature, self)
     }
 
-    fn get_combat(&self) -> Result<DynamicCombat, GameError> {
+    fn get_combat(&self) -> Result<DynamicCombat<'_>, GameError> {
         let combat = self.current_combat.as_ref().ok_or(GameError::NotInCombat)?;
         let scene = self.get_scene(combat.scene)?;
         Ok(DynamicCombat {

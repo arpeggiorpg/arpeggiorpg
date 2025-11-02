@@ -44,6 +44,9 @@ use crate::types::{
 // 113511.68172483394 -- as an integer, requires a (signed-ok) 32.
 // so we need a i32/u32 for the result, and we need to use a i64/u64 for the calculation.
 
+type SuccessFn = dyn Fn(&Point3) -> bool;
+
+
 fn na_iso(pt: Point3) -> Isometry3<f64> {
     Isometry3::new(na_vector(pt), na::zero())
 }
@@ -269,7 +272,7 @@ impl TileSystemExt for TileSystem {
         speed: u32units::Length,
     ) -> Vec<Point3> {
         let points_to_check = self.open_points_in_range(start, terrain, speed);
-        let mut success_fns: Vec<Box<dyn Fn(&Point3) -> bool>> = vec![];
+        let mut success_fns: Vec<Box<SuccessFn>> = vec![];
         for pt in points_to_check {
             if pt != start {
                 success_fns.push(Box::new(move |n: &Point3| *n == pt));
@@ -794,7 +797,7 @@ pub mod test {
     #[test]
     fn pathfinding_astar_multi_2() {
         let start = Point3::new(0, 0, 0);
-        let successes: Vec<Box<dyn Fn(&Point3) -> bool>> = vec![
+        let successes: Vec<Box<SuccessFn>> = vec![
             Box::new(|n: &Point3| *n == Point3::new(100, 100, 0)),
             Box::new(|n: &Point3| *n == Point3::new(-100, -100, 0)),
         ];

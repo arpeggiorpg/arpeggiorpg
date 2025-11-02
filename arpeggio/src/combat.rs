@@ -143,8 +143,8 @@ fn sort_combatants(
         .ok_or_else(|| GameError::CombatMustHaveCreatures)
 }
 
-pub trait CombatExt {
-    fn new(scene: SceneID, combatants: Vec<(CreatureID, i16)>) -> Result<Combat, GameError>;
+pub trait CombatExt: Sized {
+    fn new(scene: SceneID, combatants: Vec<(CreatureID, i16)>) -> Result<Self, GameError>;
 
     fn creature_ids(&self) -> Vec<CreatureID>;
 
@@ -162,7 +162,9 @@ pub trait CombatExt {
 }
 
 impl CombatExt for Combat {
-    fn new(scene: SceneID, combatants: Vec<(CreatureID, i16)>) -> Result<Combat, GameError> {
+    // While normally we don't put `new` on trait implementations, it's here because `Combat` is a
+    // foreign type. This coooould probably just be moved to arptypes though.
+    fn new(scene: SceneID, combatants: Vec<(CreatureID, i16)>) -> Result<Self, GameError> {
         Ok(Combat {
             scene,
             movement_used: Zero::zero(),
@@ -245,7 +247,7 @@ pub struct ChangedCombat<'game> {
 }
 
 impl<'game> ChangedCombat<'game> {
-    pub fn r#dyn(&self) -> DynamicCombat {
+    pub fn r#dyn(&self) -> DynamicCombat<'_> {
         DynamicCombat {
             scene: self.scene,
             game: self.game,

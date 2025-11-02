@@ -111,11 +111,11 @@ impl<V: DeriveKey> IndexedHashMap<V> {
         }
     }
 
-    pub fn iter(&self) -> ::std::collections::hash_map::Values<<V as DeriveKey>::KeyType, V> {
+    pub fn iter(&self) -> impl Iterator<Item = &V> {
         self.into_iter()
     }
 
-    pub fn keys(&self) -> ::std::collections::hash_map::Keys<<V as DeriveKey>::KeyType, V> {
+    pub fn keys(&self) -> impl Iterator<Item = &<V as DeriveKey>::KeyType> {
         self.data.keys()
     }
 
@@ -123,10 +123,10 @@ impl<V: DeriveKey> IndexedHashMap<V> {
         self.data.insert(v.derive_key(), v)
     }
 
-    pub fn get<'a, Q: ?Sized>(&'a self, k: &Q) -> Option<&'a V>
+    pub fn get<'a, Q>(&'a self, k: &Q) -> Option<&'a V>
     where
         <V as DeriveKey>::KeyType: ::std::borrow::Borrow<Q>,
-        Q: hash::Hash + Eq,
+        Q: hash::Hash + Eq + ?Sized,
     {
         self.data.get(k)
     }
@@ -138,7 +138,7 @@ impl<V: DeriveKey> IndexedHashMap<V> {
         self.data.contains_key(k)
     }
 
-    pub fn values(&self) -> ::std::collections::hash_map::Values<<V as DeriveKey>::KeyType, V> {
+    pub fn values(&self) -> impl Iterator<Item = &V> {
         self.data.values()
     }
 

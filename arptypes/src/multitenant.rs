@@ -14,9 +14,9 @@ uuid_id!(InvitationID);
 #[derive(Clone, PartialEq, Eq, Serialize, Deserialize, Debug, Default, TS)]
 pub struct UserID(pub String);
 
-impl UserID {
-    pub fn to_string(&self) -> String {
-        self.0.clone()
+impl std::fmt::Display for UserID {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
     }
 }
 
