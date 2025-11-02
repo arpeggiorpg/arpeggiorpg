@@ -735,7 +735,7 @@ pub mod test {
             &start,
             |n| TileSystem::Realistic.point3_neighbors(&huge_box(), size, *n),
             |n| TileSystem::Realistic.point3_distance(start, *n),
-            u32cm(u32::max_value() / 64 - 1), // FIXME this is a workaround for uom bug #55
+            u32cm(u32::MAX / 64 - 1), // FIXME this is a workaround for uom bug #55
             vec![success],
         );
         let ex_path = vec![
@@ -803,7 +803,7 @@ pub mod test {
             &start,
             |n| TileSystem::Realistic.point3_neighbors(&huge_box(), size, *n),
             |n| TileSystem::Realistic.point3_distance(start, *n),
-            u32cm(u32::max_value() / 64 - 1), // FIXME this is a workaround for uom bug #55
+            u32cm(u32::MAX / 64 - 1), // FIXME this is a workaround for uom bug #55
             successes,
         );
         let ex_path_positive = vec![Point3::new(0, 0, 0), Point3::new(100, 100, 0)];

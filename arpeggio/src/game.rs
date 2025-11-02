@@ -2280,9 +2280,11 @@ pub mod test {
     }
 
     pub fn t_game() -> Game {
-        let mut game: Game = Default::default();
-        game.abilities = t_abilities();
-        game.classes = t_classes();
+        let mut game: Game = Game {
+            abilities: t_abilities(),
+            classes: t_classes(),
+            ..Default::default()
+        };
         let mut rogue = t_rogue("rogue");
         rogue.id = cid_rogue();
         let mut ranger = t_ranger("ranger");
