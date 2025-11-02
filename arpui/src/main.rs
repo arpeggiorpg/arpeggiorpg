@@ -11,7 +11,6 @@ use tracing::info;
 mod components;
 mod player_view;
 mod rpi;
-mod tabbed_view;
 use player_view::{PlayerGamePage, GAME_NAME};
 use rpi::{auth_token, list_games, Connector, AUTH_TOKEN};
 use wasm_cookies::CookieOptions;

@@ -6,8 +6,8 @@ use dioxus::prelude::*;
 use tracing::{error, info};
 
 use crate::{
+    components::tabs::{TabContent, TabList, TabTrigger, Tabs},
     rpi::{send_request, use_ws, Connector},
-    tabbed_view::{TabDefinition, TabbedContent, TabbedView},
 };
 
 pub static GAME: GlobalSignal<Game> = Signal::global(|| Default::default());
@@ -63,7 +63,6 @@ fn PlayerGameScaffold(player_id: PlayerID, scene_id: Option<SceneID>) -> Element
     let active_scene = scene_id.map(|sid| sid.to_string());
 
     *PLAYER_VIEW_PLAYER_LABEL.write() = player_label.clone();
-    let sidebar_tab = use_signal(|| PlayerSidebarTab::Creatures);
 
     rsx! {
       div {
@@ -79,9 +78,19 @@ fn PlayerGameScaffold(player_id: PlayerID, scene_id: Option<SceneID>) -> Element
         }
         div {
           class: "player-view-shell__sidebar w-96",
-          TabbedView::<PlayerSidebarTab> {
-            aria_label: Some("Player view details".to_string()),
-            tab: sidebar_tab.clone(),
+          Tabs {
+              class: "player-view-tabs".to_string(),
+              default_value: "creatures".to_string(),
+              TabList {
+                  TabTrigger { value: "creatures".to_string(), index: 0usize, "Creatures" }
+                  TabTrigger { value: "notes".to_string(), index: 1usize, "Notes" }
+              }
+              TabContent { index: 0usize, value: "creatures".to_string(),
+                  PlayerCreaturesTab {}
+              }
+              TabContent { index: 1usize, value: "notes".to_string(),
+                  PlayerNotesTab {}
+              }
           }
           section { class: "player-view-shell__chat",
             h2 { "Chat" }
@@ -92,53 +101,24 @@ fn PlayerGameScaffold(player_id: PlayerID, scene_id: Option<SceneID>) -> Element
     }
 }
 
-#[derive(Clone, PartialEq)]
-enum PlayerSidebarTab {
-    Creatures,
-    Notes,
+#[component]
+fn PlayerCreaturesTab() -> Element {
+    let name = PLAYER_VIEW_PLAYER_LABEL();
+    rsx! {
+        div { class: "player-view-tab player-view-tab--creatures",
+            p { "Overview for {name} goes here." }
+            ul {
+                li { "Creatures panel coming soon." }
+            }
+        }
+    }
 }
 
-impl TabbedContent for PlayerSidebarTab {
-    fn definitions() -> Vec<TabDefinition> {
-        vec![
-            TabDefinition::new("creatures", "Creatures"),
-            TabDefinition::new("notes", "Notes"),
-        ]
-    }
-
-    fn switch(position: usize) -> Option<Self> {
-        match position {
-            0 => Some(PlayerSidebarTab::Creatures),
-            1 => Some(PlayerSidebarTab::Notes),
-            _ => None,
-        }
-    }
-
-    fn render(&self) -> Element {
-        match self {
-            PlayerSidebarTab::Creatures => {
-                let name = PLAYER_VIEW_PLAYER_LABEL();
-                rsx! {
-                  div { class: "player-view-tab player-view-tab--creatures",
-                    p { "Overview for {name} goes here." }
-                    ul {
-                      li { "Creatures panel coming soon." }
-                    }
-                  }
-                }
-            }
-            PlayerSidebarTab::Notes => rsx! {
-              div { class: "player-view-tab player-view-tab--notes",
-                p { "Player notes will appear here." }
-              }
-            },
-        }
-    }
-
-    fn key(&self) -> &'static str {
-        match self {
-            PlayerSidebarTab::Creatures => "creatures",
-            PlayerSidebarTab::Notes => "notes",
+#[component]
+fn PlayerNotesTab() -> Element {
+    rsx! {
+        div { class: "player-view-tab player-view-tab--notes",
+            p { "Player notes will appear here." }
         }
     }
 }
