@@ -86,6 +86,7 @@ dependencies = [
  "futures",
  "futures-util",
  "getrandom 0.2.14",
+ "js-sys",
  "log",
  "reqwest",
  "reqwest-websocket",

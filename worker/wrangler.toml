@@ -20,6 +20,7 @@ new_classes = ["ArpeggioGame"] # Array of new classes
 GOOGLE_CLIENT_ID = "328154234071-c7una5er0n385sdgvih81ngbkgp1l7nj.apps.googleusercontent.com"
 CF_ACCOUNT_ID = "9da1987464827a8209f127a4e0f02b77"
 CF_IMAGE_DELIVERY_PREFIX = "https://arpeggiogame.com/cdn-cgi/imagedelivery/0DU4Tw-CmEbMyEuTLNg6Xg/"
+FRONTEND_URL = "http://localhost:8080"
 
 [[d1_databases]]
 binding = "DB"

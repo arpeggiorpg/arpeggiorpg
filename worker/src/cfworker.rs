@@ -1,5 +1,6 @@
 use arpeggio::types::PlayerID;
 
+use serde::Deserialize;
 use serde_json::json;
 use tracing::{error, info};
 use worker::{event, Context, Cors, Env, Method, Request, Response, Result};
@@ -26,6 +27,11 @@ async fn main(req: Request, env: Env, _ctx: Context) -> Result<Response> {
 
 async fn http_routes(req: Request, env: Env) -> Result<Response> {
   let path = req.path();
+  let parts = &path.split('/').collect::<Vec<_>>()[1..];
+  if parts == ["oauth", "redirect"] {
+    return oauth_redirect(req, env).await;
+  }
+
   let id_token = req.headers().get("x-arpeggio-auth")?;
   if id_token.is_none() {
     // RADIX TODO: so I'm pretty confused... apparently OPTIONS request is hitting this. It's
@@ -46,7 +52,6 @@ async fn http_routes(req: Request, env: Env) -> Result<Response> {
   }
   let user_id = validation_result.unwrap();
 
-  let parts = &path.split('/').collect::<Vec<_>>()[1..];
   match parts {
     ["superuser", rest @ ..] => {
       if !storage::check_superuser(&env, user_id).await? {
@@ -202,6 +207,96 @@ async fn list_games(_req: Request, env: Env, user_id: UserID) -> Result<Response
       .collect::<Vec<_>>(),
   };
   Response::from_json(&list)
+}
+
+#[derive(Debug, Deserialize)]
+struct GoogleTokenResponse {
+  id_token: Option<String>,
+  scope: Option<String>,
+  token_type: Option<String>,
+  expires_in: Option<i64>,
+  access_token: Option<String>,
+  refresh_token: Option<String>,
+}
+
+async fn oauth_redirect(req: Request, env: Env) -> Result<Response> {
+  let mut url = req.url().map_err(rust_error)?;
+  let code =
+    url
+      .query_pairs()
+      .find_map(|(key, value)| if key == "code" { Some(value.into_owned()) } else { None });
+
+  if code.is_none() {
+    error!(event = "oauth-missing-code", query = ?url.query());
+    return Response::error("Missing authorization code", 400);
+  }
+
+  let code = code.unwrap();
+  let state =
+    url
+      .query_pairs()
+      .find_map(|(key, value)| if key == "state" { Some(value.into_owned()) } else { None });
+
+  // remove query parameters to match the original redirect URI sent to Google
+  url.set_query(None);
+  let redirect_uri = url.to_string();
+
+  let client_id = env.var("GOOGLE_CLIENT_ID")?.to_string();
+  let client_secret = env.var("GOOGLE_CLIENT_SECRET").ok().map(|value| value.to_string());
+
+  let mut form: Vec<(String, String)> = vec![
+    ("code".to_string(), code),
+    ("client_id".to_string(), client_id),
+    ("grant_type".to_string(), "authorization_code".to_string()),
+    ("redirect_uri".to_string(), redirect_uri),
+  ];
+
+  if let Some(secret) = client_secret {
+    form.push(("client_secret".to_string(), secret));
+  }
+
+  info!(event = "oauth-exchange-start", state = state.as_deref().unwrap_or_default());
+
+  let client = reqwest::Client::new();
+  let response = client
+    .post("https://oauth2.googleapis.com/token")
+    .form(&form)
+    .send()
+    .await
+    .map_err(rust_error)?;
+
+  let status = response.status();
+  if !status.is_success() {
+    let body = response.text().await.unwrap_or_default();
+    error!(
+      event = "oauth-exchange-failed",
+      %status,
+      body = body.as_str()
+    );
+    return Response::error("Failed to exchange authorization code", status.as_u16());
+  }
+
+  let token_response: GoogleTokenResponse = response.json().await.map_err(rust_error)?;
+  let Some(id_token) = token_response.id_token else {
+    error!(event = "oauth-missing-id-token", response = ?token_response);
+    return Response::error("No id_token in response", 502);
+  };
+  info!(id_token = id_token.as_str(), scope = ?token_response.scope, "Retrieved ID token");
+  let client_id = env.var("GOOGLE_CLIENT_ID")?.to_string();
+  let user_id = validate_google_token(&id_token, client_id).await.map_err(rust_error)?;
+  info!(?user_id, "ID Token validated, got user ID!");
+
+  let frontend_base = env.var("FRONTEND_URL")?.to_string();
+  let mut frontend_url = worker::Url::parse(&frontend_base).map_err(rust_error)?;
+  frontend_url.set_path("/auth-success");
+  {
+    let mut pairs = frontend_url.query_pairs_mut();
+    pairs.clear();
+    pairs.append_pair("id_token", &id_token);
+  }
+  info!(event = "oauth-redirect", redirect = frontend_url.as_str());
+
+  Response::redirect(frontend_url)
 }
 
 async fn validate_google_token(id_token: &str, client_id: String) -> anyhow::Result<UserID> {

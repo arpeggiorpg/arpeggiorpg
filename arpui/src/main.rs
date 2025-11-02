@@ -2,19 +2,24 @@
 
 use arptypes::{
   multitenant::{self, GameAndMetadata, GameID, RPIGameRequest, Role},
-  Game, PlayerID, Scene, SceneID,
+  Game, PlayerID, SceneID,
 };
 use dioxus::prelude::*;
-use log::{error, info, LevelFilter};
+use js_sys::encode_uri_component;
+use tracing::{error, info};
 
-mod rpi;
 mod components;
+mod rpi;
 use rpi::{auth_token, list_games, Connector, AUTH_TOKEN};
 
-use crate::{components::button::{Button,ButtonVariant}, rpi::{send_request, use_ws}};
+use crate::{
+  components::button::{Button, ButtonVariant},
+  rpi::{rpi_url, send_request, use_ws},
+};
 
 static COMPONENT_THEME_CSS: Asset = asset!("/assets/dx-components-theme.css");
-
+const GOOGLE_CLIENT_ID: &str =
+  "328154234071-c7una5er0n385sdgvih81ngbkgp1l7nj.apps.googleusercontent.com";
 
 #[derive(Clone, Routable, Debug)]
 #[rustfmt::skip]
@@ -26,6 +31,10 @@ enum Route {
     GMGamePage { id: GameID },
     #[route("/player/:id/:player_id")]
     PlayerGamePage { id: GameID, player_id: PlayerID },
+    #[route("/auth-success?:id_token")]
+    AuthSuccessPage {
+        id_token: String
+    },
 }
 
 fn main() {
@@ -46,6 +55,20 @@ fn Layout() -> Element {
     *AUTH_TOKEN.write() = auth_token();
   }
 
+  let google_oauth_url = {
+    let redirect_uri = format!("{}/oauth/redirect", rpi_url());
+    let encoded_redirect =
+      encode_uri_component(&redirect_uri).as_string().unwrap_or_else(|| redirect_uri.clone());
+
+    format!(
+      "https://accounts.google.com/o/oauth2/v2/auth?client_id={}&redirect_uri={}&response_type=code&scope=openid%20email%20profile&prompt=consent",
+      GOOGLE_CLIENT_ID,
+      encoded_redirect,
+    )
+  };
+
+  let navigator = navigator();
+
   rsx! {
     div {
       style: "display: flex; flex-direction: column; height: 100%",
@@ -59,27 +82,40 @@ fn Layout() -> Element {
           class: "rightNavThing",
           Link { to: Route::GameListPage {}, "Game List"}
           Button {
+            variant: ButtonVariant::Primary,
+            onclick: move |_e| {
+              let target: NavigationTarget<Route> = google_oauth_url.parse().unwrap();
+              navigator.push(target);
+            },
+            "Log in with Google"
+          }
+          Button {
             variant: ButtonVariant::Ghost,
             onclick: move |_event| {
               info!("Log Off");
               *AUTH_TOKEN.write() = String::new();
-              wasm_cookies::set("arpeggio-token", "", &Default::default())
+              wasm_cookies::set("arpeggio-token", "", &Default::default());
             },
             "Log Off"
           }
         }
       }
-      "Enter your auth token:"
-      input {
-        value: "{AUTH_TOKEN}",
-        oninput: move |event| {
-          *AUTH_TOKEN.write() = event.value();
-          wasm_cookies::set("arpeggio-token", &event.value(), &Default::default())
-        }
-      }
       Outlet::<Route> {}
     }
   }
+}
+
+#[component]
+fn AuthSuccessPage(id_token: String) -> Element {
+  let navigator = navigator();
+  use_effect(move || {
+    info!(id_token, "OAuth redirect returned id_token");
+    *AUTH_TOKEN.write() = id_token.clone();
+    wasm_cookies::set("arpeggio-token", &id_token, &Default::default());
+    navigator.push(Route::GameListPage);
+  });
+
+  rsx! { "Completing authentication..." }
 }
 
 #[component]
