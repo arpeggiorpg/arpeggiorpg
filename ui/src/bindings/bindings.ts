@@ -53,9 +53,9 @@ export type AttrID = string;
 
 export interface ChangedGame { game: GameData, logs: Array<GameLog>, }
 
-export interface Class { id: ClassID, name: string, abilities: Array<AbilityID>, conditions: Array<Condition>, color: string, }
+export interface Class { id: ClassID, name: string, abilities: Array<AbilityID>, conditions: Array<Condition>, color: string, emoji: string | null, }
 
-export interface ClassCreation { name: string, abilities: Array<AbilityID>, conditions: Array<Condition>, color: string, }
+export interface ClassCreation { name: string, abilities: Array<AbilityID>, conditions: Array<Condition>, color: string, emoji: string | null, }
 
 export type ClassID = string;
 
