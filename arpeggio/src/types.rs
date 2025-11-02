@@ -1,9 +1,5 @@
 //! Simple types, with pure operations.
 
-// Just disable large_enum_variant lints for now, since I'm not really that interested in fixing
-// that for a while
-#![allow(clippy::large_enum_variant)]
-
 use rand::Rng;
 
 pub use arptypes::*;

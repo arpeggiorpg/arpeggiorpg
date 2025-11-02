@@ -278,6 +278,7 @@ pub enum ModuleSource {
 }
 
 #[derive(Debug, Error, PartialEq)]
+#[allow(clippy::large_enum_variant)] // TODO FIXME: GMCommand is big!
 pub enum GameError {
     #[error("File {0} was not found")]
     FileNotFound(String),

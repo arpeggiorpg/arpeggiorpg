@@ -86,6 +86,7 @@ pub enum ImageType {
 /// just the commands that related to one specific game.
 #[derive(Serialize, Deserialize, TS, Debug)]
 #[serde(tag = "t")]
+#[allow(clippy::large_enum_variant)] // TODO FIXME: GMCommand is big!
 pub enum RPIGameRequest {
     GMGetGame,
     GMCommand {

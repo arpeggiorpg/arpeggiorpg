@@ -12,9 +12,7 @@ pub async fn check_superuser(env: &Env, user_id: UserID) -> worker::Result<bool>
     return Ok(authorized.is_some());
 
     #[derive(Deserialize)]
-    struct HasAThing {
-        is_su: usize,
-    }
+    struct HasAThing {}
 }
 
 pub async fn list_all_games(env: &Env) -> worker::Result<Vec<(GameID, GameMetadata)>> {

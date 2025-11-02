@@ -230,10 +230,10 @@ async fn list_games(_req: Request, env: Env, user_id: UserID) -> Result<Response
 struct GoogleTokenResponse {
     id_token: Option<String>,
     scope: Option<String>,
-    token_type: Option<String>,
-    expires_in: Option<i64>,
-    access_token: Option<String>,
-    refresh_token: Option<String>,
+    // token_type: Option<String>,
+    // expires_in: Option<i64>,
+    // access_token: Option<String>,
+    // refresh_token: Option<String>,
 }
 
 async fn oauth_redirect(req: Request, env: Env) -> Result<Response> {

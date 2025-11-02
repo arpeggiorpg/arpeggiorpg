@@ -561,7 +561,7 @@ where
     let mut to_see = BinaryHeap::new();
     to_see.push(InvCmpHolder {
         key: heuristic(start),
-        payload: (Zero::zero(), start.clone()),
+        payload: (Zero::zero(), *start),
     });
     let mut parents: HashMap<Point3, (Point3, C)> = HashMap::new();
     let mut found_nodes = vec![];
@@ -573,7 +573,7 @@ where
         successes.retain_mut(|ref mut success_fn| {
             let was_successful = success_fn(&node);
             if was_successful {
-                found_nodes.push((node.clone(), cost));
+                found_nodes.push((node, cost));
             }
             !was_successful
         });
@@ -593,7 +593,7 @@ where
             let new_cost = cost + move_cost;
             if neighbour != *start && old_cost.is_none_or(|c| new_cost < c) && new_cost <= max_cost
             {
-                parents.insert(neighbour.clone(), (node.clone(), new_cost));
+                parents.insert(neighbour, (node, new_cost));
                 let new_predicted_cost = new_cost + heuristic(&neighbour);
                 to_see.push(InvCmpHolder {
                     key: new_predicted_cost,
