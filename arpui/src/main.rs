@@ -24,17 +24,17 @@ const GOOGLE_CLIENT_ID: &str =
 #[derive(Clone, Routable, Debug)]
 #[rustfmt::skip]
 enum Route {
-  #[layout(Layout)]
+  #[route("/auth-success?:id_token")]
+  AuthSuccessPage {
+    id_token: String
+  },
+  #[layout(AuthRequiredLayout)]
     #[route("/")]
     GameListPage,
     #[route("/gm/:id")]
     GMGamePage { id: GameID },
     #[route("/player/:id/:player_id")]
     PlayerGamePage { id: GameID, player_id: PlayerID },
-    #[route("/auth-success?:id_token")]
-    AuthSuccessPage {
-        id_token: String
-    },
 }
 
 fn main() {
@@ -49,7 +49,7 @@ fn App() -> Element {
 }
 
 #[component]
-fn Layout() -> Element {
+fn AuthRequiredLayout() -> Element {
   // Mirror the cookie to the GlobalSignal so things can reactively respond to it changing.
   if AUTH_TOKEN() != auth_token() {
     *AUTH_TOKEN.write() = auth_token();
@@ -68,39 +68,46 @@ fn Layout() -> Element {
   };
 
   let navigator = navigator();
+  let has_auth_token = !AUTH_TOKEN().is_empty();
 
   rsx! {
-    div {
-      style: "display: flex; flex-direction: column; height: 100%",
+    if !has_auth_token {
       div {
-        style: "display: flex; justify-content: space-between;",
-        h1 {
-          Link { to: Route::GameListPage {}, "ArpeggioRPG" }
-          " — {GAME_NAME}"
-        }
-        div {
-          class: "rightNavThing",
-          Link { to: Route::GameListPage {}, "Game List"}
-          Button {
-            variant: ButtonVariant::Primary,
-            onclick: move |_e| {
-              let target: NavigationTarget<Route> = google_oauth_url.parse().unwrap();
-              navigator.push(target);
-            },
-            "Log in with Google"
-          }
-          Button {
-            variant: ButtonVariant::Ghost,
-            onclick: move |_event| {
-              info!("Log Off");
-              *AUTH_TOKEN.write() = String::new();
-              wasm_cookies::set("arpeggio-token", "", &Default::default());
-            },
-            "Log Off"
-          }
+        style: "display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; gap: 1rem;",
+        Button {
+          variant: ButtonVariant::Primary,
+          onclick: move |_e| {
+            let target: NavigationTarget<Route> = google_oauth_url.parse().unwrap();
+            navigator.push(target);
+          },
+          "Log in with Google"
         }
       }
-      Outlet::<Route> {}
+    } else {
+      div {
+        style: "display: flex; flex-direction: column; height: 100%",
+        div {
+          style: "display: flex; justify-content: space-between;",
+          h1 {
+            Link { to: Route::GameListPage {}, "ArpeggioRPG" }
+            " — {GAME_NAME}"
+          }
+          div {
+            class: "rightNavThing",
+            Link { to: Route::GameListPage {}, "Game List"}
+            Button {
+              variant: ButtonVariant::Ghost,
+              onclick: move |_event| {
+                info!("Log Off");
+                *AUTH_TOKEN.write() = String::new();
+                wasm_cookies::set("arpeggio-token", "", &Default::default());
+              },
+              "Log Off"
+            }
+          }
+        }
+        Outlet::<Route> {}
+      }
     }
   }
 }
