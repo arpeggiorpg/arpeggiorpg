@@ -72,17 +72,15 @@ pub fn SquareImageIcon(url: String, size: Option<u32>) -> Element {
 pub fn ClassIcon(class_id: ClassID) -> Element {
     let game = GAME.read();
     let class = game.classes.get(&class_id);
-    
+
     if let Some(class) = class {
-        if let Some(emoji) = &class.emoji {
-            rsx! {
-                span { 
-                    class: "text-xl",
-                    "{emoji}"
-                }
+        let emoji = class.emoji.as_deref().unwrap_or("🧑‍🎓");
+        rsx! {
+            span {
+                class: "text-xl",
+                title: "{class.name}",
+                "{emoji}"
             }
-        } else {
-            rsx! { span {} }
         }
     } else {
         rsx! { span {} }
