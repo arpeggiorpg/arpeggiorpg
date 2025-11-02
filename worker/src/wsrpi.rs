@@ -202,7 +202,7 @@ impl GameSession {
                 self.change_game(changed_game).await
             }
             (Role::GM, GMCommand { command }) => {
-                let changed_game = game.perform_gm_command(command);
+                let changed_game = game.perform_gm_command(*command);
                 self.change_game(changed_game).await
             }
             (

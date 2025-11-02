@@ -11,7 +11,7 @@ use ts_rs::TS;
 use uom::si::length::{centimeter, meter};
 use uuid::{Error as UuidParseError, Uuid};
 
-use crate::{GMCommand, GameLog};
+use crate::GameLog;
 
 pub type Color = String;
 pub type Inventory = HashMap<ItemID, u64>;
@@ -278,7 +278,6 @@ pub enum ModuleSource {
 }
 
 #[derive(Debug, Error, PartialEq)]
-#[allow(clippy::large_enum_variant)] // TODO FIXME: GMCommand is big!
 pub enum GameError {
     #[error("File {0} was not found")]
     FileNotFound(String),
@@ -302,8 +301,6 @@ pub enum GameError {
     IDTooLong(String),
     #[error("The condition with ID {0:?} wasn't found.")]
     ConditionNotFound(ConditionID),
-    #[error("Cannot process {0:?} in this state.")]
-    InvalidCommand(GMCommand),
     #[error("The class {0:?} already exists.")]
     ClassAlreadyExists(ClassID),
     #[error("The class {0:?} was not found.")]
@@ -854,7 +851,9 @@ impl Game {
 
     pub fn from_serialized_game(sg: SerializedGame) -> Game {
         let creatures: IndexedHashMap<Creature> = sg
-            .creatures.into_values().map(Creature::from_serialized_creature)
+            .creatures
+            .into_values()
+            .map(Creature::from_serialized_creature)
             .collect();
         Game {
             current_combat: sg.current_combat,
