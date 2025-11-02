@@ -853,11 +853,9 @@ impl Game {
 
     pub fn from_serialized_game(sg: SerializedGame) -> Game {
         let creatures: IndexedHashMap<Creature> = sg
-            .creatures
-            .into_iter()
-            .map(|(_key, value)| Creature::from_serialized_creature(value))
+            .creatures.into_values().map(Creature::from_serialized_creature)
             .collect();
-        return Game {
+        Game {
             current_combat: sg.current_combat,
             abilities: sg.abilities,
             creatures,
@@ -868,7 +866,7 @@ impl Game {
             campaign: sg.campaign,
             players: sg.players,
             active_scene: sg.active_scene,
-        };
+        }
     }
 }
 

@@ -591,7 +591,7 @@ where
             let old_cost = parents.get(&neighbour).map(|&(_, c)| c);
             let new_cost = cost + move_cost;
             if neighbour != *start
-                && old_cost.map_or(true, |c| new_cost < c)
+                && old_cost.is_none_or(|c| new_cost < c)
                 && new_cost <= max_cost
             {
                 parents.insert(neighbour.clone(), (node.clone(), new_cost));

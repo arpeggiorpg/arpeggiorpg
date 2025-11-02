@@ -2,10 +2,9 @@
 
 // Just disable large_enum_variant lints for now, since I'm not really that interested in fixing
 // that for a while
-#![cfg_attr(feature = "cargo-clippy", allow(clippy::large_enum_variant))]
+#![allow(clippy::large_enum_variant)]
 
 use rand::Rng;
-use serde::{ser::Error as SerError, Serialize, Serializer};
 
 pub use arptypes::*;
 
@@ -149,12 +148,12 @@ impl<'a> RPIGame<'a> {
             abilities: game.abilities.clone(),
             creatures,
             classes: game.classes.clone(),
-            tile_system: game.tile_system.clone(),
+            tile_system: game.tile_system,
             scenes: game.scenes.clone(),
             campaign: game.campaign.clone(),
             items: game.items.clone(),
             players: game.players.clone(),
-            active_scene: game.active_scene.clone(),
+            active_scene: game.active_scene,
         };
         Ok(sgame)
     }
