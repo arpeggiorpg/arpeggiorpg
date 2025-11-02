@@ -8,15 +8,18 @@ use dioxus::prelude::*;
 use js_sys::encode_uri_component;
 use log::{error, info};
 
-mod rpi;
 mod components;
+mod rpi;
 use rpi::{auth_token, list_games, Connector, AUTH_TOKEN};
 
-use crate::{components::button::{Button,ButtonVariant}, rpi::{send_request, use_ws}};
+use crate::{
+  components::button::{Button, ButtonVariant},
+  rpi::{rpi_url, send_request, use_ws},
+};
 
 static COMPONENT_THEME_CSS: Asset = asset!("/assets/dx-components-theme.css");
-const GOOGLE_CLIENT_ID: &str = "328154234071-c7una5er0n385sdgvih81ngbkgp1l7nj.apps.googleusercontent.com";
-
+const GOOGLE_CLIENT_ID: &str =
+  "328154234071-c7una5er0n385sdgvih81ngbkgp1l7nj.apps.googleusercontent.com";
 
 #[derive(Clone, Routable, Debug)]
 #[rustfmt::skip]
@@ -49,13 +52,9 @@ fn Layout() -> Element {
   }
 
   let google_oauth_url = {
-    let origin = web_sys::window()
-      .and_then(|win| win.location().origin().ok())
-      .unwrap_or_else(|| "http://localhost:8080".to_string());
-    let redirect_uri = format!("{}/oauth/redirect", origin.trim_end_matches('/'));
-    let encoded_redirect = encode_uri_component(&redirect_uri)
-      .as_string()
-      .unwrap_or_else(|| redirect_uri.clone());
+    let redirect_uri = format!("{}/oauth/redirect", rpi_url());
+    let encoded_redirect =
+      encode_uri_component(&redirect_uri).as_string().unwrap_or_else(|| redirect_uri.clone());
 
     format!(
       "https://accounts.google.com/o/oauth2/v2/auth?client_id={}&redirect_uri={}&response_type=code&scope=openid%20email%20profile&prompt=consent",

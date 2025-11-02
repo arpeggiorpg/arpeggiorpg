@@ -17,7 +17,7 @@ pub fn auth_token() -> String {
   wasm_cookies::get("arpeggio-token").unwrap_or(Ok(String::new())).unwrap_or(String::new())
 }
 
-fn rpi_url() -> String {
+pub fn rpi_url() -> String {
   let window = web_sys::window().expect("global window doesn't exist");
   let document = window.document().expect("document must exist");
   let meta = document
