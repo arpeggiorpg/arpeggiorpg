@@ -2,11 +2,11 @@
 
 use arptypes::{
   multitenant::{self, GameAndMetadata, GameID, RPIGameRequest, Role},
-  Game, PlayerID, Scene, SceneID,
+  Game, PlayerID, SceneID,
 };
 use dioxus::prelude::*;
 use js_sys::encode_uri_component;
-use log::{error, info};
+use tracing::{error, info};
 
 mod components;
 mod rpi;
@@ -31,6 +31,10 @@ enum Route {
     GMGamePage { id: GameID },
     #[route("/player/:id/:player_id")]
     PlayerGamePage { id: GameID, player_id: PlayerID },
+    #[route("/auth-success?:id_token")]
+    AuthSuccessPage {
+        id_token: String
+    },
 }
 
 fn main() {
@@ -63,6 +67,8 @@ fn Layout() -> Element {
     )
   };
 
+  let navigator = navigator();
+
   rsx! {
     div {
       style: "display: flex; flex-direction: column; height: 100%",
@@ -75,8 +81,12 @@ fn Layout() -> Element {
         div {
           class: "rightNavThing",
           Link { to: Route::GameListPage {}, "Game List"}
-          a {
-            href: "{google_oauth_url}",
+          Button {
+            variant: ButtonVariant::Primary,
+            onclick: move |_e| {
+              let target: NavigationTarget<Route> = google_oauth_url.parse().unwrap();
+              navigator.push(target);
+            },
             "Log in with Google"
           }
           Button {
@@ -84,23 +94,28 @@ fn Layout() -> Element {
             onclick: move |_event| {
               info!("Log Off");
               *AUTH_TOKEN.write() = String::new();
-              wasm_cookies::set("arpeggio-token", "", &Default::default())
+              wasm_cookies::set("arpeggio-token", "", &Default::default());
             },
             "Log Off"
           }
         }
       }
-      "Enter your auth token:"
-      input {
-        value: "{AUTH_TOKEN}",
-        oninput: move |event| {
-          *AUTH_TOKEN.write() = event.value();
-          wasm_cookies::set("arpeggio-token", &event.value(), &Default::default())
-        }
-      }
       Outlet::<Route> {}
     }
   }
+}
+
+#[component]
+fn AuthSuccessPage(id_token: String) -> Element {
+  let navigator = navigator();
+  use_effect(move || {
+    info!(id_token, "OAuth redirect returned id_token");
+    *AUTH_TOKEN.write() = id_token.clone();
+    wasm_cookies::set("arpeggio-token", &id_token, &Default::default());
+    navigator.push(Route::GameListPage);
+  });
+
+  rsx! { "Completing authentication..." }
 }
 
 #[component]

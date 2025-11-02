@@ -277,19 +277,26 @@ async fn oauth_redirect(req: Request, env: Env) -> Result<Response> {
   }
 
   let token_response: GoogleTokenResponse = response.json().await.map_err(rust_error)?;
-  if let Some(id_token) = token_response.id_token.as_deref() {
-    info!(event = "oauth-id-token", id_token = id_token, scope = ?token_response.scope, "ID Token Received");
-    let client_id = env.var("GOOGLE_CLIENT_ID")?.to_string();
-    let user_id = validate_google_token(id_token, client_id).await.map_err(rust_error)?;
-    info!(?user_id, "ID Token validated, got user ID!");
-  } else {
+  let Some(id_token) = token_response.id_token else {
     error!(event = "oauth-missing-id-token", response = ?token_response);
     return Response::error("No id_token in response", 502);
-  }
+  };
+  info!(id_token = id_token.as_str(), scope = ?token_response.scope, "Retrieved ID token");
+  let client_id = env.var("GOOGLE_CLIENT_ID")?.to_string();
+  let user_id = validate_google_token(&id_token, client_id).await.map_err(rust_error)?;
+  info!(?user_id, "ID Token validated, got user ID!");
 
-  Response::from_html(
-    "<!doctype html><html><body>Authentication complete. You can close this window.</body></html>",
-  )
+  let frontend_base = env.var("FRONTEND_URL")?.to_string();
+  let mut frontend_url = worker::Url::parse(&frontend_base).map_err(rust_error)?;
+  frontend_url.set_path("/auth-success");
+  {
+    let mut pairs = frontend_url.query_pairs_mut();
+    pairs.clear();
+    pairs.append_pair("id_token", &id_token);
+  }
+  info!(event = "oauth-redirect", redirect = frontend_url.as_str());
+
+  Response::redirect(frontend_url)
 }
 
 async fn validate_google_token(id_token: &str, client_id: String) -> anyhow::Result<UserID> {
