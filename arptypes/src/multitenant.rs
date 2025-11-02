@@ -1,9 +1,9 @@
 use std::collections::VecDeque;
 
 use serde::{Deserialize, Serialize};
+use strum;
 use ts_rs::TS;
 use uuid::Uuid;
-use strum;
 
 use crate::{uuid_id, AbilityID, CreatureID, GMCommand, PlayerCommand, PlayerID, Point3, SceneID};
 
@@ -15,21 +15,22 @@ uuid_id!(InvitationID);
 pub struct UserID(pub String);
 
 impl UserID {
-  pub fn to_string(&self) -> String { self.0.clone() }
+    pub fn to_string(&self) -> String {
+        self.0.clone()
+    }
 }
 
 #[derive(Clone, PartialEq, Eq, Serialize, Deserialize, Debug, Default, TS)]
 pub struct GameMetadata {
-  pub name: String,
+    pub name: String,
 }
 
 #[derive(Clone, PartialEq, Serialize, Deserialize, Debug)]
 pub struct GameAndMetadata {
-  pub game: crate::SerializedGame,
-  pub metadata: GameMetadata,
-  pub logs: VecDeque<(GameIndex, crate::GameLog)>
+    pub game: crate::SerializedGame,
+    pub metadata: GameMetadata,
+    pub logs: VecDeque<(GameIndex, crate::GameLog)>,
 }
-
 
 /// The indices stored by GameIndex are a little weird.
 ///
@@ -40,44 +41,44 @@ pub struct GameAndMetadata {
 /// e.g., a GameIndex of 0/0 has one snapshot and no logs.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Debug, Default, TS)]
 pub struct GameIndex {
-  pub game_idx: usize,
-  pub log_idx: usize,
+    pub game_idx: usize,
+    pub log_idx: usize,
 }
 
 /// A GameProfile is a specific user's association with a game.
 #[derive(Clone, PartialEq, Eq, Serialize, Deserialize, Debug, TS)]
 pub struct GameProfile {
-  pub user_id: UserID,
-  pub game_id: GameID,
-  pub profile_name: PlayerID,
-  pub role: Role,
+    pub user_id: UserID,
+    pub game_id: GameID,
+    pub profile_name: PlayerID,
+    pub role: Role,
 }
 
 #[derive(
-  Copy, Clone, PartialEq, Eq, Serialize, Deserialize, Debug, TS, strum::EnumString, strum::Display,
+    Copy, Clone, PartialEq, Eq, Serialize, Deserialize, Debug, TS, strum::EnumString, strum::Display,
 )]
 pub enum Role {
-  GM,
-  Player,
+    GM,
+    Player,
 }
 
 /// The result from listing a game. Includes a name (and maybe other data)
 #[derive(PartialEq, Eq, Clone, Serialize, Deserialize, Debug, TS)]
 pub struct GameList {
-  pub games: Vec<(GameProfile, GameMetadata)>,
+    pub games: Vec<(GameProfile, GameMetadata)>,
 }
 
 #[derive(Debug)]
 pub struct Invitation {
-  pub id: InvitationID,
-  pub game_id: GameID,
+    pub id: InvitationID,
+    pub game_id: GameID,
 }
 
 #[derive(Clone, Copy, Serialize, Deserialize, Debug, TS, strum::EnumString, strum::Display)]
 #[serde(tag = "t")]
 pub enum ImageType {
-  BackgroundImage,
-  CreatureIcon,
+    BackgroundImage,
+    CreatureIcon,
 }
 
 /// The various kinds of requests that a frontend can make of the RPI in the context of a game.
@@ -86,53 +87,53 @@ pub enum ImageType {
 #[derive(Serialize, Deserialize, TS, Debug)]
 #[serde(tag = "t")]
 pub enum RPIGameRequest {
-  GMGetGame,
-  GMCommand {
-    command: GMCommand,
-  },
+    GMGetGame,
+    GMCommand {
+        command: GMCommand,
+    },
 
-  // GM Commands for managing invitations happen here in the RPIGameRequest, but the check/accept
-  // operations happen on regular HTTP endpoints, because you can't get a websocket to a game unless
-  // you're authorized already.
-  GMGenerateInvitation,
-  GMListInvitations,
-  GMDeleteInvitation {
-    invitation_id: InvitationID,
-  },
+    // GM Commands for managing invitations happen here in the RPIGameRequest, but the check/accept
+    // operations happen on regular HTTP endpoints, because you can't get a websocket to a game unless
+    // you're authorized already.
+    GMGenerateInvitation,
+    GMListInvitations,
+    GMDeleteInvitation {
+        invitation_id: InvitationID,
+    },
 
-  // "upload" an image by giving us a URL which will be downloaded and saved to our Image store.
-  UploadImageFromURL {
-    url: String,
-    purpose: ImageType,
-  },
+    // "upload" an image by giving us a URL which will be downloaded and saved to our Image store.
+    UploadImageFromURL {
+        url: String,
+        purpose: ImageType,
+    },
 
-  // Request a presigned image upload URL that the browser can send the file data to to store it in
-  // our Image store.
-  RequestUploadImage {
-    purpose: ImageType,
-  },
+    // Request a presigned image upload URL that the browser can send the file data to to store it in
+    // our Image store.
+    RequestUploadImage {
+        purpose: ImageType,
+    },
 
-  PlayerCommand {
-    command: PlayerCommand,
-  },
+    PlayerCommand {
+        command: PlayerCommand,
+    },
 
-  // These things *technically* could be split up into GM and Player variants,
-  // but it's not really a big deal if players can view movement & target
-  // options for other creatures
-  MovementOptions {
-    scene_id: SceneID,
-    creature_id: CreatureID,
-  },
-  CombatMovementOptions,
-  TargetOptions {
-    scene_id: SceneID,
-    creature_id: CreatureID,
-    ability_id: AbilityID,
-  },
-  PreviewVolumeTargets {
-    scene_id: SceneID,
-    creature_id: CreatureID,
-    ability_id: AbilityID,
-    point: Point3,
-  },
+    // These things *technically* could be split up into GM and Player variants,
+    // but it's not really a big deal if players can view movement & target
+    // options for other creatures
+    MovementOptions {
+        scene_id: SceneID,
+        creature_id: CreatureID,
+    },
+    CombatMovementOptions,
+    TargetOptions {
+        scene_id: SceneID,
+        creature_id: CreatureID,
+        ability_id: AbilityID,
+    },
+    PreviewVolumeTargets {
+        scene_id: SceneID,
+        creature_id: CreatureID,
+        ability_id: AbilityID,
+        point: Point3,
+    },
 }

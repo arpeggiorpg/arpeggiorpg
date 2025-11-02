@@ -1,7 +1,7 @@
 use anyhow::anyhow;
 use tracing_subscriber::{
-  fmt::{format::Pretty, time::UtcTime},
-  prelude::*,
+    fmt::{format::Pretty, time::UtcTime},
+    prelude::*,
 };
 use tracing_web::{performance_layer, MakeConsoleWriter};
 use worker::*;
@@ -33,18 +33,25 @@ mod wsrpi;
 
 #[event(start)]
 fn start() {
-  let fmt_layer = tracing_subscriber::fmt::layer()
-    .json()
-    .with_ansi(false) // Only partially supported across JavaScript runtimes
-    .with_timer(UtcTime::rfc_3339()) // std::time is not available in browsers
-    .with_writer(MakeConsoleWriter); // write events to the console
-  let perf_layer = performance_layer().with_details_from_fields(Pretty::default());
-  tracing_subscriber::registry().with(fmt_layer).with(perf_layer).init();
+    let fmt_layer = tracing_subscriber::fmt::layer()
+        .json()
+        .with_ansi(false) // Only partially supported across JavaScript runtimes
+        .with_timer(UtcTime::rfc_3339()) // std::time is not available in browsers
+        .with_writer(MakeConsoleWriter); // write events to the console
+    let perf_layer = performance_layer().with_details_from_fields(Pretty::default());
+    tracing_subscriber::registry()
+        .with(fmt_layer)
+        .with(perf_layer)
+        .init();
 }
 
 /// Some JsValue-based Error types (like the one in serde-wasm-bindgen) can't be converted to an
 /// anyhow with ?, giving errors about how a *mut u8 isn't Send or something. So this converts just
 /// buildn an anyhow error out of the Debug representation of a value.
-pub fn anydbg<T: std::fmt::Debug>(e: T) -> anyhow::Error { anyhow!("{e:?}") }
+pub fn anydbg<T: std::fmt::Debug>(e: T) -> anyhow::Error {
+    anyhow!("{e:?}")
+}
 
-pub fn rust_error<T: std::fmt::Debug>(e: T) -> Error { Error::RustError(format!("{e:?}")) }
+pub fn rust_error<T: std::fmt::Debug>(e: T) -> Error {
+    Error::RustError(format!("{e:?}"))
+}

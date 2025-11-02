@@ -1,7 +1,7 @@
 pub mod command;
 pub mod log;
-pub mod types;
 pub mod multitenant;
+pub mod types;
 
 pub use command::*;
 pub use log::*;
