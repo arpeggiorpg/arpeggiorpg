@@ -46,7 +46,6 @@ use crate::types::{
 
 type SuccessFn = dyn Fn(&Point3) -> bool;
 
-
 fn na_iso(pt: Point3) -> Isometry3<f64> {
     Isometry3::new(na_vector(pt), na::zero())
 }
@@ -546,26 +545,25 @@ fn reverse_path<N: Eq + Hash>(mut parents: HashMap<N, N>, start: N) -> Vec<N> {
     path.into_iter().rev().collect()
 }
 
-pub fn astar_multi<N, C, FN, IN, FH>(
-    start: &N,
+pub fn astar_multi<C, FN, IN, FH>(
+    start: &Point3,
     neighbours: FN,
     heuristic: FH,
     max_cost: C,
-    mut successes: Vec<Box<dyn Fn(&N) -> bool>>,
-) -> Vec<(Vec<N>, C)>
+    mut successes: Vec<Box<SuccessFn>>,
+) -> Vec<(Vec<Point3>, C)>
 where
-    N: Eq + Hash + Clone + ::std::fmt::Debug,
     C: Zero + Ord + Copy + PartialEq + PartialOrd + ::std::fmt::Debug,
-    FN: Fn(&N) -> IN,
-    IN: IntoIterator<Item = (N, C)>,
-    FH: Fn(&N) -> C,
+    FN: Fn(&Point3) -> IN,
+    IN: IntoIterator<Item = (Point3, C)>,
+    FH: Fn(&Point3) -> C,
 {
     let mut to_see = BinaryHeap::new();
     to_see.push(InvCmpHolder {
         key: heuristic(start),
         payload: (Zero::zero(), start.clone()),
     });
-    let mut parents: HashMap<N, (N, C)> = HashMap::new();
+    let mut parents: HashMap<Point3, (Point3, C)> = HashMap::new();
     let mut found_nodes = vec![];
     while let Some(InvCmpHolder {
         payload: (cost, node),
@@ -593,9 +591,7 @@ where
         for (neighbour, move_cost) in neighbours(&node) {
             let old_cost = parents.get(&neighbour).map(|&(_, c)| c);
             let new_cost = cost + move_cost;
-            if neighbour != *start
-                && old_cost.is_none_or(|c| new_cost < c)
-                && new_cost <= max_cost
+            if neighbour != *start && old_cost.is_none_or(|c| new_cost < c) && new_cost <= max_cost
             {
                 parents.insert(neighbour.clone(), (node.clone(), new_cost));
                 let new_predicted_cost = new_cost + heuristic(&neighbour);
@@ -608,7 +604,7 @@ where
     }
 
     let mut results = vec![];
-    let parents: HashMap<N, N> = parents.into_iter().map(|(n, (p, _))| (n, p)).collect();
+    let parents: HashMap<Point3, Point3> = parents.into_iter().map(|(n, (p, _))| (n, p)).collect();
     for (found_node, cost) in found_nodes {
         results.push((reverse_path(parents.clone(), found_node), cost));
     }
