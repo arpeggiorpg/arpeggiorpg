@@ -185,7 +185,7 @@ impl<V: DeriveKey> IndexedHashMap<V> {
 
 #[cfg(test)]
 mod test {
-    use *;
+    use super::*;
 
     #[derive(Eq, PartialEq, Debug)]
     struct TestObj {

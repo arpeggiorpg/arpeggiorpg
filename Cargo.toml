@@ -3,6 +3,9 @@ members = ["foldertree", "indexed", "nonempty", "arpeggio", "worker", "arptypes"
 exclude = ["arpui"]
 resolver = "2"
 
+[workspace.lints.clippy]
+unnecessary_lazy_evaluations = "allow"
+
 [workspace.dependencies]
 anyhow = { version = "1.0.75", features = ["backtrace"] }
 derive_more = "0.99.2"

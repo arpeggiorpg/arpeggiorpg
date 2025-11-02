@@ -2,6 +2,7 @@
 name = "nonempty"
 version = "0.1.0"
 authors = ["Christopher Armstrong"]
+edition = "2021"
 
 [features]
 use_serde = ["serde", "serde_derive"]
