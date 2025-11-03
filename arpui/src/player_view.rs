@@ -8,6 +8,7 @@ use tracing::{error, info};
 use crate::{
     components::{
         creature::CreatureCard,
+        split_pane::{SplitDirection, SplitPane},
         tabs::{TabContent, TabList, TabTrigger, Tabs},
     },
     rpi::{send_request, use_ws, Connector},
@@ -63,6 +64,25 @@ fn PlayerGameView(player_id: PlayerID) -> Element {
 fn PlayerGameScaffold(player_id: PlayerID, scene_id: Option<SceneID>) -> Element {
     let active_scene = scene_id.map(|sid| sid.to_string());
 
+    let tabs = rsx! {Tabs {
+        class: "player-view-tabs".to_string(),
+        default_value: "creatures".to_string(),
+        TabList {
+            TabTrigger { value: "creatures".to_string(), index: 0usize, "Creatures" }
+            TabTrigger { value: "notes".to_string(), index: 1usize, "Notes" }
+        }
+        TabContent { index: 0usize, value: "creatures".to_string(),
+            PlayerCreaturesTab { player_id: player_id.clone() }
+        }
+        TabContent { index: 1usize, value: "notes".to_string(),
+            PlayerNotesTab {}
+        }
+    }};
+    let chat = rsx! {section { class: "player-view-shell__chat",
+        h2 { "Chat" }
+        p { "Player chat will appear here." }
+    }};
+
     rsx! {
       div {
         class: "player-view-shell flex w-full",
@@ -77,23 +97,10 @@ fn PlayerGameScaffold(player_id: PlayerID, scene_id: Option<SceneID>) -> Element
         }
         div {
           class: "player-view-shell__sidebar w-96",
-          Tabs {
-              class: "player-view-tabs".to_string(),
-              default_value: "creatures".to_string(),
-              TabList {
-                  TabTrigger { value: "creatures".to_string(), index: 0usize, "Creatures" }
-                  TabTrigger { value: "notes".to_string(), index: 1usize, "Notes" }
-              }
-              TabContent { index: 0usize, value: "creatures".to_string(),
-                  PlayerCreaturesTab { player_id: player_id.clone() }
-              }
-              TabContent { index: 1usize, value: "notes".to_string(),
-                  PlayerNotesTab {}
-              }
-          }
-          section { class: "player-view-shell__chat",
-            h2 { "Chat" }
-            p { "Player chat will appear here." }
+          SplitPane {
+            direction: SplitDirection::Vertical,
+            first: tabs,
+            second: chat
           }
         }
       }
