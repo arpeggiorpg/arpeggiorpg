@@ -4,3 +4,4 @@ pub mod creature;
 pub mod split_pane;
 pub mod tabs;
 pub mod toolbar;
+pub mod tooltip;
