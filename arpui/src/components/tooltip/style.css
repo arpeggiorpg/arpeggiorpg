@@ -11,12 +11,14 @@
 .tooltip-content {
   position: absolute;
   z-index: 1000;
-  max-width: 250px;
+  /* max-width: px; */
   padding: 8px 12px;
   border-radius: 0.5rem;
+  border-color: var(--secondary-color-4);
+  border-width: thin;
   animation: tooltip-fade-in 0.2s ease-in-out;
-  background-color: var(--secondary-color-4);
-  color: var(--primary-color);
+  background-color: var(--primary-color-5);
+  color: var(--secondary-color-4);
   font-size: 14px;
   line-height: 1.4;
 }
