@@ -1,152 +1,60 @@
-/* Tooltip Styles */
-.tooltip {
-  position: relative;
-  display: inline-block;
+.tooltip-anchor {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.tooltip-trigger {
-  display: inline-block;
-}
-
-.tooltip-content {
+.tooltip-popover {
+  inset: unset;
   position: absolute;
-  z-index: 1000;
-  /* max-width: px; */
+  margin: 0;
   padding: 8px 12px;
-  border-radius: 0.5rem;
-  border-color: var(--secondary-color-4);
-  border-width: thin;
-  animation: tooltip-fade-in 0.2s ease-in-out;
+  max-width: min(24rem, 80vw);
+  border-radius: 0.75rem;
+  border: 1px solid var(--secondary-color-4);
   background-color: var(--primary-color-5);
   color: var(--secondary-color-4);
   font-size: 14px;
   line-height: 1.4;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.2);
+  pointer-events: none;
 }
 
-.tooltip-content::after {
-  position: absolute;
-  border-width: 0.25rem;
-  border-style: solid;
-  margin-left: -0.25rem;
-  content: " ";
-  rotate: 45deg;
+.tooltip-popover:popover-open {
+  pointer-events: auto;
 }
 
-/* Positioning based on side */
-.tooltip-content[data-side="top"] {
-  position: absolute;
-  bottom: 100%;
-  left: 50%;
-  margin-bottom: 8px;
-  transform: translateX(-50%);
+.tooltip-popover[data-direction="above"] {
+  top: calc(anchor(top) - 8px);
+  left: anchor(center);
+  transform: translate(-50%, -100%);
 }
 
-.tooltip-content[data-side="top"]::after {
-  top: calc(100% - 0.25rem);
-  left: 50%;
-  border-color: var(--secondary-color-4);
-  border-radius: 0 0 0.1rem;
+.tooltip-popover[data-direction="below"] {
+  top: calc(anchor(bottom) + 8px);
+  left: anchor(center);
+  transform: translate(-50%, 0);
 }
 
-.tooltip-content[data-side="right"] {
-  position: absolute;
-  top: 50%;
-  left: 100%;
-  margin-left: 8px;
-  transform: translateY(-50%);
+.tooltip-popover[data-direction="left"] {
+  top: anchor(center);
+  left: calc(anchor(left) - 8px);
+  transform: translate(-100%, -50%);
 }
 
-.tooltip-content[data-side="right"]::after {
-  top: calc(50% - 0.25rem);
-  left: 0;
-  border-color: var(--secondary-color-4);
-  border-radius: 0 0 0 0.1rem;
+.tooltip-popover[data-direction="right"] {
+  top: anchor(center);
+  left: calc(anchor(right) + 8px);
+  transform: translate(0, -50%);
 }
 
-.tooltip-content[data-side="bottom"] {
-  position: absolute;
-  top: 100%;
-  left: 50%;
-  margin-top: 8px;
-  transform: translateX(-50%);
-}
-
-.tooltip-content[data-side="bottom"]::after {
-  bottom: calc(100% - 0.25rem);
-  left: 50%;
-  border-color: var(--secondary-color-4);
-  border-radius: 0.1rem 0 0;
-}
-
-.tooltip-content[data-side="left"] {
-  position: absolute;
-  top: 50%;
-  right: 100%;
-  margin-right: 8px;
-  transform: translateY(-50%);
-}
-
-.tooltip-content[data-side="left"]::after {
-  top: calc(50% - 0.25rem);
-  right: -0.25rem;
-  border-color: var(--secondary-color-4);
-  border-radius: 0 0.1rem 0 0;
-}
-
-/* Alignment styles for top and bottom */
-.tooltip-content[data-side="top"][data-align="start"],
-.tooltip-content[data-side="bottom"][data-align="start"] {
-  left: 0;
-  transform: none;
-}
-
-.tooltip-content[data-side="top"][data-align="end"],
-.tooltip-content[data-side="bottom"][data-align="end"] {
-  right: 0;
-  left: auto;
-  transform: none;
-}
-
-/* Alignment styles for left and right */
-.tooltip-content[data-side="left"][data-align="start"],
-.tooltip-content[data-side="right"][data-align="start"] {
-  top: 0;
-  transform: none;
-}
-
-.tooltip-content[data-side="left"][data-align="center"],
-.tooltip-content[data-side="right"][data-align="center"] {
-  top: 50%;
-  transform: translateY(-50%);
-}
-
-.tooltip-content[data-side="left"][data-align="end"],
-.tooltip-content[data-side="right"][data-align="end"] {
-  top: auto;
-  bottom: 0;
-  transform: none;
-}
-
-/* Animation */
-@keyframes tooltip-fade-in {
-  from {
-    opacity: 0;
+@supports not (top: anchor(top)) {
+  .tooltip-popover {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    left: auto;
+    top: auto;
+    transform: none;
   }
-
-  to {
-    opacity: 1;
-  }
-}
-
-/* State styles */
-.tooltip[data-disabled="true"] .tooltip-trigger {
-  cursor: default;
-}
-
-.tooltip-content[data-state="closed"] {
-  display: none;
-}
-
-.tooltip-content[data-state="open"] {
-  display: block;
 }

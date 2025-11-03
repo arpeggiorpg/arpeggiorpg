@@ -3,10 +3,8 @@ use arptypes::{
 };
 use dioxus::prelude::*;
 
+use crate::components::tooltip::{Tooltip, TooltipDirection};
 use crate::player_view::GAME;
-use js_sys::{Function, Object, Reflect};
-use wasm_bindgen::JsCast;
-use wasm_bindgen::JsValue;
 
 #[component]
 pub fn CreatureCard(creature: Creature) -> Element {
@@ -37,15 +35,19 @@ pub fn CreatureCard(creature: Creature) -> Element {
                             ClassIcon { class_id: creature.class }
                         }
                         if !conditions.is_empty() {
-                            document::Link { rel: "stylesheet", href: asset!("./condition_popover.css") }
                             div {
                                 class: "flex flex-wrap items-center gap-2 mt-1 text-xl leading-none",
                                 for (key, applied) in conditions.iter() {
-                                    ConditionHintPopover {
+                                    Tooltip {
                                         key: "{key}",
-                                        condition_key: key.clone(),
-                                        icon: condition_icon(&applied.condition),
-                                        applied: applied.clone(),
+                                        direction: TooltipDirection::Left,
+                                        role: "img",
+                                        content: rsx! {
+                                            ConditionTooltip {
+                                                applied: applied.clone(),
+                                            }
+                                        },
+                                        "{condition_icon(&applied.condition)}"
                                     }
                                 }
                             }
@@ -143,80 +145,6 @@ fn ConditionTooltip(applied: AppliedCondition) -> Element {
                     }
                 }
             }
-        }
-    }
-}
-
-#[component]
-fn ConditionHintPopover(condition_key: String, icon: String, applied: AppliedCondition) -> Element {
-    let anchor_suffix = sanitize_for_id(&condition_key);
-    let anchor_id = format!("condition-anchor-{anchor_suffix}");
-    let popover_id = format!("condition-popover-{anchor_suffix}");
-
-    let mut anchor_ref = use_signal(|| None::<web_sys::HtmlElement>);
-    let mut popover_ref = use_signal(|| None::<web_sys::HtmlElement>);
-
-    let show_mouse = move |_evt: Event<MouseData>| {
-        if let (Some(anchor), Some(popover)) = (anchor_ref(), popover_ref()) {
-            show_hint_popover(&popover, &anchor);
-        }
-    };
-
-    let show_focus = move |_evt| {
-        if let (Some(anchor), Some(popover)) = (anchor_ref(), popover_ref()) {
-            show_hint_popover(&popover, &anchor);
-        }
-    };
-
-    let hide_mouse = move |_evt: Event<MouseData>| {
-        if let Some(popover) = popover_ref() {
-            let _ = popover.hide_popover();
-        }
-    };
-
-    let hide_focus = move |_evt| {
-        if let Some(popover) = popover_ref() {
-            let _ = popover.hide_popover();
-        }
-    };
-
-    rsx! {
-        span {
-            id: "{anchor_id}",
-            class: "inline-flex items-center justify-center condition-anchor",
-            tabindex: "0",
-            role: "img",
-            "aria-describedby": "{popover_id}",
-            onmounted: move |evt| {
-                if let Some(element) = evt.data().downcast::<web_sys::Element>() {
-                    if let Ok(html_element) =
-                        element.clone().dyn_into::<web_sys::HtmlElement>()
-                    {
-                        anchor_ref.set(Some(html_element));
-                    }
-                }
-            },
-            onmouseenter: show_mouse,
-            onmouseleave: hide_mouse,
-            onfocus: show_focus,
-            onblur: hide_focus,
-            "{icon}"
-        }
-        div {
-            id: "{popover_id}",
-            class: "condition-popover",
-            popover: "hint",
-            role: "tooltip",
-            onmounted: move |evt| {
-                if let Some(element) = evt.data().downcast::<web_sys::Element>() {
-                    if let Ok(html_element) =
-                        element.clone().dyn_into::<web_sys::HtmlElement>()
-                    {
-                        popover_ref.set(Some(html_element));
-                    }
-                }
-            },
-            ConditionTooltip { applied }
         }
     }
 }
@@ -374,33 +302,4 @@ fn symbol_for_indent(indent: usize) -> &'static str {
     } else {
         "• "
     }
-}
-
-fn show_hint_popover(popover: &web_sys::HtmlElement, anchor: &web_sys::HtmlElement) {
-    let options = Object::new();
-    let anchor_js = JsValue::from(anchor.clone());
-    let _ = Reflect::set(&options, &JsValue::from_str("source"), &anchor_js);
-    let options_js = JsValue::from(options);
-
-    if let Ok(show_fn_value) = Reflect::get(popover.as_ref(), &JsValue::from_str("showPopover")) {
-        if let Ok(show_fn) = show_fn_value.dyn_into::<Function>() {
-            let _ = show_fn.call1(popover.as_ref(), &options_js);
-            return;
-        }
-    }
-
-    let _ = popover.show_popover();
-}
-
-fn sanitize_for_id(input: &str) -> String {
-    let mut sanitized = input
-        .chars()
-        .map(|c| if c.is_ascii_alphanumeric() { c } else { '-' })
-        .collect::<String>();
-
-    if sanitized.is_empty() {
-        sanitized.push('x');
-    }
-
-    sanitized
 }
