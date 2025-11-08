@@ -28,6 +28,9 @@ pub fn PlayerGamePage(id: GameID, player_id: PlayerID) -> Element {
       Connector {
         role: Role::Player,
         game_id: id,
+        game_signal: GAME.resolve(),
+        game_logs_signal: GAME_LOGS.resolve(),
+
         PlayerGameView { player_id }
       }
     }

@@ -21,15 +21,12 @@ pub fn PlayerChat(player_id: PlayerID) -> Element {
             let command = PlayerCommand::ChatFromPlayer {
                 message: msg.clone(),
             };
-            if let Err(err) =
-                send_request::<serde_json::Value>(RPIGameRequest::PlayerCommand { command }, ws)
-                    .await
-            {
-                error!("Failed to send chat message: {:?}", err);
-            }
+            send_request::<serde_json::Value>(RPIGameRequest::PlayerCommand { command }, ws)
+                .await?;
             message.set(String::new());
             scroll_chat_to_bottom();
         }
+        Ok(())
     };
 
     let send_message_handler = move |_| send_message();
@@ -37,8 +34,9 @@ pub fn PlayerChat(player_id: PlayerID) -> Element {
     let handle_keydown = {
         move |evt: KeyboardEvent| async move {
             if evt.key() == dioxus::prelude::Key::Enter && !evt.modifiers().shift() {
-                send_message().await
+                send_message().await?;
             }
+            Ok(())
         }
     };
 

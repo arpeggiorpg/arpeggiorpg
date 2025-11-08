@@ -17,7 +17,6 @@ futures-util = { version = "*" }
 # manually pin the version to the same one. (Wait, why aren't we a workspace member again? mostly
 # because I'm afraid of dependency conflicts between workers-rs and dioxus versions of dependencies)
 getrandom = { version = "0.2.9", features = ["js"] }
-log = "0.4.19"
 reqwest = { version = "0.12.3", features = ["json"] }
 reqwest-websocket = { version = "0.3" }
 serde = { version = "*" }
@@ -29,6 +28,7 @@ wasm-bindgen-futures = "0.4.42"
 wasm-cookies = "0.2.1"
 js-sys = "0.3.69"
 dioxus-primitives = { git = "https://github.com/DioxusLabs/components", version = "0.0.1", default-features = false }
+dioxus-logger = "0.7.1"
 
 [dependencies.web-sys]
 version = "0.3.69"

@@ -1,14 +1,21 @@
-use std::{cell::RefCell, collections::HashMap, rc::Rc};
+use std::{
+    cell::RefCell,
+    collections::{HashMap, VecDeque},
+    rc::Rc,
+};
 
 use anyhow::format_err;
 use dioxus::prelude::*;
 use futures::channel::oneshot::{self, Sender};
 use futures_util::{stream::StreamExt, SinkExt, TryStreamExt};
-use log::info;
+use tracing::info;
 use reqwest_websocket::{Message, RequestBuilderExt, WebSocket};
 use wasm_bindgen_futures::spawn_local;
 
-use arptypes::multitenant::{self, GameID, RPIGameRequest, Role};
+use arptypes::{
+    multitenant::{self, GameID, GameIndex, RPIGameRequest, Role},
+    Game, GameLog, SerializedGame,
+};
 
 pub static AUTH_TOKEN: GlobalSignal<String> = Signal::global(String::new);
 
@@ -37,7 +44,13 @@ type ResponseHandler = Sender<anyhow::Result<serde_json::Value>>;
 type ResponseHandlers = HashMap<uuid::Uuid, ResponseHandler>;
 
 #[component]
-pub fn Connector(role: Role, game_id: GameID, children: Element) -> Element {
+pub fn Connector(
+    role: Role,
+    game_id: GameID,
+    game_signal: Signal<Game>,
+    game_logs_signal: Signal<VecDeque<(GameIndex, GameLog)>>,
+    children: Element,
+) -> Element {
     // let connection_count = use_signal(|| 0);
     let mut error = use_signal(|| None);
     let _coro = use_coroutine(move |mut rx: UnboundedReceiver<UIRequest>| async move {
@@ -54,9 +67,14 @@ pub fn Connector(role: Role, game_id: GameID, children: Element) -> Element {
         let (mut websocket_tx, websocket_rx) = websocket.split();
         let receiver_response_handlers = response_handlers.clone();
         spawn_local(async move {
-            ws_receiver(websocket_rx, receiver_response_handlers)
-                .await
-                .expect("ws_receiver error")
+            ws_receiver(
+                websocket_rx,
+                receiver_response_handlers,
+                game_signal,
+                game_logs_signal,
+            )
+            .await
+            .expect("ws_receiver error")
         });
 
         while let Some(ui_req) = rx.next().await {
@@ -86,6 +104,8 @@ pub fn Connector(role: Role, game_id: GameID, children: Element) -> Element {
 async fn ws_receiver(
     mut websocket_rx: futures::stream::SplitStream<WebSocket>,
     receiver_response_handlers: Rc<RefCell<ResponseHandlers>>,
+    game_signal: Signal<Game>,
+    game_logs_signal: Signal<VecDeque<(GameIndex, GameLog)>>,
 ) -> anyhow::Result<()> {
     while let Some(message) = websocket_rx.try_next().await? {
         match message {
@@ -108,12 +128,38 @@ async fn ws_receiver(
                         handler
                             .send(Ok(payload.clone()))
                             .map_err(|e| format_err!("{e:?}"))?;
+                    } else {
+                        warn!(?id, ?json, "Got result for unexpected ID");
                     }
+                } else {
+                    handle_unsolicited(json, game_signal, game_logs_signal)?;
                 }
-                // TODO: else! Handle server-sent events (like refresh_game)
             }
-            Message::Binary(vecu8) => info!("WS Binary Message: {vecu8:?}"),
+            Message::Binary(vecu8) => info!(?vecu8, "WS Binary Message"),
         }
+    }
+    Ok(())
+}
+
+fn handle_unsolicited(
+    json: serde_json::Value,
+    mut game_signal: Signal<Game>,
+    mut game_logs_signal: Signal<VecDeque<(GameIndex, GameLog)>>,
+) -> anyhow::Result<()> {
+    info!(?json, "Got unsolicited message from RPI");
+    if json.get("t") == Some(&serde_json::Value::String("refresh_game".to_string())) {
+        info!("It's a refresh game");
+        let game_json = json
+            .get("game")
+            .ok_or(anyhow::anyhow!("no game in refresh_game message"))?;
+        let game: SerializedGame = serde_json::from_value(game_json.clone())?;
+        let logs_json = json
+            .get("logs")
+            .ok_or(anyhow::anyhow!("no logs in refresh_game message"))?;
+        let mut logs: VecDeque<(GameIndex, GameLog)> = serde_json::from_value(logs_json.clone())?;
+        let game = Game::from_serialized_game(game);
+        *game_signal.write() = game;
+        game_logs_signal.write().append(&mut logs);
     }
     Ok(())
 }
@@ -126,7 +172,7 @@ async fn connect_coroutine(role: Role, game_id: GameID) -> anyhow::Result<WebSoc
         .ok_or(format_err!("No token found in request-websocket response"))?
         .as_str()
         .ok_or(format_err!("token wasn't a string"))?;
-    info!("got websocket token! {token}");
+    info!(token, "got websocket token!");
 
     let ws_url = format!("ws://localhost:8787/ws/{game_id}/{token}");
     let response = reqwest::Client::default()

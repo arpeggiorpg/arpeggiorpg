@@ -42,6 +42,7 @@ enum Route {
 }
 
 fn main() {
+    dioxus_logger::init(tracing::Level::INFO).expect("failed to init logger");
     launch(App);
 }
 
@@ -187,10 +188,7 @@ fn GameList(list: multitenant::GameList) -> Element {
 fn GMGamePage(id: GameID) -> Element {
     rsx! {
       "id: {id:?}"
-      Connector {
-        role: Role::GM, game_id: id,
-        GMGame {}
-      }
+      div { "NYI"}
     }
 }
 

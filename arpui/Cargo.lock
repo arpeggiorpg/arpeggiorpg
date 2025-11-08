@@ -83,12 +83,12 @@ dependencies = [
  "anyhow",
  "arptypes",
  "dioxus",
+ "dioxus-logger",
  "dioxus-primitives",
  "futures",
  "futures-util",
  "getrandom 0.2.14",
  "js-sys",
- "log",
  "reqwest",
  "reqwest-websocket",
  "serde",
@@ -677,9 +677,9 @@ dependencies = [
 
 [[package]]
 name = "dioxus-cli-config"
-version = "0.7.0"
+version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d28a6973d779e73f4b8ce705b1ea4c96f4083567ede862e734da2ab7c1dfc4b6"
+checksum = "babc8eaf90379352bc4820830749fd231feb9312433d4094b4e7b79d912b3d96"
 dependencies = [
  "wasm-bindgen",
 ]
@@ -971,9 +971,9 @@ dependencies = [
 
 [[package]]
 name = "dioxus-logger"
-version = "0.7.0"
+version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7a54751cf6aa00132c8a17343ad8d8cdb587d67a4b71acfc19ed78a924128edb"
+checksum = "42237934c6a67f5ed9a8c37e47ca980ee7cfec9e783a9a1f8c2e36c8b96ae74b"
 dependencies = [
  "dioxus-cli-config",
  "tracing",
@@ -1193,7 +1193,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "39cab71617ae0d63f51a36d69f866391735b51691dbda63cf6f96d042b63efeb"
 dependencies = [
  "libc",
- "windows-sys 0.52.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -1628,7 +1628,7 @@ dependencies = [
  "libc",
  "percent-encoding",
  "pin-project-lite",
- "socket2 0.6.1",
+ "socket2",
  "system-configuration",
  "tokio",
  "tower-service",
@@ -2477,7 +2477,7 @@ dependencies = [
  "quinn-udp",
  "rustc-hash 2.1.1",
  "rustls",
- "socket2 0.5.6",
+ "socket2",
  "thiserror 2.0.17",
  "tokio",
  "tracing",
@@ -2514,9 +2514,9 @@ dependencies = [
  "cfg_aliases",
  "libc",
  "once_cell",
- "socket2 0.5.6",
+ "socket2",
  "tracing",
- "windows-sys 0.52.0",
+ "windows-sys 0.60.2",
 ]
 
 [[package]]
@@ -2756,7 +2756,7 @@ dependencies = [
  "errno",
  "libc",
  "linux-raw-sys 0.11.0",
- "windows-sys 0.52.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -3046,16 +3046,6 @@ checksum = "3c5e1a9a646d36c3599cd173a41282daf47c44583ad367b8e6837255952e5c67"
 
 [[package]]
 name = "socket2"
-version = "0.5.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "05ffd9c0a93b7543e062e759284fcf5f5e3b098501104bfbdde4d404db792871"
-dependencies = [
- "libc",
- "windows-sys 0.52.0",
-]
-
-[[package]]
-name = "socket2"
 version = "0.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "17129e116933cf371d018bb80ae557e889637989d8638274fb25622827b03881"
@@ -3332,7 +3322,7 @@ dependencies = [
  "libc",
  "mio",
  "pin-project-lite",
- "socket2 0.6.1",
+ "socket2",
  "tokio-macros",
  "windows-sys 0.61.2",
 ]
