@@ -15,13 +15,6 @@ pub fn PlayerChat(player_id: PlayerID) -> Element {
     let mut message = use_signal(|| String::new());
     let chat_logs = GAME_LOGS.read();
 
-    // TODO: Replace this with actual log fetching from RPI when available
-    let _log_fetcher = use_resource(move || async move {
-        // Placeholder for fetching recent chat logs
-        // This will be replaced when RPI supports log fetching
-        Vec::<GameLog>::new()
-    });
-
     let send_message = move || async move {
         let msg = message();
         if !msg.trim().is_empty() {
@@ -35,7 +28,6 @@ pub fn PlayerChat(player_id: PlayerID) -> Element {
                 error!("Failed to send chat message: {:?}", err);
             }
             message.set(String::new());
-            // Auto-scroll to bottom after sending message
             scroll_chat_to_bottom();
         }
     };
