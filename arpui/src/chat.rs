@@ -5,17 +5,15 @@ use dioxus::prelude::*;
 use tracing::warn;
 
 use crate::{
-    player_view::GAME,
+    player_view::{GAME, GAME_LOGS},
     rpi::{send_request, use_ws},
 };
-
-pub static CHAT_LOGS: GlobalSignal<Vec<GameLog>> = Signal::global(|| Vec::new());
 
 #[component]
 pub fn PlayerChat(player_id: PlayerID) -> Element {
     let ws = use_ws();
     let mut message = use_signal(|| String::new());
-    let chat_logs = CHAT_LOGS.read();
+    let chat_logs = GAME_LOGS.read();
 
     // TODO: Replace this with actual log fetching from RPI when available
     let _log_fetcher = use_resource(move || async move {
@@ -72,7 +70,7 @@ pub fn PlayerChat(player_id: PlayerID) -> Element {
                             }
                         }
                     } else {
-                        for (index, log) in chat_logs.iter().enumerate() {
+                        for (index, (_i, log)) in chat_logs.iter().enumerate() {
                             div { key: "{index}",
                                 {render_chat_log(log)}
                             }
@@ -96,18 +94,6 @@ pub fn PlayerChat(player_id: PlayerID) -> Element {
                     onclick: send_message_handler,
                     disabled: message().trim().is_empty(),
                     "Send"
-                }
-                // Debug button for testing (only in debug builds)
-                if cfg!(debug_assertions) {
-                    button {
-                        class: "px-3 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 text-sm transition-colors",
-                        onclick: move |_| {
-                            add_test_chat_messages();
-                            scroll_chat_to_bottom();
-                        },
-                        title: "Add test messages",
-                        "Test"
-                    }
                 }
             }
         }
@@ -137,37 +123,6 @@ fn render_chat_log(log: &GameLog) -> Option<Element> {
         GameLog::CreatureLog { creature_id, log } => render_creature_log(creature_id, log),
         _ => None,
     }
-}
-
-/// Add a chat log to the global chat history
-///
-/// Automatically manages memory by keeping only the last 100 messages.
-pub fn add_chat_log(log: GameLog) {}
-
-/// Add test chat messages for demonstration and development purposes
-///
-/// Only available in debug builds. Creates sample messages from different sources
-/// to showcase the chat functionality.
-#[allow(dead_code)]
-pub fn add_test_chat_messages() {
-    let mut test_messages = vec![
-        GameLog::ChatFromGM {
-            message: "Welcome to the game! Let's begin our adventure.".to_string(),
-        },
-        GameLog::ChatFromPlayer {
-            player_id: PlayerID("Alice".to_string()),
-            message: "Ready to explore!".to_string(),
-        },
-        GameLog::ChatFromPlayer {
-            player_id: PlayerID("Bob".to_string()),
-            message: "My character is prepared for battle.".to_string(),
-        },
-        GameLog::ChatFromGM {
-            message: "You see a dark cave entrance ahead...".to_string(),
-        },
-    ];
-
-    CHAT_LOGS.write().append(&mut test_messages);
 }
 
 fn render_creature_log(creature_id: &CreatureID, log: &CreatureLog) -> Option<Element> {

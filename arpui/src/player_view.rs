@@ -1,19 +1,25 @@
+use std::collections::VecDeque;
+
 use arptypes::{
-    multitenant::{GameAndMetadata, GameID, RPIGameRequest, Role},
-    Game, PlayerID, SceneID,
+    multitenant::{GameAndMetadata, GameID, GameIndex, RPIGameRequest, Role},
+    Game, GameLog, PlayerID, SceneID,
 };
 use dioxus::prelude::*;
 use tracing::{error, info};
 
 use crate::{
-    chat::PlayerChat, components::{
+    chat::PlayerChat,
+    components::{
         creature::CreatureCard,
         split_pane::{SplitDirection, SplitPane},
         tabs::{TabContent, TabList, TabTrigger, Tabs},
-    }, rpi::{Connector, send_request, use_ws}
+    },
+    rpi::{send_request, use_ws, Connector},
 };
 
 pub static GAME: GlobalSignal<Game> = Signal::global(|| Default::default());
+pub static GAME_LOGS: GlobalSignal<VecDeque<(GameIndex, GameLog)>> =
+    Signal::global(|| VecDeque::new());
 pub static GAME_NAME: GlobalSignal<String> = Signal::global(|| String::new());
 
 #[component]
@@ -35,6 +41,7 @@ fn PlayerGameView(player_id: PlayerID) -> Element {
         let response = send_request::<GameAndMetadata>(RPIGameRequest::GMGetGame, ws).await?;
         let game = Game::from_serialized_game(response.game);
         *GAME.write() = game.clone();
+        *GAME_LOGS.write() = response.logs;
         *GAME_NAME.write() = response.metadata.name.clone();
         Ok(game)
     });
