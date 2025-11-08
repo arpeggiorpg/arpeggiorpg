@@ -6,12 +6,11 @@ use dioxus::prelude::*;
 use tracing::{error, info};
 
 use crate::{
-    components::{
+    chat::PlayerChat, components::{
         creature::CreatureCard,
         split_pane::{SplitDirection, SplitPane},
         tabs::{TabContent, TabList, TabTrigger, Tabs},
-    },
-    rpi::{send_request, use_ws, Connector},
+    }, rpi::{Connector, send_request, use_ws}
 };
 
 pub static GAME: GlobalSignal<Game> = Signal::global(|| Default::default());
@@ -78,10 +77,9 @@ fn PlayerGameScaffold(player_id: PlayerID, scene_id: Option<SceneID>) -> Element
             PlayerNotesTab {}
         }
     }};
-    let chat = rsx! {section { class: "player-view-shell__chat",
-        h2 { "Chat" }
-        p { "Player chat will appear here." }
-    }};
+    let chat = rsx! {
+        PlayerChat { player_id: player_id.clone() }
+    };
 
     rsx! {
       div {

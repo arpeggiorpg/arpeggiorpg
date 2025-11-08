@@ -8,6 +8,7 @@ use dioxus::prelude::*;
 use js_sys::encode_uri_component;
 use tracing::info;
 
+mod chat;
 mod components;
 mod player_view;
 mod rpi;
