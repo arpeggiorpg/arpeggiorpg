@@ -1,6 +1,9 @@
-use crate::player_view::GAME;
-use arptypes::*;
+mod svg_pan_zoom;
+
 use dioxus::prelude::*;
+
+use crate::{grid::svg_pan_zoom::SVGPanZoom, player_view::GAME};
+use arptypes::*;
 
 #[component]
 pub fn SceneGrid(player_id: PlayerID) -> Element {
@@ -29,7 +32,7 @@ pub fn SceneGrid(player_id: PlayerID) -> Element {
     rsx! {
         div {
             class: "w-full h-full bg-gray-200",
-            svg {
+            SVGPanZoom {
                 class: "w-full h-full",
                 view_box: "-1000 -1000 2000 2000",
                 preserve_aspect_ratio: "xMidYMid slice",
