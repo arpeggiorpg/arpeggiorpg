@@ -12,6 +12,8 @@ use crate::{
     types::*,
 };
 use foldertree::{FolderPath, FolderTreeError};
+#[cfg(test)]
+pub mod test;
 
 pub trait GameExt {
     fn export_module(&self, export_path: &FolderPath) -> Result<Game, GameError>;
@@ -2325,6 +2327,3 @@ impl ChangedGameExt for ChangedGame {
 fn bug<T>(msg: &str) -> Result<T, GameError> {
     Err(GameError::BuggyProgram(msg.to_string()))
 }
-
-#[cfg(test)]
-pub mod test;

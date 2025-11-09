@@ -239,7 +239,7 @@ impl DeriveKey for Note {
     }
 }
 
-#[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize, TS)]
+#[derive(Copy, Clone, Eq, PartialEq, Debug, Serialize, Deserialize, TS)]
 pub enum Visibility {
     GMOnly,
     AllPlayers,
@@ -404,15 +404,15 @@ impl Point3 {
     pub fn from_quantities(x: i64units::Length, y: i64units::Length, z: i64units::Length) -> Self {
         Point3 { x, y, z }
     }
-    
+
     pub fn x_cm(&self) -> i64 {
         self.x.get::<centimeter>()
     }
-    
+
     pub fn y_cm(&self) -> i64 {
         self.y.get::<centimeter>()
     }
-    
+
     pub fn z_cm(&self) -> i64 {
         self.z.get::<centimeter>()
     }
@@ -482,6 +482,20 @@ pub struct AABB {
 }
 
 impl AABB {
+    pub fn x_cm(&self) -> i64 {
+        // THIS IS TOTALLY WRONG! x/y/z should be stores as centimeters, but all of my sample data
+        // has them as meters for some reason.
+        self.x.get::<centimeter>() as i64 * 100
+    }
+
+    pub fn y_cm(&self) -> i64 {
+        self.y.get::<centimeter>() as i64 * 100
+    }
+
+    pub fn z_cm(&self) -> i64 {
+        self.z.get::<centimeter>() as i64 * 100
+    }
+
     /// Get the "maximum" point of the AABB (aka the top-right point) relative to a fixed point.
     pub fn get_max(&self, pt: Point3) -> Point3 {
         Point3::from_quantities(
