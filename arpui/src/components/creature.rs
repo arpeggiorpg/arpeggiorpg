@@ -1,7 +1,9 @@
 use arptypes::{
-    AbilityID, AppliedCondition, ClassID, Condition, Creature, CreatureEffect, Dice, Duration,
+    AbilityID, Action, AppliedCondition, ClassID, Condition, Creature, CreatureEffect, 
+    CreatureTarget, Dice, Duration, SceneEffect, SceneTarget, Volume,
 };
 use dioxus::prelude::*;
+
 
 use crate::components::tooltip::{Tooltip, TooltipDirection};
 use crate::player_view::GAME;
@@ -244,6 +246,8 @@ fn append_activate_ability_details(
                 if ability.usable_ooc { "Yes" } else { "No" }
             ),
         ));
+        lines.push((indent + 1, "Action details:".to_string()));
+        append_action_details(&ability.action, indent + 2, lines);
     } else {
         lines.push((
             indent,
@@ -292,6 +296,95 @@ fn format_dice(dice: &Dice) -> String {
         Dice::Plus(left, right) => format!("{} + {}", format_dice(left), format_dice(right)),
         Dice::Flat { value } => value.to_string(),
         Dice::BestOf(count, value) => format!("best of {count} {}", format_dice(value)),
+    }
+}
+
+fn append_action_details(action: &Action, indent: usize, lines: &mut Vec<(usize, String)>) {
+    match action {
+        Action::Creature { effect, target } => {
+            lines.push((indent, "Targets creatures:".to_string()));
+            append_creature_target_details(target, indent + 1, lines);
+            lines.push((indent, "Effect:".to_string()));
+            append_effect_details(effect, indent + 1, lines);
+        }
+        Action::SceneVolume { effect, target } => {
+            lines.push((indent, "Targets scene volume:".to_string()));
+            append_scene_target_details(target, indent + 1, lines);
+            lines.push((indent, "Scene effect:".to_string()));
+            append_scene_effect_details(effect, indent + 1, lines);
+        }
+    }
+}
+
+fn append_creature_target_details(
+    target: &CreatureTarget,
+    indent: usize,
+    lines: &mut Vec<(usize, String)>,
+) {
+    match target {
+        CreatureTarget::Melee => {
+            lines.push((indent, "Melee range target".to_string()));
+        }
+        CreatureTarget::Range(distance) => {
+            lines.push((indent, format!("Ranged target ({}cm range)", distance.get::<uom::si::length::centimeter>())));
+        }
+        CreatureTarget::Actor => {
+            lines.push((indent, "Self-targeting".to_string()));
+        }
+        CreatureTarget::LineFromActor { distance } => {
+            lines.push((indent, format!("Piercing line from actor ({}cm length)", distance.get::<uom::si::length::centimeter>())));
+        }
+        CreatureTarget::SomeCreaturesInVolumeInRange { volume, maximum, range } => {
+            lines.push((indent, format!("Up to {} creatures in volume within {}cm:", maximum, range.get::<uom::si::length::centimeter>())));
+            append_volume_details(volume, indent + 1, lines);
+        }
+        CreatureTarget::AllCreaturesInVolumeInRange { volume, range } => {
+            lines.push((indent, format!("All creatures in volume within {}cm:", range.get::<uom::si::length::centimeter>())));
+            append_volume_details(volume, indent + 1, lines);
+        }
+    }
+}
+
+fn append_scene_target_details(
+    target: &SceneTarget,
+    indent: usize,
+    lines: &mut Vec<(usize, String)>,
+) {
+    match target {
+        SceneTarget::RangedVolume { volume, range } => {
+            lines.push((indent, format!("Volume within {}cm range:", range.get::<uom::si::length::centimeter>())));
+            append_volume_details(volume, indent + 1, lines);
+        }
+    }
+}
+
+fn append_scene_effect_details(
+    effect: &SceneEffect,
+    indent: usize,
+    lines: &mut Vec<(usize, String)>,
+) {
+    match effect {
+        SceneEffect::CreateVolumeCondition { duration, condition } => {
+            lines.push((indent, format!("Creates volume condition for {}:", format_duration(*duration))));
+            append_condition_details(condition, indent + 1, lines);
+        }
+    }
+}
+
+fn append_volume_details(volume: &Volume, indent: usize, lines: &mut Vec<(usize, String)>) {
+    match volume {
+        Volume::Sphere(radius) => {
+            lines.push((indent, format!("Sphere ({}cm radius)", radius.get::<uom::si::length::centimeter>())));
+        }
+        Volume::Line { vector } => {
+            lines.push((indent, format!("Line to point ({}, {}, {})", vector.x_cm(), vector.y_cm(), vector.z_cm())));
+        }
+        Volume::VerticalCylinder { radius, height } => {
+            lines.push((indent, format!("Vertical cylinder ({}cm radius, {}cm height)", radius.get::<uom::si::length::centimeter>(), height.get::<uom::si::length::centimeter>())));
+        }
+        Volume::AABB(aabb) => {
+            lines.push((indent, format!("Rectangular area ({}cm × {}cm × {}cm)", aabb.x_cm(), aabb.y_cm(), aabb.z_cm())));
+        }
     }
 }
 
