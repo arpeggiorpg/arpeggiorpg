@@ -16,7 +16,7 @@ jobs:
 
     - name: DXUI build
       working-directory: arpui
-      run: cargo build --verbose
+      run: cargo check --target wasm32-unknown-unknown
 
     - name: DXUI test
       working-directory: arpui
