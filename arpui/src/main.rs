@@ -21,7 +21,6 @@ use crate::{
     rpi::rpi_url,
 };
 
-static COMPONENT_THEME_CSS: Asset = asset!("/assets/dx-components-theme.css");
 const GOOGLE_CLIENT_ID: &str =
     "328154234071-c7una5er0n385sdgvih81ngbkgp1l7nj.apps.googleusercontent.com";
 
@@ -48,7 +47,7 @@ fn main() {
 
 fn App() -> Element {
     rsx! {
-        document::Stylesheet { href: COMPONENT_THEME_CSS }
+        document::Stylesheet { href: asset!("/assets/dx-components-theme.css") }
         document::Stylesheet { href: asset!("/assets/tailwind.css") }
 
         Router::<Route> {}

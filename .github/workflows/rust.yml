@@ -8,13 +8,11 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - run: rustup target add wasm32-unknown-unknown
     - uses: actions/checkout@v4
-    - run: cargo build --verbose
-    - run: cargo test --verbose
+    - run: rustup target add wasm32-unknown-unknown
+    - run: cargo install dioxus-cli
+    - run: cargo build
+    - run: cargo test
 
     - working-directory: arpui
-      run: cargo check --target wasm32-unknown-unknown
-
-    - working-directory: arpui
-      run: cargo test
+      run: dx build
