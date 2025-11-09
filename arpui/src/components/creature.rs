@@ -149,14 +149,14 @@ fn ConditionTooltip(applied: AppliedCondition) -> Element {
     }
 }
 
-fn condition_icon(condition: &Condition) -> String {
+fn condition_icon(condition: &Condition) -> &'static str {
     match condition {
-        Condition::Dead => "💀".to_string(),
-        Condition::Incapacitated => "😞".to_string(),
-        Condition::DoubleMaxMovement => "🏃".to_string(),
-        Condition::RecurringEffect(_) => "🔁".to_string(),
-        Condition::AddDamageBuff(_) => "😈".to_string(),
-        Condition::ActivateAbility(ability_id) => format!("Ability Activated: {}", ability_id),
+        Condition::Dead => "💀",
+        Condition::Incapacitated => "😞",
+        Condition::DoubleMaxMovement => "🏃",
+        Condition::RecurringEffect(_) => "🔁",
+        Condition::AddDamageBuff(_) => "😈",
+        Condition::ActivateAbility(_) => "💪",
     }
 }
 
@@ -236,7 +236,6 @@ fn append_activate_ability_details(
     let game = GAME.read();
     if let Some(ability) = game.abilities.get(ability_id) {
         lines.push((indent, format!("Activates ability: {}", ability.name)));
-        lines.push((indent + 1, format!("Ability ID: {}", ability.id)));
         lines.push((indent + 1, format!("Energy cost: {}", ability.cost.0)));
         lines.push((
             indent + 1,
