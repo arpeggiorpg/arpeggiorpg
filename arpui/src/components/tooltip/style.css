@@ -1,0 +1,60 @@
+.tooltip-anchor {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tooltip-popover {
+  inset: unset;
+  position: absolute;
+  margin: 0;
+  padding: 8px 12px;
+  max-width: min(24rem, 80vw);
+  border-radius: 0.75rem;
+  border: 1px solid var(--secondary-color-4);
+  background-color: var(--primary-color-5);
+  color: var(--secondary-color-4);
+  font-size: 14px;
+  line-height: 1.4;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.2);
+  pointer-events: none;
+}
+
+.tooltip-popover:popover-open {
+  pointer-events: auto;
+}
+
+.tooltip-popover[data-direction="above"] {
+  top: calc(anchor(top) - 8px);
+  left: anchor(center);
+  transform: translate(-50%, -100%);
+}
+
+.tooltip-popover[data-direction="below"] {
+  top: calc(anchor(bottom) + 8px);
+  left: anchor(center);
+  transform: translate(-50%, 0);
+}
+
+.tooltip-popover[data-direction="left"] {
+  top: anchor(center);
+  left: calc(anchor(left) - 8px);
+  transform: translate(-100%, -50%);
+}
+
+.tooltip-popover[data-direction="right"] {
+  top: anchor(center);
+  left: calc(anchor(right) + 8px);
+  transform: translate(0, -50%);
+}
+
+@supports not (top: anchor(top)) {
+  .tooltip-popover {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    left: auto;
+    top: auto;
+    transform: none;
+  }
+}

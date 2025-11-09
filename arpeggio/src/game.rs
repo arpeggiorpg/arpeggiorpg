@@ -742,6 +742,7 @@ impl GameExt for Game {
                     abilities: class.abilities.clone(),
                     conditions: class.conditions.clone(),
                     color: class.color.clone(),
+                    emoji: class.emoji.clone(),
                 };
                 self.change_with(GameLog::CreateClass { path, class })
             }
@@ -1662,6 +1663,7 @@ impl GameExt for Game {
                     c.abilities = class.abilities.clone();
                     c.conditions = class.conditions.clone();
                     c.color = class.color.clone();
+                    c.emoji = class.emoji.clone();
                 });
             }
             CreateAbility {
@@ -2333,6 +2335,7 @@ pub mod test {
                 abilities: rogue_abs,
                 conditions: vec![],
                 color: "purple".to_string(),
+                emoji: Some("🗡️".to_string()),
             },
             Class {
                 id: classid_ranger(),
@@ -2340,6 +2343,7 @@ pub mod test {
                 abilities: ranger_abs,
                 conditions: vec![],
                 color: "darkgreen".to_string(),
+                emoji: Some("🏹".to_string()),
             },
             Class {
                 id: classid_cleric(),
@@ -2347,6 +2351,7 @@ pub mod test {
                 abilities: cleric_abs,
                 conditions: vec![],
                 color: "lightgreen".to_string(),
+                emoji: Some("💉".to_string()),
             },
         ])
     }
@@ -2709,6 +2714,7 @@ pub mod test {
             abilities: vec![],
             conditions: vec![],
             color: "blue".to_string(),
+            emoji: Some("🩸".to_string()),
         };
         module.classes.insert(class);
         module

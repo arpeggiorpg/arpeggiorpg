@@ -385,7 +385,7 @@ export function requestCombatAbility(
   ability: T.Ability,
   scene_id: T.SceneID,
 ) {
-  if ("Creature" in ability.action && "Actor" in ability.action.Creature) {
+  if ("Creature" in ability.action && ability.action.Creature.target === "Actor") {
     return sendGMCommand({ t: "CombatAct", ability_id, target: "Actor" });
   } else {
     return selectAbility(scene_id, cid, ability_id);

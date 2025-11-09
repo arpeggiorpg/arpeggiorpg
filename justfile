@@ -3,16 +3,19 @@ set windows-shell := ["powershell.exe", "-NoLogo", "-Command"]
 default:
     just --list
 
-run-ui:
+ui:
     cd ui; npm run dev
 
-run-dxui:
+dxui:
     cd arpui; cp index.dev.html index.html
     cd arpui; dx serve
 
 # This "ARP_LOCAL_DEV" is used in wrangler.toml (actually, worker/build.js)
-run-worker $ARP_LOCAL_DEV="--dev":
+worker $ARP_LOCAL_DEV="--dev":
     cd worker; npm run dev
+
+gen-ts:
+    cd arptypes; cargo run --bin gen-ts
 
 deploy-ui:
     cd ui; npm run build

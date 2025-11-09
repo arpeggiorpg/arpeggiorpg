@@ -678,6 +678,9 @@ pub struct Class {
     pub conditions: Vec<Condition>,
     /// An SVG-compatible color specifier
     pub color: Color,
+    /// An emoji to display for this class
+    #[serde(default)]
+    pub emoji: Option<String>,
 }
 
 /// A specification for creating or editing a class.
@@ -690,6 +693,9 @@ pub struct ClassCreation {
     pub conditions: Vec<Condition>,
     /// An SVG-compatible color specifier
     pub color: Color,
+    /// An emoji to display for this class
+    #[serde(default)]
+    pub emoji: Option<String>,
 }
 
 impl DeriveKey for Class {

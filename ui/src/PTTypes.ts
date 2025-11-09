@@ -170,7 +170,11 @@ export function folderPathToString(path: FolderPath): string {
 }
 
 export class Point3 implements ValueObject {
-  constructor(public x: number, public y: number, public z: number) {}
+  constructor(
+    public x: number,
+    public y: number,
+    public z: number,
+  ) {}
 
   equals(other: Point3): boolean {
     return this.x === other.x && this.y === other.y && this.z === other.z;
@@ -195,9 +199,7 @@ export const SKILL_LEVELS: Array<SkillLevel> = [
   "Supernatural",
 ];
 
-export type RustResult<T, E> =
-  | { t: "Ok"; result: T }
-  | { t: "Err"; error: E };
+export type RustResult<T, E> = { t: "Ok"; result: T } | { t: "Err"; error: E };
 
 // ** Decoders **
 
@@ -226,7 +228,7 @@ const decodeDice: Decoder<Dice> = Z.lazy(() =>
     Z.object({ Expr: Z.object({ num: Z.number(), size: Z.number() }) }),
     Z.object({ Plus: Z.tuple([decodeDice, decodeDice]) }),
     Z.object({ BestOf: Z.tuple([Z.number(), decodeDice]) }),
-  ])
+  ]),
 );
 
 const decodeDuration: Decoder<Duration> = Z.union([
@@ -376,16 +378,16 @@ export const decodeScene: Decoder<Scene> = Z.object({
 });
 
 const decodeFolderItemID: Decoder<FolderItemID> = Z.union([
-  Z.object({ "SceneID": Z.string() }),
-  Z.object({ "CreatureID": Z.string() }),
-  Z.object({ "NoteID": Z.string() }),
-  Z.object({ "ItemID": Z.string() }),
-  Z.object({ "AbilityID": Z.string() }),
-  Z.object({ "ClassID": Z.string() }),
-  Z.object({ "SubfolderID": Z.string() }),
+  Z.object({ SceneID: Z.string() }),
+  Z.object({ CreatureID: Z.string() }),
+  Z.object({ NoteID: Z.string() }),
+  Z.object({ ItemID: Z.string() }),
+  Z.object({ AbilityID: Z.string() }),
+  Z.object({ ClassID: Z.string() }),
+  Z.object({ SubfolderID: Z.string() }),
 ]);
 
-export const decodeFolderPath: Decoder<FolderPath> = Z.string().transform(strpath => {
+export const decodeFolderPath: Decoder<FolderPath> = Z.string().transform((strpath) => {
   if (strpath === "") {
     return [];
   } else if (strpath.startsWith("/")) {
@@ -427,13 +429,7 @@ export const decodeClass: Decoder<Class> = Z.object({
   color: Z.string(),
   abilities: Z.array(Z.string()),
   conditions: Z.array(decodeCondition),
-});
-
-const decodeClassCreation: Decoder<ClassCreation> = Z.object({
-  name: Z.string(),
-  color: Z.string(),
-  abilities: Z.array(Z.string()),
-  conditions: Z.array(decodeCondition),
+  emoji: Z.string().nullable(),
 });
 
 export interface NonEmpty {
@@ -526,10 +522,7 @@ const decodeAbilityCreation: Decoder<AbilityCreation> = Z.object({
   usable_ooc: Z.boolean(),
 });
 
-const decodeTileSystem: Decoder<TileSystem> = Z.union([
-  Z.literal("Realistic"),
-  Z.literal("DnD"),
-]);
+const decodeTileSystem: Decoder<TileSystem> = Z.union([Z.literal("Realistic"), Z.literal("DnD")]);
 
 export const decodeGame: Decoder<Game> = Z.object({
   current_combat: decodeCombat.nullable(),
@@ -787,28 +780,27 @@ export function decodeRustResult<T, E>(
   decode_ok: Decoder<T>,
   decode_err: Decoder<E>,
 ): Decoder<RustResult<T, E>> {
-  return Z.union(
-    [
-      Z.object({ Ok: decode_ok }).transform(({ Ok }): RustResult<T, E> => ({
+  return Z.union([
+    Z.object({ Ok: decode_ok }).transform(
+      ({ Ok }): RustResult<T, E> => ({
         t: "Ok",
         result: Ok as T,
-      })),
-      Z.object({ Err: decode_err }).transform(({ Err }): RustResult<T, E> => ({
+      }),
+    ),
+    Z.object({ Err: decode_err }).transform(
+      ({ Err }): RustResult<T, E> => ({
         t: "Err",
         error: Err as E,
-      })),
-    ],
-  );
+      }),
+    ),
+  ]);
 }
 
 export const decodeGameMetadata: Decoder<GameMetadata> = Z.object({
   name: Z.string(),
 });
 
-export const decodeRole: Decoder<Role> = Z.union([
-  Z.literal("GM"),
-  Z.literal("Player"),
-]);
+export const decodeRole: Decoder<Role> = Z.union([Z.literal("GM"), Z.literal("Player")]);
 
 export const decodeGameProfile: Decoder<GameProfile> = Z.object({
   user_id: Z.string(),
@@ -916,16 +908,16 @@ export function encodeGMCommand(cmd: GMCommand): object {
     case "EditSceneHighlights":
       return {
         ...cmd,
-        highlights: cmd.highlights.mapEntries((
-          [point, [color, vis]],
-        ) => [encodePoint3(point), [color, vis]]).toJS(),
+        highlights: cmd.highlights
+          .mapEntries(([point, [color, vis]]) => [encodePoint3(point), [color, vis]])
+          .toJS(),
       };
     case "EditSceneAnnotations":
       return {
         ...cmd,
-        annotations: cmd.annotations.mapEntries((
-          [point, [annotation, vis]],
-        ) => [encodePoint3(point), [annotation, vis]]).toJS(),
+        annotations: cmd.annotations
+          .mapEntries(([point, [annotation, vis]]) => [encodePoint3(point), [annotation, vis]])
+          .toJS(),
       };
     case "EditSceneRelatedScenes":
       return { ...cmd, related_scenes: cmd.related_scenes.toArray() };
@@ -966,7 +958,7 @@ export function encodePoint3(pt: Point3): string {
 
 // Utility Functions for Decoding
 function decodeIMap<K, V>(keyDecoder: Decoder<K>, valueDecoder: Decoder<V>): Decoder<Map<K, V>> {
-  return Z.record(valueDecoder).transform(o => Map(o).mapKeys(k => keyDecoder.parse(k)));
+  return Z.record(valueDecoder).transform((o) => Map(o).mapKeys((k) => keyDecoder.parse(k)));
 }
 
 function decodeSet<T>(d: Decoder<T>): Decoder<Set<T>> {
