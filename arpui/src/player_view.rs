@@ -31,13 +31,13 @@ pub fn PlayerGamePage(id: GameID, player_id: PlayerID) -> Element {
         game_signal: GAME.resolve(),
         game_logs_signal: GAME_LOGS.resolve(),
 
-        PlayerGameView { player_id }
+        GameLoader { player_id }
       }
     }
 }
 
 #[component]
-fn PlayerGameView(player_id: PlayerID) -> Element {
+fn GameLoader(player_id: PlayerID) -> Element {
     let ws = use_ws();
     let future: Resource<Result<Game, anyhow::Error>> = use_resource(move || async move {
         info!("fetching game state for player view");
@@ -53,7 +53,7 @@ fn PlayerGameView(player_id: PlayerID) -> Element {
         Some(Ok(game)) => {
             let scene_id = game.players.get(&player_id).and_then(|p| p.scene);
             rsx! {
-              PlayerGameScaffold {
+              Shell {
                 player_id: player_id.clone(),
                 scene_id
               }
@@ -70,7 +70,7 @@ fn PlayerGameView(player_id: PlayerID) -> Element {
 }
 
 #[component]
-fn PlayerGameScaffold(player_id: PlayerID, scene_id: Option<SceneID>) -> Element {
+fn Shell(player_id: PlayerID, scene_id: Option<SceneID>) -> Element {
     let active_scene = scene_id.map(|sid| sid.to_string());
 
     let tabs = rsx! {Tabs {
@@ -81,10 +81,10 @@ fn PlayerGameScaffold(player_id: PlayerID, scene_id: Option<SceneID>) -> Element
             TabTrigger { value: "notes".to_string(), index: 1usize, "Notes" }
         }
         TabContent { index: 0usize, value: "creatures".to_string(),
-            PlayerCreaturesTab { player_id: player_id.clone() }
+            Creatures { player_id: player_id.clone() }
         }
         TabContent { index: 1usize, value: "notes".to_string(),
-            PlayerNotesTab {}
+            Notes {}
         }
     }};
     let chat = rsx! {
@@ -116,7 +116,7 @@ fn PlayerGameScaffold(player_id: PlayerID, scene_id: Option<SceneID>) -> Element
 }
 
 #[component]
-fn PlayerCreaturesTab(player_id: PlayerID) -> Element {
+fn Creatures(player_id: PlayerID) -> Element {
     let game = GAME.read();
 
     if let Some(player) = game.players.get(&player_id) {
@@ -155,7 +155,7 @@ fn PlayerCreaturesTab(player_id: PlayerID) -> Element {
 }
 
 #[component]
-fn PlayerNotesTab() -> Element {
+fn Notes() -> Element {
     rsx! {
         div { class: "player-view-tab player-view-tab--notes",
             p { "Player notes will appear here." }
