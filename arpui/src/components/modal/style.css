@@ -1,0 +1,84 @@
+.modal-popover {
+  /* Reset popover positioning - we want full control */
+  position: fixed !important;
+  inset: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: none !important;
+  background: transparent !important;
+  max-width: none !important;
+  max-height: none !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  
+  /* Ensure it's above other content */
+  z-index: 50;
+  
+  /* Remove default popover styling */
+  outline: none;
+  box-shadow: none;
+}
+
+.modal-popover::backdrop {
+  /* Hide the default popover backdrop since we're handling our own */
+  display: none;
+}
+
+.modal-backdrop {
+  /* Flexbox for centering */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  
+  /* Animation for smooth appearance */
+  animation: modal-backdrop-fade-in 0.15s ease-out;
+}
+
+.modal-content {
+  /* Prevent interaction with backdrop through the modal */
+  pointer-events: auto;
+  
+  /* Animation for smooth appearance */
+  animation: modal-content-scale-in 0.15s ease-out;
+  
+  /* Ensure modal doesn't get too wide on large screens */
+  max-width: min(90vw, 500px);
+  
+  /* Ensure modal doesn't get too tall */
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+/* Animations */
+@keyframes modal-backdrop-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes modal-content-scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* Focus management */
+.modal-popover:focus {
+  outline: none;
+}
+
+/* Responsive adjustments */
+@media (max-width: 640px) {
+  .modal-content {
+    max-width: 95vw;
+    margin: 1rem;
+  }
+}
