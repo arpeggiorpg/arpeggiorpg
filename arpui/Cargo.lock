@@ -85,6 +85,7 @@ dependencies = [
  "dioxus",
  "dioxus-logger",
  "dioxus-primitives",
+ "foldertree",
  "futures",
  "futures-util",
  "getrandom 0.2.14",
