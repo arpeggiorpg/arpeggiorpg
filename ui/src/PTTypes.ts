@@ -635,19 +635,19 @@ export const decodeGameLog: Decoder<GameLog> = Z.discriminatedUnion("t", [
     from: decodeInventoryOwner,
     to: decodeInventoryOwner,
     item_id: Z.string(),
-    count: Z.bigint(),
+    count: Z.coerce.bigint(),
   }),
   Z.object({
     t: Z.literal("RemoveItem"),
     owner: decodeInventoryOwner,
     item_id: Z.string(),
-    count: Z.bigint(),
+    count: Z.coerce.bigint(),
   }),
   Z.object({
     t: Z.literal("SetItemCount"),
     owner: decodeInventoryOwner,
     item_id: Z.string(),
-    count: Z.bigint(),
+    count: Z.coerce.bigint(),
   }),
   Z.object({ t: Z.literal("CreateScene"), path: decodeFolderPath, scene: decodeScene }),
   Z.object({

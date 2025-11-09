@@ -339,7 +339,7 @@ fn CreatureInventory(creature: arptypes::Creature) -> Element {
 fn InventoryItemMenu(creature: arptypes::Creature, item: Item, count: u64) -> Element {
     let mut show_menu = use_signal(|| false);
     let mut show_give_modal = use_signal(|| false);
-    let mut show_remove_modal = use_signal(|| false);
+    let mut show_drop_modal = use_signal(|| false);
 
     rsx! {
         div { class: "relative",
@@ -364,9 +364,9 @@ fn InventoryItemMenu(creature: arptypes::Creature, item: Item, count: u64) -> El
                             class: "block w-full px-4 py-2 text-sm text-left text-gray-700 hover:bg-gray-100",
                             onclick: move |_| {
                                 show_menu.set(false);
-                                show_remove_modal.set(true);
+                                show_drop_modal.set(true);
                             },
-                            "Remove"
+                            "Drop"
                         }
                     }
                 }
@@ -382,36 +382,36 @@ fn InventoryItemMenu(creature: arptypes::Creature, item: Item, count: u64) -> El
             }
         }
 
-        if show_remove_modal() {
-            RemoveItemModal {
+        if show_drop_modal() {
+            DropItemModal {
                 creature: creature.clone(),
                 item: item.clone(),
                 count,
-                on_close: move || show_remove_modal.set(false)
+                on_close: move || show_drop_modal.set(false)
             }
         }
     }
 }
 
 #[component]
-fn RemoveItemModal(
+fn DropItemModal(
     creature: arptypes::Creature,
     item: Item,
     count: u64,
     on_close: EventHandler<()>,
 ) -> Element {
-    let mut remove_count = use_signal(|| 1u64);
-    let mut remove_action = use_action({
+    let mut drop_count = use_signal(|| 1u64);
+    let mut drop_action = use_action({
         let ws = use_ws();
         let creature_id = creature.id.clone();
         let item_id = item.id.clone();
         move || async move {
-            let request = RPIGameRequest::GMCommand {
-                command: Box::new(arptypes::GMCommand::RemoveItem {
-                    owner: arptypes::InventoryOwner::Creature(creature_id),
+            let request = RPIGameRequest::PlayerCommand {
+                command: arptypes::PlayerCommand::DropItem {
+                    creature_id,
                     item_id,
-                    count: remove_count(),
-                }),
+                    count: drop_count(),
+                },
             };
 
             send_request::<()>(request, ws).await
@@ -424,26 +424,26 @@ fn RemoveItemModal(
             on_close: move |_| on_close.call(()),
             class: "p-6",
             div { class: "mb-4",
-                h3 { class: "text-lg font-semibold", "Remove {item.name}" }
+                h3 { class: "text-lg font-semibold", "Drop {item.name}" }
                 p { class: "text-sm text-gray-600 mt-2",
-                    "You have {count} of this item. How many would you like to remove?"
+                    "You have {count} of this item. How many would you like to drop?"
                 }
             }
 
             div { class: "mb-4",
                 label { class: "block text-sm font-medium text-gray-700 mb-2",
-                    "Count to remove:"
+                    "Count to drop:"
                 }
                 input {
                     class: "w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500",
                     r#type: "number",
                     min: "1",
                     max: "{count}",
-                    value: "{remove_count()}",
+                    value: "{drop_count()}",
                     oninput: move |evt| {
                         if let Ok(val) = evt.value().parse::<u64>() {
                             if val <= count {
-                                remove_count.set(val);
+                                drop_count.set(val);
                             }
                         }
                     }
@@ -458,12 +458,12 @@ fn RemoveItemModal(
                 }
                 button {
                     class: "px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50",
-                    disabled: remove_count() == 0 || remove_count() > count || remove_action.pending(),
-                    onclick: move |_| remove_action.call(),
-                    if remove_action.pending() {
-                        "Removing..."
+                    disabled: drop_count() == 0 || drop_count() > count || drop_action.pending(),
+                    onclick: move |_| drop_action.call(),
+                    if drop_action.pending() {
+                        "Dropping..."
                     } else {
-                        "Remove"
+                        "Drop"
                     }
                 }
             }
@@ -489,13 +489,13 @@ fn GiveItemModal(
                 return Ok(());
             };
             info!(?recipient_id, count = give_count(), "Async GIVING!");
-            let request = RPIGameRequest::GMCommand {
-                command: Box::new(arptypes::GMCommand::TransferItem {
-                    from: arptypes::InventoryOwner::Creature(giver_id),
-                    to: arptypes::InventoryOwner::Creature(recipient_id),
+            let request = RPIGameRequest::PlayerCommand {
+                command: arptypes::PlayerCommand::GiveItem {
+                    from_creature_id: giver_id,
+                    to_creature_id: recipient_id,
                     item_id,
                     count: give_count(),
-                }),
+                },
             };
 
             send_request::<()>(request, ws).await
