@@ -300,6 +300,7 @@ function FolderMenu({ path }: { path: T.FolderPath }) {
                 abilities: [],
                 conditions: [],
                 color: "white",
+                emoji: null
               },
             });
             // bit of annoying typescript junk here
