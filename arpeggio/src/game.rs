@@ -495,6 +495,73 @@ impl GameExt for Game {
                 self.auth_combat(player)?;
                 self.next_turn()
             }
+            GiveItem {
+                from_creature_id,
+                to_creature_id,
+                item_id,
+                count,
+            } => {
+                // Validate that the player owns the source creature
+                if !player.creatures.contains(&from_creature_id) {
+                    return Err(GameError::CreatureNotFound(from_creature_id.to_string()));
+                }
+
+                // Validate that both creatures exist
+                self.check_creature_id(from_creature_id)?;
+                self.check_creature_id(to_creature_id)?;
+
+                // Validate that the player is in a scene
+                let scene_id = player.scene.ok_or(GameError::BuggyProgram(
+                    "Player isn't in a scene".to_string(),
+                ))?;
+                let scene = self.get_scene(scene_id)?;
+
+                // Validate that both creatures are in the player's current scene
+                if !scene.creatures.contains_key(&from_creature_id) {
+                    return Err(GameError::CreatureNotFound(from_creature_id.to_string()));
+                }
+                if !scene.creatures.contains_key(&to_creature_id) {
+                    return Err(GameError::CreatureNotFound(to_creature_id.to_string()));
+                }
+
+                self.change_with(GameLog::TransferItem {
+                    from: InventoryOwner::Creature(from_creature_id),
+                    to: InventoryOwner::Creature(to_creature_id),
+                    item_id,
+                    count,
+                })
+            }
+            DropItem {
+                creature_id,
+                item_id,
+                count,
+            } => {
+                // Validate that the player owns the creature
+                if !player.creatures.contains(&creature_id) {
+                    return Err(GameError::CreatureNotFound(creature_id.to_string()));
+                }
+
+                // Validate that the creature exists
+                self.check_creature_id(creature_id)?;
+
+                // Validate that the player is in a scene
+                let scene_id = player.scene.ok_or(GameError::BuggyProgram(
+                    "Player isn't in a scene".to_string(),
+                ))?;
+                let scene = self.get_scene(scene_id)?;
+
+                // Validate that the creature is in the player's current scene
+                if !scene.creatures.contains_key(&creature_id) {
+                    return Err(GameError::CreatureNotFound(creature_id.to_string()));
+                }
+
+                self.change_with(GameLog::TransferItem {
+                    from: InventoryOwner::Creature(creature_id),
+                    to: InventoryOwner::Scene(scene_id),
+                    item_id,
+                    count,
+                })
+            }
         }
     }
 
@@ -972,7 +1039,7 @@ impl GameExt for Game {
         fn remove_set<T: ::std::hash::Hash + Eq>(
             path: &FolderPath,
             item: &FolderItemID,
-            s: &mut ::std::collections::HashSet<T>,
+            s: &mut HashSet<T>,
             key: &T,
         ) -> Result<(), GameError> {
             if !s.remove(key) {
@@ -1056,9 +1123,9 @@ impl GameExt for Game {
     // This is done so that we don't have to worry about `self` vs `newgame` -- all
     // manipulations here work on &mut self.
     fn apply_log_mut(&mut self, log: &GameLog) -> Result<(), GameError> {
-        // HEY! Maintainer note! Don't use a call to *ID::gen(), or any other random or side-effecting
-        // functions! All of that stuff should be resolved in perform_command. This function MUST be
-        // purely deterministic.
+        // HEY! Maintainer note! Don't use a call to *ID::gen(), or any other random or
+        // side-effecting functions! All of that stuff should be resolved in perform_*_command. This
+        // function MUST be purely deterministic.
         use self::GameLog::*;
         match *log {
             LoadModule {
@@ -2364,6 +2431,10 @@ pub mod test {
         perf(game, cmd).unwrap().game
     }
 
+    pub fn t_player_perform(game: &Game, player_id: PlayerID, cmd: PlayerCommand) -> Game {
+        game.perform_player_command(player_id, cmd).unwrap().game
+    }
+
     #[test]
     fn start_combat_not_found() {
         let game = t_game();
@@ -2737,5 +2808,284 @@ pub mod test {
             .unwrap()
             .classes
             .contains(&classid));
+    }
+
+    fn t_item() -> Item {
+        Item {
+            id: ItemID::gen(),
+            name: "Test Sword".to_string(),
+        }
+    }
+
+    fn t_player(name: &str, scene_id: Option<SceneID>, creatures: Vec<CreatureID>) -> Player {
+        let mut player = Player::new(PlayerID(name.to_string()));
+        player.scene = scene_id;
+        player.creatures = creatures.into_iter().collect();
+        player
+    }
+
+    fn setup_inventory_test_game() -> (Game, ItemID, PlayerID, PlayerID) {
+        let mut game = t_game();
+
+        // Create a test item
+        let test_item = t_item();
+        let item_id = test_item.id;
+        game.items.insert(test_item);
+
+        // Create two players
+        let player1_id = PlayerID("player1".to_string());
+        let player2_id = PlayerID("player2".to_string());
+
+        let player1 = t_player(
+            "player1",
+            Some(t_scene_id()),
+            vec![cid_rogue(), cid_ranger()],
+        );
+        let player2 = t_player("player2", Some(t_scene_id()), vec![cid_cleric()]);
+
+        game.players.insert(player1);
+        game.players.insert(player2);
+
+        // Give some items to the rogue
+        game.set_item_count(InventoryOwner::Creature(cid_rogue()), item_id, 5)
+            .unwrap();
+
+        (game, item_id, player1_id, player2_id)
+    }
+
+    #[test]
+    fn test_give_item_success() {
+        let (game, item_id, player1_id, _player2_id) = setup_inventory_test_game();
+
+        // Player1 gives 2 items from rogue to ranger
+        let result = t_player_perform(
+            &game,
+            player1_id,
+            PlayerCommand::GiveItem {
+                from_creature_id: cid_rogue(),
+                to_creature_id: cid_ranger(),
+                item_id,
+                count: 2,
+            },
+        );
+
+        // Check that rogue now has 3 items (complete inventory)
+        let expected_rogue_inventory = HashMap::from([(item_id, 3)]);
+        assert_eq!(
+            *result
+                .get_owner_inventory(InventoryOwner::Creature(cid_rogue()))
+                .unwrap(),
+            expected_rogue_inventory
+        );
+
+        // Check that ranger now has 2 items (complete inventory)
+        let expected_ranger_inventory = HashMap::from([(item_id, 2)]);
+        assert_eq!(
+            *result
+                .get_owner_inventory(InventoryOwner::Creature(cid_ranger()))
+                .unwrap(),
+            expected_ranger_inventory
+        );
+    }
+
+    #[test]
+    fn test_give_item_player_does_not_own_source_creature() {
+        let (game, item_id, _player1_id, player2_id) = setup_inventory_test_game();
+
+        // Player2 tries to give items from rogue (which they don't own) to cleric
+        let result = game.perform_player_command(
+            player2_id,
+            PlayerCommand::GiveItem {
+                from_creature_id: cid_rogue(),
+                to_creature_id: cid_cleric(),
+                item_id,
+                count: 1,
+            },
+        );
+
+        assert_eq!(
+            result.unwrap_err(),
+            GameError::CreatureNotFound(cid_rogue().0.to_string())
+        );
+    }
+
+    #[test]
+    fn test_give_item_target_not_in_scene() {
+        let (mut game, item_id, player1_id, _player2_id) = setup_inventory_test_game();
+
+        // Remove cleric from the scene
+        game.scenes.mutate(&t_scene_id(), |scene| {
+            scene.creatures.remove(&cid_cleric());
+        });
+
+        // Player1 tries to give items to cleric (not in scene)
+        let result = game.perform_player_command(
+            player1_id,
+            PlayerCommand::GiveItem {
+                from_creature_id: cid_rogue(),
+                to_creature_id: cid_cleric(),
+                item_id,
+                count: 1,
+            },
+        );
+
+        assert_eq!(
+            result.unwrap_err(),
+            GameError::CreatureNotFound(cid_cleric().0.to_string())
+        );
+    }
+
+    #[test]
+    fn test_give_item_player_not_in_scene() {
+        let (mut game, item_id, player1_id, _player2_id) = setup_inventory_test_game();
+
+        // Remove player1 from scene
+        game.players.mutate(&player1_id, |player| {
+            player.scene = None;
+        });
+
+        // Player1 tries to give items while not in a scene
+        let result = game.perform_player_command(
+            player1_id,
+            PlayerCommand::GiveItem {
+                from_creature_id: cid_rogue(),
+                to_creature_id: cid_ranger(),
+                item_id,
+                count: 1,
+            },
+        );
+
+        assert!(matches!(result, Err(GameError::BuggyProgram(_))));
+    }
+
+    #[test]
+    fn test_drop_item_success() {
+        let (game, item_id, player1_id, _player2_id) = setup_inventory_test_game();
+
+        // Player1 drops 3 items from rogue into the scene
+        let result = t_player_perform(
+            &game,
+            player1_id,
+            PlayerCommand::DropItem {
+                creature_id: cid_rogue(),
+                item_id,
+                count: 3,
+            },
+        );
+
+        // Check that rogue now has 2 items (complete inventory)
+        let expected_rogue_inventory = HashMap::from([(item_id, 2)]);
+        assert_eq!(
+            *result
+                .get_owner_inventory(InventoryOwner::Creature(cid_rogue()))
+                .unwrap(),
+            expected_rogue_inventory
+        );
+
+        // Check that scene now has 3 items (complete inventory)
+        let expected_scene_inventory = HashMap::from([(item_id, 3)]);
+        assert_eq!(
+            *result
+                .get_owner_inventory(InventoryOwner::Scene(t_scene_id()))
+                .unwrap(),
+            expected_scene_inventory
+        );
+    }
+
+    #[test]
+    fn test_drop_item_player_does_not_own_creature() {
+        let (game, item_id, _player1_id, player2_id) = setup_inventory_test_game();
+
+        // Player2 tries to drop items from rogue (which they don't own)
+        let result = game.perform_player_command(
+            player2_id,
+            PlayerCommand::DropItem {
+                creature_id: cid_rogue(),
+                item_id,
+                count: 1,
+            },
+        );
+
+        assert_eq!(
+            result.unwrap_err(),
+            GameError::CreatureNotFound(cid_rogue().0.to_string())
+        );
+    }
+
+    #[test]
+    fn test_drop_item_creature_not_in_scene() {
+        let (mut game, item_id, player1_id, _player2_id) = setup_inventory_test_game();
+
+        // Remove rogue from the scene
+        game.scenes.mutate(&t_scene_id(), |scene| {
+            scene.creatures.remove(&cid_rogue());
+        });
+
+        // Player1 tries to drop items from rogue (not in scene)
+        let result = game.perform_player_command(
+            player1_id,
+            PlayerCommand::DropItem {
+                creature_id: cid_rogue(),
+                item_id,
+                count: 1,
+            },
+        );
+        assert_eq!(
+            result.unwrap_err(),
+            GameError::CreatureNotFound(cid_rogue().0.to_string())
+        );
+    }
+
+    #[test]
+    fn test_drop_item_player_not_in_scene() {
+        let (mut game, item_id, player1_id, _player2_id) = setup_inventory_test_game();
+
+        // Remove player1 from scene
+        game.players.mutate(&player1_id, |player| {
+            player.scene = None;
+        });
+
+        // Player1 tries to drop items while not in a scene
+        let result = game.perform_player_command(
+            player1_id,
+            PlayerCommand::DropItem {
+                creature_id: cid_rogue(),
+                item_id,
+                count: 1,
+            },
+        );
+
+        assert!(matches!(result, Err(GameError::BuggyProgram(_))));
+    }
+
+    #[test]
+    fn test_give_item_all_items() {
+        let (game, item_id, player1_id, _player2_id) = setup_inventory_test_game();
+
+        // Player1 gives all 5 items from rogue to ranger
+        let result = t_player_perform(
+            &game,
+            player1_id,
+            PlayerCommand::GiveItem {
+                from_creature_id: cid_rogue(),
+                to_creature_id: cid_ranger(),
+                item_id,
+                count: 5,
+            },
+        );
+
+        assert_eq!(
+            *result
+                .get_owner_inventory(InventoryOwner::Creature(cid_rogue()))
+                .unwrap(),
+            HashMap::new(),
+        );
+
+        assert_eq!(
+            *result
+                .get_owner_inventory(InventoryOwner::Creature(cid_ranger()))
+                .unwrap(),
+            HashMap::from([(item_id, 5)])
+        );
     }
 }

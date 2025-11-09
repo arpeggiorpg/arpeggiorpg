@@ -55,7 +55,21 @@ pub enum PlayerCommand {
     },
     /// End the current creature's turn.
     EndTurn,
-    // GiveItem or something should be here
+
+    // ** Inventory management **
+    /// Give an item from one of the player's creatures to another creature in the scene
+    GiveItem {
+        from_creature_id: CreatureID,
+        to_creature_id: CreatureID,
+        item_id: ItemID,
+        count: u64,
+    },
+    /// Drop an item from one of the player's creatures into the current scene
+    DropItem {
+        creature_id: CreatureID,
+        item_id: ItemID,
+        count: u64,
+    },
 }
 
 /// Top-level commands that can be sent from a GM to affect the state of the game.
