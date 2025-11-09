@@ -13,6 +13,7 @@ use crate::{
     chat::PlayerChat,
     components::{
         creature::CreatureCard,
+        modal::Modal,
         split_pane::{SplitDirection, SplitPane},
         tabs::{TabContent, TabList, TabTrigger, Tabs},
     },
@@ -190,36 +191,32 @@ fn Notes(player_id: PlayerID) -> Element {
 
     let has_existing_note = existing_note.is_some();
     let mut save_action = use_action({
-        let ws = ws.clone();
-        move |content: String| {
-            let ws = ws.clone();
-            async move {
-                if content.trim().is_empty() {
-                    return Ok(());
-                }
-
-                let note = Note {
-                    name: "Scratch".to_string(),
-                    content,
-                };
-                let note_path: FolderPath = vec!["Notes".to_string()].into();
-                let command = if has_existing_note {
-                    PlayerCommand::EditNote {
-                        path: note_path,
-                        original_name: "Scratch".to_string(),
-                        note,
-                    }
-                } else {
-                    PlayerCommand::CreateNote {
-                        path: note_path,
-                        note,
-                    }
-                };
-
-                let request = RPIGameRequest::PlayerCommand { command };
-
-                send_request::<()>(request, ws).await
+        move |content: String| async move {
+            if content.trim().is_empty() {
+                return Ok(());
             }
+
+            let note = Note {
+                name: "Scratch".to_string(),
+                content,
+            };
+            let note_path: FolderPath = vec!["Notes".to_string()].into();
+            let command = if has_existing_note {
+                PlayerCommand::EditNote {
+                    path: note_path,
+                    original_name: "Scratch".to_string(),
+                    note,
+                }
+            } else {
+                PlayerCommand::CreateNote {
+                    path: note_path,
+                    note,
+                }
+            };
+
+            let request = RPIGameRequest::PlayerCommand { command };
+
+            send_request::<()>(request, ws).await
         }
     });
 
@@ -408,73 +405,65 @@ fn RemoveItemModal(
         let ws = use_ws();
         let creature_id = creature.id.clone();
         let item_id = item.id.clone();
-        move |count_to_remove: u64| {
-            let ws = ws.clone();
-            let creature_id = creature_id.clone();
-            let item_id = item_id.clone();
-            async move {
-                let request = RPIGameRequest::GMCommand {
-                    command: Box::new(arptypes::GMCommand::RemoveItem {
-                        owner: arptypes::InventoryOwner::Creature(creature_id),
-                        item_id,
-                        count: count_to_remove,
-                    }),
-                };
+        move || async move {
+            let request = RPIGameRequest::GMCommand {
+                command: Box::new(arptypes::GMCommand::RemoveItem {
+                    owner: arptypes::InventoryOwner::Creature(creature_id),
+                    item_id,
+                    count: remove_count(),
+                }),
+            };
 
-                send_request::<()>(request, ws).await
-            }
+            send_request::<()>(request, ws).await
         }
     });
 
     rsx! {
-        div { class: "fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50",
-            div { class: "bg-white p-6 rounded-lg shadow-xl max-w-md w-full mx-4",
-                div { class: "mb-4",
-                    h3 { class: "text-lg font-semibold", "Remove {item.name}" }
-                    p { class: "text-sm text-gray-600 mt-2",
-                        "You have {count} of this item. How many would you like to remove?"
-                    }
+        Modal {
+            open: true,
+            on_close: move |_| on_close.call(()),
+            class: "p-6",
+            div { class: "mb-4",
+                h3 { class: "text-lg font-semibold", "Remove {item.name}" }
+                p { class: "text-sm text-gray-600 mt-2",
+                    "You have {count} of this item. How many would you like to remove?"
                 }
+            }
 
-                div { class: "mb-4",
-                    label { class: "block text-sm font-medium text-gray-700 mb-2",
-                        "Count to remove:"
-                    }
-                    input {
-                        class: "w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500",
-                        r#type: "number",
-                        min: "1",
-                        max: "{count}",
-                        value: "{remove_count()}",
-                        oninput: move |evt| {
-                            if let Ok(val) = evt.value().parse::<u64>() {
-                                if val <= count {
-                                    remove_count.set(val);
-                                }
+            div { class: "mb-4",
+                label { class: "block text-sm font-medium text-gray-700 mb-2",
+                    "Count to remove:"
+                }
+                input {
+                    class: "w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500",
+                    r#type: "number",
+                    min: "1",
+                    max: "{count}",
+                    value: "{remove_count()}",
+                    oninput: move |evt| {
+                        if let Ok(val) = evt.value().parse::<u64>() {
+                            if val <= count {
+                                remove_count.set(val);
                             }
                         }
                     }
                 }
+            }
 
-                div { class: "flex justify-end space-x-3",
-                    button {
-                        class: "px-4 py-2 text-gray-600 hover:text-gray-800",
-                        onclick: move |_| on_close.call(()),
-                        "Cancel"
-                    }
-                    button {
-                        class: "px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50",
-                        disabled: remove_count() == 0 || remove_count() > count || remove_action.pending(),
-                        onclick: move |_| {
-                            let count = remove_count();
-                            remove_action.call(count);
-                            on_close.call(());
-                        },
-                        if remove_action.pending() {
-                            "Removing..."
-                        } else {
-                            "Remove"
-                        }
+            div { class: "flex justify-end space-x-3",
+                button {
+                    class: "px-4 py-2 text-gray-600 hover:text-gray-800",
+                    onclick: move |_| on_close.call(()),
+                    "Cancel"
+                }
+                button {
+                    class: "px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50",
+                    disabled: remove_count() == 0 || remove_count() > count || remove_action.pending(),
+                    onclick: move |_| remove_action.call(),
+                    if remove_action.pending() {
+                        "Removing..."
+                    } else {
+                        "Remove"
                     }
                 }
             }
@@ -495,22 +484,21 @@ fn GiveItemModal(
         let ws = use_ws();
         let giver_id = creature.id.clone();
         let item_id = item.id.clone();
-        move |(recipient_id, count_to_give): (arptypes::CreatureID, u64)| {
-            let ws = ws.clone();
-            let giver_id = giver_id.clone();
-            let item_id = item_id.clone();
-            async move {
-                let request = RPIGameRequest::GMCommand {
-                    command: Box::new(arptypes::GMCommand::TransferItem {
-                        from: arptypes::InventoryOwner::Creature(giver_id),
-                        to: arptypes::InventoryOwner::Creature(recipient_id),
-                        item_id,
-                        count: count_to_give,
-                    }),
-                };
+        move || async move {
+            let Some(recipient_id) = selected_recipient() else {
+                return Ok(());
+            };
+            info!(?recipient_id, count = give_count(), "Async GIVING!");
+            let request = RPIGameRequest::GMCommand {
+                command: Box::new(arptypes::GMCommand::TransferItem {
+                    from: arptypes::InventoryOwner::Creature(giver_id),
+                    to: arptypes::InventoryOwner::Creature(recipient_id),
+                    item_id,
+                    count: give_count(),
+                }),
+            };
 
-                send_request::<()>(request, ws).await
-            }
+            send_request::<()>(request, ws).await
         }
     });
 
@@ -551,89 +539,86 @@ fn GiveItemModal(
     };
 
     rsx! {
-        div { class: "fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50",
-            div { class: "bg-white p-6 rounded-lg shadow-xl max-w-md w-full mx-4",
-                div { class: "mb-4",
-                    h3 { class: "text-lg font-semibold", "Give {item.name}" }
-                    p { class: "text-sm text-gray-600 mt-2",
-                        "You have {count} of this item."
+        Modal {
+            open: true,
+            on_close: move |_| on_close.call(()),
+            class: "p-6",
+            div { class: "mb-4",
+                h3 { class: "text-lg font-semibold", "Give {item.name}" }
+                p { class: "text-sm text-gray-600 mt-2",
+                    "You have {count} of this item."
+                }
+            }
+
+            if available_recipients.is_empty() {
+                div { class: "text-center py-4",
+                    p { class: "text-gray-500", "No other creatures available in this scene to give items to." }
+                    button {
+                        class: "mt-4 px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400",
+                        onclick: move |_| on_close.call(()),
+                        "Close"
+                    }
+                }
+            } else {
+                div { class: "space-y-4",
+                    div {
+                        label { class: "block text-sm font-medium text-gray-700 mb-2",
+                            "Give to:"
+                        }
+                        select {
+                            class: "w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500",
+                            onchange: move |evt| {
+                                if let Ok(creature_id) = evt.value().parse::<arptypes::CreatureID>() {
+                                    selected_recipient.set(Some(creature_id));
+                                }
+                            },
+                            option { value: "", "Select a creature..." }
+                            for recipient in available_recipients.iter() {
+                                option {
+                                    value: "{recipient.id}",
+                                    "{recipient.name}"
+                                }
+                            }
+                        }
+                    }
+
+                    div {
+                        label { class: "block text-sm font-medium text-gray-700 mb-2",
+                            "Count to give:"
+                        }
+                        input {
+                            class: "w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500",
+                            r#type: "number",
+                            min: "1",
+                            max: "{count}",
+                            value: "{give_count()}",
+                            oninput: move |evt| {
+                                if let Ok(val) = evt.value().parse::<u64>() {
+                                    if val <= count {
+                                        give_count.set(val);
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
 
-                if available_recipients.is_empty() {
-                    div { class: "text-center py-4",
-                        p { class: "text-gray-500", "No other creatures available in this scene to give items to." }
-                        button {
-                            class: "mt-4 px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400",
-                            onclick: move |_| on_close.call(()),
-                            "Close"
-                        }
+                div { class: "flex justify-end space-x-3 mt-6",
+                    button {
+                        class: "px-4 py-2 text-gray-600 hover:text-gray-800",
+                        onclick: move |_| on_close.call(()),
+                        "Cancel"
                     }
-                } else {
-                    div { class: "space-y-4",
-                        div {
-                            label { class: "block text-sm font-medium text-gray-700 mb-2",
-                                "Give to:"
-                            }
-                            select {
-                                class: "w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500",
-                                onchange: move |evt| {
-                                    if let Ok(creature_id) = evt.value().parse::<arptypes::CreatureID>() {
-                                        selected_recipient.set(Some(creature_id));
-                                    }
-                                },
-                                option { value: "", "Select a creature..." }
-                                for recipient in available_recipients.iter() {
-                                    option {
-                                        value: "{recipient.id}",
-                                        "{recipient.name}"
-                                    }
-                                }
-                            }
-                        }
-
-                        div {
-                            label { class: "block text-sm font-medium text-gray-700 mb-2",
-                                "Count to give:"
-                            }
-                            input {
-                                class: "w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500",
-                                r#type: "number",
-                                min: "1",
-                                max: "{count}",
-                                value: "{give_count()}",
-                                oninput: move |evt| {
-                                    if let Ok(val) = evt.value().parse::<u64>() {
-                                        if val <= count {
-                                            give_count.set(val);
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    div { class: "flex justify-end space-x-3 mt-6",
-                        button {
-                            class: "px-4 py-2 text-gray-600 hover:text-gray-800",
-                            onclick: move |_| on_close.call(()),
-                            "Cancel"
-                        }
-                        button {
-                            class: "px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50",
-                            disabled: selected_recipient().is_none() || give_count() == 0 || give_count() > count || give_action.pending(),
-                            onclick: move |_| {
-                                if let Some(recipient_id) = selected_recipient() {
-                                    let count = give_count();
-                                    give_action.call((recipient_id, count));
-                                    on_close.call(());
-                                }
-                            },
-                            if give_action.pending() {
-                                "Giving..."
-                            } else {
-                                "Give"
-                            }
+                    button {
+                        class: "px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50",
+                        disabled: selected_recipient().is_none() || give_count() == 0 || give_count() > count || give_action.pending(),
+                        onclick: move |_| {
+                            give_action.call()
+                        },
+                        if give_action.pending() {
+                            "Giving..."
+                        } else {
+                            "Give"
                         }
                     }
                 }
