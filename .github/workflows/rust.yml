@@ -13,3 +13,11 @@ jobs:
       run: cargo build --verbose
     - name: Run tests
       run: cargo test --verbose
+
+    - name: DXUI build
+      working-directory: arpui
+      run: cargo build --verbose
+
+    - name: DXUI test
+      working-directory: arpui
+      run: cargo test
