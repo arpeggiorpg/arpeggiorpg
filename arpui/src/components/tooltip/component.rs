@@ -150,6 +150,11 @@ pub fn Tooltip(
 }
 
 fn show_hint_popover(popover: &web_sys::HtmlElement, anchor: &web_sys::HtmlElement) {
+    // wasm-bindgen does not support show_popover_with_options yet, so we have
+    // to do things the hard way!
+
+    // popover.show_popover_with_options(...);
+
     let options = Object::new();
     let anchor_js = JsValue::from(anchor.clone());
     let _ = Reflect::set(&options, &JsValue::from_str("source"), &anchor_js);
@@ -162,5 +167,4 @@ fn show_hint_popover(popover: &web_sys::HtmlElement, anchor: &web_sys::HtmlEleme
         }
     }
 
-    let _ = popover.show_popover();
 }
