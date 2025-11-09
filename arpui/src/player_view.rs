@@ -133,7 +133,15 @@ fn Creatures(player_id: PlayerID) -> Element {
                     h3 { "Your Creatures:" }
                     div {
                         class: "space-y-3",
-                        for creature_id in &player.creatures {
+                        for creature_id in {
+                            let mut sorted_creatures: Vec<_> = player.creatures.iter().collect();
+                            sorted_creatures.sort_by(|&id_a, &id_b| {
+                                let name_a = game.creatures.get(id_a).map(|c| &c.name);
+                                let name_b = game.creatures.get(id_b).map(|c| &c.name);
+                                name_a.cmp(&name_b)
+                            });
+                            sorted_creatures
+                        } {
                             if let Some(creature) = game.creatures.get(creature_id) {
                                 div { key: "{creature_id}",
                                     CreatureCard { creature: creature.clone() }
@@ -291,7 +299,7 @@ fn CreatureInventory(creature: arptypes::Creature) -> Element {
     let game = GAME.read();
 
     // Get items from creature's inventory
-    let inventory_items: Vec<(Item, u64)> = creature
+    let mut inventory_items: Vec<(Item, u64)> = creature
         .inventory
         .iter()
         .filter_map(|(item_id, &count)| {
@@ -302,6 +310,9 @@ fn CreatureInventory(creature: arptypes::Creature) -> Element {
             }
         })
         .collect();
+
+    // Sort by item name for deterministic rendering
+    inventory_items.sort_by(|(item_a, _), (item_b, _)| item_a.name.cmp(&item_b.name));
 
     if inventory_items.is_empty() {
         rsx! {
