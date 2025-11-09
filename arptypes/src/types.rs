@@ -404,6 +404,18 @@ impl Point3 {
     pub fn from_quantities(x: i64units::Length, y: i64units::Length, z: i64units::Length) -> Self {
         Point3 { x, y, z }
     }
+    
+    pub fn x_cm(&self) -> i64 {
+        self.x.get::<centimeter>()
+    }
+    
+    pub fn y_cm(&self) -> i64 {
+        self.y.get::<centimeter>()
+    }
+    
+    pub fn z_cm(&self) -> i64 {
+        self.z.get::<centimeter>()
+    }
 }
 
 impl ::std::fmt::Display for Point3 {

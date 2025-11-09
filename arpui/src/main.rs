@@ -10,6 +10,7 @@ use tracing::info;
 
 mod chat;
 mod components;
+mod grid;
 mod player_view;
 mod rpi;
 use player_view::{PlayerGamePage, GAME_NAME};

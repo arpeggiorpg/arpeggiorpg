@@ -17,6 +17,7 @@ use crate::{
         split_pane::{SplitDirection, SplitPane},
         tabs::{TabContent, TabList, TabTrigger, Tabs},
     },
+    grid::SceneGrid,
     rpi::{send_request, use_ws, Connector},
 };
 
@@ -99,12 +100,7 @@ fn Shell(player_id: PlayerID, scene_id: Option<SceneID>) -> Element {
         class: "player-view-shell flex w-full",
         div {
           class: "player-view-shell__main grow",
-            if let Some(ref sid) = active_scene {
-              p { "Active scene: {sid}" }
-            } else {
-              p { "Ask your GM to put you in a scene." }
-            }
-            div { class: "player-view-shell__map-placeholder", "Scene grid coming soon." }
+            SceneGrid { player_id: player_id.clone() }
         }
         div {
           class: "player-view-shell__sidebar w-96",
