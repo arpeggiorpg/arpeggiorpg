@@ -16,21 +16,20 @@ const CORNER_RADIUS: f64 = 5.0;
 pub fn SceneGrid(player_id: PlayerID) -> Element {
     let game = GAME.read();
     let player = game.players.get(&player_id);
-    let scene_id = player.and_then(|p| p.scene);
     let mut selected_creature_id = use_signal(|| None::<CreatureID>);
     let mut menu_position = use_signal(|| None::<(f64, f64)>);
     let mut movement_options = use_signal(|| None::<(CreatureID, Vec<Point3>)>);
 
-    if scene_id.is_none() {
+    let Some(scene_id) = player.and_then(|p| p.scene) else {
         return rsx! {
             div {
                 class: "w-full h-full flex items-center justify-center text-gray-500",
                 "Ask your GM to put you in a scene."
             }
         };
-    }
+    };
 
-    let Some(scene) = scene_id.and_then(|sid| game.scenes.get(&sid)) else {
+    let Some(scene) = game.scenes.get(&scene_id) else {
         return rsx! {
             div {
                 class: "w-full h-full flex items-center justify-center text-red-500",
@@ -96,8 +95,6 @@ pub fn SceneGrid(player_id: PlayerID) -> Element {
                         position: (x, y),
                         on_walk: move |creature_id| {
                             // Request movement options from server
-                            let scene_id = scene_id.unwrap();
-                            // Close the menu
                             selected_creature_id.set(None);
                             menu_position.set(None);
                             async move {
@@ -227,10 +224,9 @@ fn GridCreature(
     on_click: EventHandler<(CreatureID, f64, f64)>,
 ) -> Element {
     let creature = game.creatures.get(&creature_id);
-    if creature.is_none() {
+    let Some(creature) = creature else {
         return rsx! { g {} }; // Empty group if creature not found
-    }
-    let creature = creature.unwrap();
+    };
 
     let class = game.classes.get(&creature.class);
     let class_color = class.map(|c| c.color.as_str()).unwrap_or("gray");
