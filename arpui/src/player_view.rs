@@ -17,8 +17,9 @@ use crate::{
         split_pane::{SplitDirection, SplitPane},
         tabs::{TabContent, TabList, TabTrigger, Tabs},
     },
-    grid::SceneGrid,
+    grid::{CreatureMenuAction, SceneGrid},
     rpi::{send_request, use_ws, Connector},
+    PlayerSpec, PLAYER_SPEC,
 };
 
 pub static GAME: GlobalSignal<Game> = Signal::global(|| Default::default());
@@ -28,6 +29,10 @@ pub static GAME_NAME: GlobalSignal<String> = Signal::global(|| String::new());
 
 #[component]
 pub fn PlayerGamePage(id: GameID, player_id: PlayerID) -> Element {
+    use_effect({
+        let player_id = player_id.clone();
+        move || *PLAYER_SPEC.write() = Some(PlayerSpec::Player(player_id.clone()))
+    });
     rsx! {
       Connector {
         role: Role::Player,
@@ -92,13 +97,23 @@ fn Shell(player_id: PlayerID, scene_id: Option<SceneID>) -> Element {
     let chat = rsx! {
         PlayerChat { player_id: player_id.clone() }
     };
+    let game = GAME();
+
+    let get_creature_actions = move |creature_id| {
+        if let Some(player) = game.players.get(&player_id) {
+            if player.creatures.contains(&creature_id) {
+                return vec![CreatureMenuAction::PlayerWalk];
+            }
+        }
+        vec![]
+    };
 
     rsx! {
       div {
         class: "player-view-shell flex w-full",
         div {
           class: "player-view-shell__main grow",
-            SceneGrid { player_id: player_id.clone() }
+            SceneGrid { scene_id: scene_id, get_creature_actions: get_creature_actions }
         }
         div {
           class: "player-view-shell__sidebar w-96",

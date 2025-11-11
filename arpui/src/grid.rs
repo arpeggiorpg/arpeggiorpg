@@ -3,25 +3,26 @@ mod svg_pan_zoom;
 use dioxus::prelude::*;
 
 use crate::{
-    grid::svg_pan_zoom::SVGPanZoom,
-    player_view::GAME,
-    rpi::{send_request, use_ws},
+    components::creature::ClassIcon, grid::svg_pan_zoom::SVGPanZoom, player_view::GAME, rpi::{send_request, use_ws}
 };
 use arptypes::{multitenant::RPIGameRequest, *};
 
 const TILE_SIZE: f64 = 100.0; // our SVG units are just centimeters, and each tile represents 1 meter.
 const CORNER_RADIUS: f64 = 5.0;
+
 pub static MOVEMENT_OPTIONS: GlobalSignal<Option<(CreatureID, Vec<Point3>)>> =
     Signal::global(|| None);
 
 #[component]
-pub fn SceneGrid(player_id: PlayerID) -> Element {
+pub fn SceneGrid(
+    scene_id: Option<SceneID>,
+    get_creature_actions: Callback<CreatureID, Vec<CreatureMenuAction>>,
+) -> Element {
     let game = GAME.read();
-    let player = game.players.get(&player_id);
     let mut selected_creature_id = use_signal(|| None::<CreatureID>);
     let mut menu_position = use_signal(|| None::<(f64, f64)>);
 
-    let Some(scene_id) = player.and_then(|p| p.scene) else {
+    let Some(scene_id) = scene_id else {
         return rsx! {
             div {
                 class: "w-full h-full flex items-center justify-center text-gray-500",
@@ -95,7 +96,7 @@ pub fn SceneGrid(player_id: PlayerID) -> Element {
                         scene_id: scene_id,
                         creature_id: creature_id,
                         position: (x, y),
-                        actions: vec![CreatureMenuAction::PlayerWalk],
+                        actions: get_creature_actions(creature_id),
                         on_close: move |_| {
                             selected_creature_id.set(None);
                             menu_position.set(None);
@@ -322,6 +323,11 @@ fn CreatureMenu(
     let handle_backdrop_click = move |_evt: Event<MouseData>| {
         on_close.call(());
     };
+
+    let game = GAME();
+    let Some(creature) = game.creatures.get(&creature_id) else {
+        return rsx! {};
+    };
     rsx! {
         // Backdrop to close menu when clicking elsewhere
         div {
@@ -333,6 +339,13 @@ fn CreatureMenu(
             class: "fixed z-50 bg-white border border-gray-300 rounded-md shadow-lg py-2",
             style: "top: {y}px; left: {x}px; min-width: 120px;",
             role: "menu",
+
+            div {
+                ClassIcon { class_id: creature.class }
+                span { class: "font-bold",
+                    "{creature.name}"
+                }
+            }
 
             if handle_action_click.pending() {
                 div { "Acting..." }
@@ -350,7 +363,7 @@ fn CreatureMenu(
 }
 
 #[derive(Clone, PartialEq)]
-enum CreatureMenuAction {
+pub enum CreatureMenuAction {
     PlayerWalk,
 }
 

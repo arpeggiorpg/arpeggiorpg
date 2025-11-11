@@ -25,6 +25,14 @@ use crate::{
 const GOOGLE_CLIENT_ID: &str =
     "328154234071-c7una5er0n385sdgvih81ngbkgp1l7nj.apps.googleusercontent.com";
 
+pub static PLAYER_SPEC: GlobalSignal<Option<PlayerSpec>> = Signal::global(|| None);
+
+#[derive(Clone, PartialEq)]
+pub enum PlayerSpec {
+    GM,
+    Player(PlayerID),
+}
+
 #[derive(Clone, Routable, Debug)]
 #[rustfmt::skip]
 enum Route {
@@ -185,6 +193,7 @@ fn GameList(list: multitenant::GameList) -> Element {
 
 #[component]
 fn GMGamePage(id: GameID) -> Element {
+    use_effect(move || *PLAYER_SPEC.write() = Some(PlayerSpec::GM));
     rsx! {
       "id: {id:?}"
       div { "NYI"}
