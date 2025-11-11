@@ -95,7 +95,7 @@ pub fn SceneGrid(player_id: PlayerID) -> Element {
                         scene_id: scene_id,
                         creature_id: creature_id,
                         position: (x, y),
-                        actions: vec![CreatureMenuAction::Walk],
+                        actions: vec![CreatureMenuAction::PlayerWalk],
                         on_close: move |_| {
                             selected_creature_id.set(None);
                             menu_position.set(None);
@@ -309,7 +309,9 @@ fn CreatureMenu(
     let (x, y) = position;
 
     let mut handle_action_click = use_action(move |action: CreatureMenuAction| async move {
-        action.act(scene_id, creature_id).await;
+        if let Err(error) = action.act(scene_id, creature_id).await {
+            error!(?error, "Error executing action");
+        }
         // Important that we don't close until after we do the action!
         // If we do, then this component gets unmounted and the action future gets dropped before
         // the result comes in.
@@ -349,35 +351,30 @@ fn CreatureMenu(
 
 #[derive(Clone, PartialEq)]
 enum CreatureMenuAction {
-    Walk,
+    PlayerWalk,
 }
 
 impl CreatureMenuAction {
     fn name(&self) -> &'static str {
         match self {
-            CreatureMenuAction::Walk => "walk",
+            CreatureMenuAction::PlayerWalk => "walk",
         }
     }
 
-    async fn act(&self, scene_id: SceneID, creature_id: CreatureID) {
+    async fn act(&self, scene_id: SceneID, creature_id: CreatureID) -> anyhow::Result<()> {
         match self {
-            CreatureMenuAction::Walk => {
+            CreatureMenuAction::PlayerWalk => {
                 // Request movement options from server
                 let ws = use_ws();
                 let request = RPIGameRequest::MovementOptions {
                     scene_id,
                     creature_id,
                 };
-                match send_request::<Vec<Point3>>(request, ws).await {
-                    Ok(options) => {
-                        *MOVEMENT_OPTIONS.write() = Some((creature_id, options));
-                    }
-                    Err(error) => {
-                        error!(?error, "Failed to get movement options");
-                    }
-                }
+                let options = send_request::<Vec<Point3>>(request, ws).await?;
+                *MOVEMENT_OPTIONS.write() = Some((creature_id, options));
             }
         }
+        Ok(())
     }
 }
 

@@ -150,9 +150,7 @@ fn handle_unsolicited(
     mut game_signal: Signal<Game>,
     mut game_logs_signal: Signal<VecDeque<(GameIndex, GameLog)>>,
 ) -> anyhow::Result<()> {
-    info!(?json, "Got unsolicited message from RPI");
     if json.get("t") == Some(&serde_json::Value::String("refresh_game".to_string())) {
-        info!("It's a refresh game");
         let game_json = json
             .get("game")
             .ok_or(anyhow::anyhow!("no game in refresh_game message"))?;
@@ -164,6 +162,8 @@ fn handle_unsolicited(
         let game = Game::from_serialized_game(game);
         *game_signal.write() = game;
         game_logs_signal.write().append(&mut logs);
+    } else {
+        warn!(?json, "Unknown unsolicited message");
     }
     Ok(())
 }
