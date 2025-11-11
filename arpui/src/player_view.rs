@@ -75,8 +75,6 @@ fn GameLoader(player_id: PlayerID) -> Element {
 
 #[component]
 fn Shell(player_id: PlayerID, scene_id: Option<SceneID>) -> Element {
-    let active_scene = scene_id.map(|sid| sid.to_string());
-
     let tabs = rsx! {Tabs {
         class: "player-view-tabs".to_string(),
         default_value: "creatures".to_string(),

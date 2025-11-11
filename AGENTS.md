@@ -33,7 +33,7 @@ The codebase uses a dual-command system:
 
 **Key Insight**: Always prefer `PlayerCommand` when implementing player-facing features. Only use `GMCommand` for administrative operations.
 
-### 2. State Management
+### 2. Dioxus State Management
 
 - **Global Signals**: `GAME`, `GAME_LOGS`, `GAME_NAME` for shared state
 - **Local Signals**: `use_signal` for component-local state
@@ -79,7 +79,7 @@ let action = use_action({
     let ws = use_ws();
     move |data| {
         let ws = ws.clone();
-        async move {
+        async move { // note: no need for tokio spawn()
             send_request(request, ws).await
         }
     }

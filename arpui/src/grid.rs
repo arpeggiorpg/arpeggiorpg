@@ -2,9 +2,15 @@ mod svg_pan_zoom;
 
 use dioxus::prelude::*;
 
+use crate::{
+    grid::svg_pan_zoom::SVGPanZoom,
+    player_view::GAME,
+    rpi::{send_request, use_ws},
+};
+use arptypes::{multitenant::RPIGameRequest, *};
 
-use crate::{grid::svg_pan_zoom::SVGPanZoom, player_view::GAME};
-use arptypes::*;
+const TILE_SIZE: f64 = 100.0; // our SVG units are just centimeters, and each tile represents 1 meter.
+const CORNER_RADIUS: f64 = 5.0;
 
 #[component]
 pub fn SceneGrid(player_id: PlayerID) -> Element {
@@ -13,6 +19,7 @@ pub fn SceneGrid(player_id: PlayerID) -> Element {
     let scene_id = player.and_then(|p| p.scene);
     let mut selected_creature_id = use_signal(|| None::<CreatureID>);
     let mut menu_position = use_signal(|| None::<(f64, f64)>);
+    let mut movement_options = use_signal(|| None::<(CreatureID, Vec<Point3>)>);
 
     if scene_id.is_none() {
         return rsx! {
@@ -51,6 +58,24 @@ pub fn SceneGrid(player_id: PlayerID) -> Element {
                     has_background_image: !scene.background_image_url.is_empty()
                 }
 
+                // Movement options (walkable tiles)
+                if let Some((creature_id, options)) = movement_options() {
+                    MovementOptions {
+                        options: options,
+                        on_tile_click: move |destination| async move {
+                            movement_options.set(None);
+                            let ws = use_ws();
+                            let request = RPIGameRequest::PlayerCommand {
+                                command: PlayerCommand::PathCreature {
+                                    creature_id,
+                                    destination,
+                                },
+                            };
+                            send_request::<()>(request, ws).await;
+                        }
+                    }
+                }
+
                 // Creatures
                 Creatures {
                     scene: scene.clone(),
@@ -69,6 +94,28 @@ pub fn SceneGrid(player_id: PlayerID) -> Element {
                     CreatureMenu {
                         creature_id: creature_id,
                         position: (x, y),
+                        on_walk: move |creature_id| {
+                            // Request movement options from server
+                            let scene_id = scene_id.unwrap();
+                            // Close the menu
+                            selected_creature_id.set(None);
+                            menu_position.set(None);
+                            async move {
+                                let ws = use_ws();
+                                let request = RPIGameRequest::MovementOptions {
+                                    scene_id,
+                                    creature_id,
+                                };
+                                match send_request::<Vec<Point3>>(request, ws).await {
+                                    Ok(options) => {
+                                        movement_options.set(Some((creature_id, options)));
+                                    }
+                                    Err(error) => {
+                                        error!(?error, "Failed to get movement options");
+                                    }
+                                }
+                            }
+                        },
                         on_close: move |_| {
                             selected_creature_id.set(None);
                             menu_position.set(None);
@@ -125,9 +172,6 @@ fn Terrain(terrain: Vec<Point3>, has_background_image: bool) -> Element {
 
 #[component]
 fn TerrainTile(point: Point3, color: String) -> Element {
-    let tile_size = 100.0; // our SVG units are just centimeters, and each tile represents 1 meter.
-    let corner_radius = 5.0;
-
     // Convert Point3 coordinates to SVG coordinates
     let x = point.x_cm();
     let y = point.y_cm();
@@ -136,10 +180,10 @@ fn TerrainTile(point: Point3, color: String) -> Element {
         rect {
             x: x,
             y: y,
-            width: tile_size,
-            height: tile_size,
-            rx: corner_radius,
-            ry: corner_radius,
+            width: TILE_SIZE,
+            height: TILE_SIZE,
+            rx: CORNER_RADIUS,
+            ry: CORNER_RADIUS,
             fill: color,
             stroke: "black",
             stroke_width: "1",
@@ -153,7 +197,7 @@ fn Creatures(
     scene: Scene,
     game: Game,
     selected_creature_id: Option<CreatureID>,
-    on_creature_click: EventHandler<(CreatureID, f64, f64)>
+    on_creature_click: EventHandler<(CreatureID, f64, f64)>,
 ) -> Element {
     rsx! {
         g {
@@ -226,8 +270,8 @@ fn GridCreature(
                     href: creature.icon_url.clone(),
                     width: width,
                     height: height,
-                    rx: 5.0,
-                    ry: 5.0,
+                    rx: CORNER_RADIUS,
+                    ry: CORNER_RADIUS,
                     x: x,
                     y: y,
                     stroke: "black",
@@ -241,8 +285,8 @@ fn GridCreature(
                     y: y,
                     width: width,
                     height: height,
-                    rx: 5.0,
-                    ry: 5.0,
+                    rx: CORNER_RADIUS,
+                    ry: CORNER_RADIUS,
                     fill_opacity: "0"
                 }
             } else {
@@ -252,8 +296,8 @@ fn GridCreature(
                     y: y,
                     width: width,
                     height: height,
-                    rx: 5.0,
-                    ry: 5.0,
+                    rx: CORNER_RADIUS,
+                    ry: CORNER_RADIUS,
                     fill: class_color,
                     stroke: "black",
                     stroke_width: "1"
@@ -277,13 +321,16 @@ fn GridCreature(
 }
 
 #[component]
-fn CreatureMenu(creature_id: CreatureID, position: (f64, f64), on_close: EventHandler<()>) -> Element {
+fn CreatureMenu(
+    creature_id: CreatureID,
+    position: (f64, f64),
+    on_walk: EventHandler<CreatureID>,
+    on_close: EventHandler<()>,
+) -> Element {
     let (x, y) = position;
 
     let handle_walk_click = move |_evt: Event<MouseData>| {
-        // TODO: Implement walk action
-        info!("Walk clicked for creature {creature_id}");
-        on_close.call(());
+        on_walk.call(creature_id);
     };
 
     let handle_backdrop_click = move |_evt: Event<MouseData>| {
@@ -300,7 +347,7 @@ fn CreatureMenu(creature_id: CreatureID, position: (f64, f64), on_close: EventHa
             class: "fixed z-50 bg-white border border-gray-300 rounded-md shadow-lg py-2",
             style: "top: {y}px; left: {x}px; min-width: 120px;",
             role: "menu",
-            
+
             button {
                 class: "block w-full px-4 py-2 text-left text-sm hover:bg-gray-100 border-none bg-none cursor-pointer",
                 onclick: handle_walk_click,
@@ -310,6 +357,46 @@ fn CreatureMenu(creature_id: CreatureID, position: (f64, f64), on_close: EventHa
     }
 }
 
+#[component]
+fn MovementOptions(options: Vec<Point3>, on_tile_click: EventHandler<Point3>) -> Element {
+    rsx! {
+        g {
+            id: "movement-options",
+            for option in options {
+                MovementTile {
+                    key: "movement-{option}",
+                    point: option,
+                    on_click: move |point| on_tile_click.call(point),
+                }
+            }
+        }
+    }
+}
 
+#[component]
+fn MovementTile(point: Point3, on_click: EventHandler<Point3>) -> Element {
+    let x = point.x_cm();
+    let y = point.y_cm();
 
+    let handle_click = move |evt: Event<MouseData>| {
+        evt.stop_propagation();
+        on_click.call(point);
+    };
 
+    rsx! {
+        rect {
+            x: x,
+            y: y,
+            width: TILE_SIZE,
+            height: TILE_SIZE,
+            rx: CORNER_RADIUS,
+            ry: CORNER_RADIUS,
+            fill: "cyan",
+            fill_opacity: "0.4",
+            stroke: "blue",
+            stroke_width: "2",
+            style: "cursor: pointer",
+            onclick: handle_click,
+        }
+    }
+}
