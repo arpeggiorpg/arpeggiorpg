@@ -14,7 +14,7 @@ mod grid;
 mod player_view;
 mod rpi;
 use player_view::{PlayerGamePage, GAME_NAME};
-use rpi::{auth_token, list_games, Connector, AUTH_TOKEN};
+use rpi::{auth_token, list_games, AUTH_TOKEN};
 use wasm_cookies::CookieOptions;
 
 use crate::{
@@ -77,7 +77,6 @@ fn AuthRequiredLayout() -> Element {
 
     let navigator = navigator();
     let has_auth_token = !AUTH_TOKEN().is_empty();
-    info!(auth_token = ?AUTH_TOKEN(), "auth-token");
 
     rsx! {
       if !has_auth_token {

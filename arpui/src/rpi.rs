@@ -8,8 +8,8 @@ use anyhow::format_err;
 use dioxus::prelude::*;
 use futures::channel::oneshot::{self, Sender};
 use futures_util::{stream::StreamExt, SinkExt, TryStreamExt};
-use tracing::info;
 use reqwest_websocket::{Message, RequestBuilderExt, WebSocket};
+use tracing::info;
 use wasm_bindgen_futures::spawn_local;
 
 use arptypes::{
@@ -67,14 +67,18 @@ pub fn Connector(
         let (mut websocket_tx, websocket_rx) = websocket.split();
         let receiver_response_handlers = response_handlers.clone();
         spawn_local(async move {
-            ws_receiver(
+            let result = ws_receiver(
                 websocket_rx,
                 receiver_response_handlers,
                 game_signal,
                 game_logs_signal,
             )
-            .await
-            .expect("ws_receiver error")
+            .await;
+            match result {
+                Ok(r) => info!(?r, "ws_receiver completed"),
+                Err(error) => error!(?error, "ws_receiver error"),
+            }
+            info!("Websocket is now dead.");
         });
 
         while let Some(ui_req) = rx.next().await {
@@ -125,9 +129,9 @@ async fn ws_receiver(
                         let payload = json.get("payload").ok_or(format_err!(
                             "any response with an id must also have a payload"
                         ))?;
-                        handler
-                            .send(Ok(payload.clone()))
-                            .map_err(|e| format_err!("{e:?}"))?;
+                        if let Err(response) = handler.send(Ok(payload.clone())) {
+                            error!(?id, ?response, "Response handler disappeared");
+                        }
                     } else {
                         warn!(?id, ?json, "Got result for unexpected ID");
                     }

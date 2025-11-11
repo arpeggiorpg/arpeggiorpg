@@ -11,6 +11,8 @@ use arptypes::{multitenant::RPIGameRequest, *};
 
 const TILE_SIZE: f64 = 100.0; // our SVG units are just centimeters, and each tile represents 1 meter.
 const CORNER_RADIUS: f64 = 5.0;
+pub static MOVEMENT_OPTIONS: GlobalSignal<Option<(CreatureID, Vec<Point3>)>> =
+    Signal::global(|| None);
 
 #[component]
 pub fn SceneGrid(player_id: PlayerID) -> Element {
@@ -18,7 +20,6 @@ pub fn SceneGrid(player_id: PlayerID) -> Element {
     let player = game.players.get(&player_id);
     let mut selected_creature_id = use_signal(|| None::<CreatureID>);
     let mut menu_position = use_signal(|| None::<(f64, f64)>);
-    let mut movement_options = use_signal(|| None::<(CreatureID, Vec<Point3>)>);
 
     let Some(scene_id) = player.and_then(|p| p.scene) else {
         return rsx! {
@@ -58,11 +59,11 @@ pub fn SceneGrid(player_id: PlayerID) -> Element {
                 }
 
                 // Movement options (walkable tiles)
-                if let Some((creature_id, options)) = movement_options() {
+                if let Some((creature_id, options)) = MOVEMENT_OPTIONS() {
                     MovementOptions {
                         options: options,
                         on_tile_click: move |destination| async move {
-                            movement_options.set(None);
+                            *MOVEMENT_OPTIONS.write() = None;
                             let ws = use_ws();
                             let request = RPIGameRequest::PlayerCommand {
                                 command: PlayerCommand::PathCreature {
@@ -70,7 +71,7 @@ pub fn SceneGrid(player_id: PlayerID) -> Element {
                                     destination,
                                 },
                             };
-                            send_request::<()>(request, ws).await;
+                            let _ = send_request::<()>(request, ws).await;
                         }
                     }
                 }
@@ -91,28 +92,10 @@ pub fn SceneGrid(player_id: PlayerID) -> Element {
             if let Some(creature_id) = selected_creature_id() {
                 if let Some((x, y)) = menu_position() {
                     CreatureMenu {
+                        scene_id: scene_id,
                         creature_id: creature_id,
                         position: (x, y),
-                        on_walk: move |creature_id| {
-                            // Request movement options from server
-                            selected_creature_id.set(None);
-                            menu_position.set(None);
-                            async move {
-                                let ws = use_ws();
-                                let request = RPIGameRequest::MovementOptions {
-                                    scene_id,
-                                    creature_id,
-                                };
-                                match send_request::<Vec<Point3>>(request, ws).await {
-                                    Ok(options) => {
-                                        movement_options.set(Some((creature_id, options)));
-                                    }
-                                    Err(error) => {
-                                        error!(?error, "Failed to get movement options");
-                                    }
-                                }
-                            }
-                        },
+                        actions: vec![CreatureMenuAction::Walk],
                         on_close: move |_| {
                             selected_creature_id.set(None);
                             menu_position.set(None);
@@ -237,7 +220,6 @@ fn GridCreature(
     // Convert AABB size to tile units
     let width = creature.size.x_cm();
     let height = creature.size.y_cm();
-    info!(?width, height, creature.name, ?creature.size, "and in centimeters...");
 
     let opacity = match visibility {
         Visibility::GMOnly => 0.4,
@@ -318,16 +300,22 @@ fn GridCreature(
 
 #[component]
 fn CreatureMenu(
+    scene_id: SceneID,
     creature_id: CreatureID,
     position: (f64, f64),
-    on_walk: EventHandler<CreatureID>,
+    actions: Vec<CreatureMenuAction>,
     on_close: EventHandler<()>,
 ) -> Element {
     let (x, y) = position;
 
-    let handle_walk_click = move |_evt: Event<MouseData>| {
-        on_walk.call(creature_id);
-    };
+    let mut handle_action_click = use_action(move |action: CreatureMenuAction| async move {
+        action.act(scene_id, creature_id).await;
+        // Important that we don't close until after we do the action!
+        // If we do, then this component gets unmounted and the action future gets dropped before
+        // the result comes in.
+        on_close.call(());
+        Ok::<(), anyhow::Error>(())
+    });
 
     let handle_backdrop_click = move |_evt: Event<MouseData>| {
         on_close.call(());
@@ -344,10 +332,50 @@ fn CreatureMenu(
             style: "top: {y}px; left: {x}px; min-width: 120px;",
             role: "menu",
 
-            button {
-                class: "block w-full px-4 py-2 text-left text-sm hover:bg-gray-100 border-none bg-none cursor-pointer",
-                onclick: handle_walk_click,
-                "Walk"
+            if handle_action_click.pending() {
+                div { "Acting..." }
+            }
+            for action in actions {
+                button {
+                    class: "block w-full px-4 py-2 text-left text-sm hover:bg-gray-100 border-none bg-none cursor-pointer",
+                    onclick: move |_e| handle_action_click.call(action.clone()),
+                    disabled: handle_action_click.pending(),
+                    "{action.name()}"
+                }
+            }
+        }
+    }
+}
+
+#[derive(Clone, PartialEq)]
+enum CreatureMenuAction {
+    Walk,
+}
+
+impl CreatureMenuAction {
+    fn name(&self) -> &'static str {
+        match self {
+            CreatureMenuAction::Walk => "walk",
+        }
+    }
+
+    async fn act(&self, scene_id: SceneID, creature_id: CreatureID) {
+        match self {
+            CreatureMenuAction::Walk => {
+                // Request movement options from server
+                let ws = use_ws();
+                let request = RPIGameRequest::MovementOptions {
+                    scene_id,
+                    creature_id,
+                };
+                match send_request::<Vec<Point3>>(request, ws).await {
+                    Ok(options) => {
+                        *MOVEMENT_OPTIONS.write() = Some((creature_id, options));
+                    }
+                    Err(error) => {
+                        error!(?error, "Failed to get movement options");
+                    }
+                }
             }
         }
     }
