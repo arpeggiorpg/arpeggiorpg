@@ -753,9 +753,9 @@ pub struct CreatureCreation {
 /// creature. That log is deterministic and complete enough for us to replay it on a snapshot of a
 /// creature and get an identical creature. See `Creature::change` and `Creature::change_with`.
 ///
-/// Random note: Serialize and Deserialize on Creature are only for "secondary" representations of
-/// Creatures like in GameLog::CreateCreature, and persistent storage of games. See DynamicCreature
-/// and its Serialize impl for the good stuff.
+/// Random note: Serialize and Deserialize on Creature are only the core persistent representations
+/// of Creatures, for use in e.g. GameLog::CreateCreature, and persistent storage of games. See
+/// DynamicCreature and its Serialize impl for what we send to clients over the RPI.
 #[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize, TS)]
 // I'm not calling this "Creature" in typescript just to emphasize that DynamicCreature is usually
 // what you want; this is only serialized directly in GameLog or for storage.
@@ -1046,6 +1046,27 @@ pub struct SerializedGame {
     // goes.
     #[serde(default)]
     pub active_scene: Option<SceneID>,
+}
+
+/// A simplified, player-specific view of the game that only includes data relevant to the player
+#[derive(Clone, PartialEq, Debug, Serialize, Deserialize, TS, Default)]
+#[ts(rename = "PlayerGame")]
+pub struct SerializedPlayerGame {
+    pub current_combat: Option<Combat>,
+    pub active_scene: Option<Scene>,
+    #[ts(type = "GameAbilities")]
+    pub abilities: IndexedHashMap<Ability>,
+    #[ts(type = "GameCreatures")]
+    pub creatures: HashMap<CreatureID, SerializedCreature>,
+    #[ts(type = "GameClasses")]
+    pub classes: IndexedHashMap<Class>,
+    #[ts(type = "GameItems")]
+    pub items: IndexedHashMap<Item>,
+    pub tile_system: TileSystem,
+    #[ts(type = "GamePlayers")]
+    pub players: IndexedHashMap<Player>,
+    #[ts(type = "Record<string, Note>")]
+    pub notes: IndexedHashMap<Note>,
 }
 
 #[derive(Clone, PartialEq, Debug, Serialize, Deserialize, TS)]

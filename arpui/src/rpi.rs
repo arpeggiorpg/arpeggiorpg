@@ -7,14 +7,14 @@ use std::{
 use anyhow::format_err;
 use dioxus::prelude::*;
 use futures::channel::oneshot::{self, Sender};
-use futures_util::{stream::StreamExt, SinkExt, TryStreamExt};
+use futures_util::{SinkExt, TryStreamExt, stream::StreamExt};
 use reqwest_websocket::{Message, RequestBuilderExt, WebSocket};
 use tracing::info;
 use wasm_bindgen_futures::spawn_local;
 
 use arptypes::{
+    Game, GameLog, SerializedGame, SerializedPlayerGame,
     multitenant::{self, GameID, GameIndex, RPIGameRequest, Role},
-    Game, GameLog, SerializedGame,
 };
 
 pub static AUTH_TOKEN: GlobalSignal<String> = Signal::global(String::new);
@@ -47,7 +47,8 @@ type ResponseHandlers = HashMap<uuid::Uuid, ResponseHandler>;
 pub fn Connector(
     role: Role,
     game_id: GameID,
-    game_signal: Signal<Game>,
+    game_signal: Option<Signal<Game>>,
+    player_game_signal: Option<Signal<SerializedPlayerGame>>,
     game_logs_signal: Signal<VecDeque<(GameIndex, GameLog)>>,
     children: Element,
 ) -> Element {
@@ -71,6 +72,7 @@ pub fn Connector(
                 websocket_rx,
                 receiver_response_handlers,
                 game_signal,
+                player_game_signal,
                 game_logs_signal,
             )
             .await;
@@ -108,7 +110,8 @@ pub fn Connector(
 async fn ws_receiver(
     mut websocket_rx: futures::stream::SplitStream<WebSocket>,
     receiver_response_handlers: Rc<RefCell<ResponseHandlers>>,
-    game_signal: Signal<Game>,
+    game_signal: Option<Signal<Game>>,
+    player_game_signal: Option<Signal<SerializedPlayerGame>>,
     game_logs_signal: Signal<VecDeque<(GameIndex, GameLog)>>,
 ) -> anyhow::Result<()> {
     while let Some(message) = websocket_rx.try_next().await? {
@@ -136,7 +139,7 @@ async fn ws_receiver(
                         warn!(?id, ?json, "Got result for unexpected ID");
                     }
                 } else {
-                    handle_unsolicited(json, game_signal, game_logs_signal)?;
+                    handle_unsolicited(json, game_signal, player_game_signal, game_logs_signal)?;
                 }
             }
             Message::Binary(vecu8) => info!(?vecu8, "WS Binary Message"),
@@ -147,10 +150,13 @@ async fn ws_receiver(
 
 fn handle_unsolicited(
     json: serde_json::Value,
-    mut game_signal: Signal<Game>,
+    game_signal: Option<Signal<Game>>,
+    player_game_signal: Option<Signal<SerializedPlayerGame>>,
     mut game_logs_signal: Signal<VecDeque<(GameIndex, GameLog)>>,
 ) -> anyhow::Result<()> {
-    if json.get("t") == Some(&serde_json::Value::String("refresh_game".to_string())) {
+    if let Some(mut game_signal) = game_signal
+        && json.get("t") == Some(&serde_json::Value::String("refresh_game".to_string()))
+    {
         let game_json = json
             .get("game")
             .ok_or(anyhow::anyhow!("no game in refresh_game message"))?;
@@ -161,6 +167,22 @@ fn handle_unsolicited(
         let mut logs: VecDeque<(GameIndex, GameLog)> = serde_json::from_value(logs_json.clone())?;
         let game = Game::from_serialized_game(game);
         *game_signal.write() = game;
+        game_logs_signal.write().append(&mut logs);
+    } else if let Some(mut player_game_signal) = player_game_signal
+        && json.get("t")
+            == Some(&serde_json::Value::String(
+                "refresh_player_game".to_string(),
+            ))
+    {
+        let game_json = json
+            .get("game")
+            .ok_or(anyhow::anyhow!("No game in refresh_player_game message"))?;
+        let game: SerializedPlayerGame = serde_json::from_value(game_json.clone())?;
+        let logs_json = json
+            .get("logs")
+            .ok_or(anyhow::anyhow!("no logs in refresh_game message"))?;
+        let mut logs: VecDeque<(GameIndex, GameLog)> = serde_json::from_value(logs_json.clone())?;
+        *player_game_signal.write() = game;
         game_logs_signal.write().append(&mut logs);
     } else {
         warn!(?json, "Unknown unsolicited message");

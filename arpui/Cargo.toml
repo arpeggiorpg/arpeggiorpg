@@ -2,7 +2,7 @@
 name = "arpui"
 version = "0.1.0"
 authors = ["Christopher Armstrong <227068+radix@users.noreply.github.com>"]
-edition = "2021"
+edition = "2024"
 
 [dependencies]
 anyhow = { version = "1.0.75", features = ["backtrace"] }

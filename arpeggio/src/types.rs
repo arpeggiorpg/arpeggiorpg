@@ -1,5 +1,7 @@
 //! Simple types, with pure operations.
 
+use std::collections::{HashMap, HashSet};
+
 use rand::Rng;
 
 pub use arptypes::*;
@@ -127,8 +129,7 @@ impl<'c, 'g> DynamicCreature<'c, 'g> {
     }
 }
 
-/// A newtype wrapper over Game that has a special Serialize implementation, which includes extra
-/// data dynamically as a convenience for the client.
+/// A newtype wrapper over Game can serialize the game data to a SerializedGame.
 pub struct RPIGame<'a>(pub &'a Game);
 
 impl<'a> RPIGame<'a> {
@@ -153,6 +154,91 @@ impl<'a> RPIGame<'a> {
         };
         Ok(sgame)
     }
+}
+
+/// Serialize a game for a specific player, including only data relevant to that player
+pub fn serialize_player_game(
+    player_id: &PlayerID,
+    game: &Game,
+) -> Result<SerializedPlayerGame, GameError> {
+    let player = game
+        .players
+        .get(player_id)
+        .ok_or_else(|| GameError::PlayerNotFound(player_id.clone()))?;
+
+    let active_scene = if let Some(scene_id) = player.scene {
+        Some(game.get_scene(scene_id)?.clone())
+    } else {
+        None
+    };
+
+    // Get creatures in the current scene
+    let mut creatures = HashMap::new();
+    let mut creature_class_ids = HashSet::new();
+
+    if let Some(scene) = &active_scene {
+        for (&creature_id, _pos) in &scene.creatures {
+            if let Some(creature) = game.creatures.get(&creature_id) {
+                if let Some(class) = game.classes.get(&creature.class) {
+                    let dynamic_creature = DynamicCreature {
+                        creature,
+                        game,
+                        class,
+                    };
+                    let serialized_creature = dynamic_creature.serialize_creature();
+                    creatures.insert(creature_id, serialized_creature);
+                    creature_class_ids.insert(creature.class.clone());
+                }
+            }
+        }
+    }
+
+    // Get classes for creatures in the scene
+    let classes = creature_class_ids
+        .iter()
+        .filter_map(|class_id| game.classes.get(class_id).map(|class| class.clone()))
+        .collect();
+
+    // Get items from scene and player's creatures
+    let items = active_scene
+        .iter()
+        .flat_map(|scene| scene.inventory.keys())
+        .chain(
+            player
+                .creatures
+                .iter()
+                .filter_map(|creature_id| game.creatures.get(creature_id))
+                .flat_map(|creature| creature.inventory.keys()),
+        )
+        .filter_map(|&item_id| game.items.get(&item_id).map(|item| item.clone()))
+        .collect();
+
+    // Get player's notes from /Players/{PlayerID}/Notes folder
+    let mut notes = indexed::IndexedHashMap::new();
+    let player_notes_path: foldertree::FolderPath = vec![
+        "Players".to_string(),
+        player_id.0.clone(),
+        "Notes".to_string(),
+    ]
+    .into();
+
+    if let Ok(player_folder) = game.campaign.get(&player_notes_path) {
+        for note in player_folder.notes.values() {
+            notes.insert(note.clone());
+        }
+    }
+
+    Ok(SerializedPlayerGame {
+        current_combat: game.current_combat.clone(),
+        active_scene,
+        abilities: game.abilities.clone(),
+        creatures,
+        classes,
+        items,
+        tile_system: game.tile_system,
+        players: game.players.clone(),
+        notes,
+    })
 }
 
 #[cfg(test)]
@@ -436,5 +522,43 @@ pub mod test {
         let p = Point3::new(0, 0, 0);
         let hm = hashmap! {p => 5};
         assert_eq!(serde_json::to_string(&hm).unwrap(), "{\"0/0/0\":5}");
+    }
+
+    #[test]
+    fn test_serialize_player_game() {
+        use super::serialize_player_game;
+        use crate::game::test::t_game;
+
+        let game = t_game();
+        let player_id = PlayerID("test_player".to_string());
+
+        // Test with player not found
+        let result = serialize_player_game(&player_id, &game);
+        assert!(result.is_err());
+
+        // Add a player and test successful serialization
+        let mut game_with_player = game.clone();
+        game_with_player
+            .players
+            .insert(Player::new(player_id.clone()));
+
+        let result = serialize_player_game(&player_id, &game_with_player);
+        assert!(result.is_ok());
+
+        let player_game = result.unwrap();
+        // Player game should have the same combat, abilities, tile system, and players
+        assert_eq!(player_game.current_combat, game_with_player.current_combat);
+        assert_eq!(player_game.abilities, game_with_player.abilities);
+        assert_eq!(player_game.tile_system, game_with_player.tile_system);
+        assert_eq!(player_game.players, game_with_player.players);
+        // Active scene should be None since player isn't in a scene
+        assert_eq!(player_game.active_scene, None);
+        // Creatures should be empty since player isn't in a scene
+        assert!(player_game.creatures.is_empty());
+        // Classes and items should be empty since no creatures in scope
+        assert!(player_game.classes.is_empty());
+        assert!(player_game.items.is_empty());
+        // Notes should be empty since no player notes folder exists
+        assert!(player_game.notes.is_empty());
     }
 }

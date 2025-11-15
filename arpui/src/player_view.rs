@@ -1,8 +1,9 @@
 use std::collections::VecDeque;
 
 use arptypes::{
-    multitenant::{GameAndMetadata, GameID, GameIndex, RPIGameRequest, Role},
-    Game, GameLog, Item, Note, PlayerCommand, PlayerID, SceneID,
+    GameLog, Item, Note, PlayerCommand, PlayerID, SceneID, SerializedCreature,
+    SerializedPlayerGame,
+    multitenant::{GameID, GameIndex, PlayerGameAndMetadata, RPIGameRequest, Role},
 };
 use dioxus::prelude::*;
 
@@ -10,6 +11,7 @@ use foldertree::FolderPath;
 use tracing::{error, info};
 
 use crate::{
+    PLAYER_SPEC, PlayerSpec,
     chat::PlayerChat,
     components::{
         creature::CreatureCard,
@@ -18,11 +20,10 @@ use crate::{
         tabs::{TabContent, TabList, TabTrigger, Tabs},
     },
     grid::{CreatureMenuAction, SceneGrid},
-    rpi::{send_request, use_ws, Connector},
-    PlayerSpec, PLAYER_SPEC,
+    rpi::{Connector, send_request, use_ws},
 };
 
-pub static GAME: GlobalSignal<Game> = Signal::global(|| Default::default());
+pub static GAME: GlobalSignal<SerializedPlayerGame> = Signal::global(|| Default::default());
 pub static GAME_LOGS: GlobalSignal<VecDeque<(GameIndex, GameLog)>> =
     Signal::global(|| VecDeque::new());
 pub static GAME_NAME: GlobalSignal<String> = Signal::global(|| String::new());
@@ -37,7 +38,8 @@ pub fn PlayerGamePage(id: GameID, player_id: PlayerID) -> Element {
       Connector {
         role: Role::Player,
         game_id: id,
-        game_signal: GAME.resolve(),
+        game_signal: None,
+        player_game_signal: Some(GAME.resolve()),
         game_logs_signal: GAME_LOGS.resolve(),
 
         GameLoader { player_id }
@@ -48,14 +50,14 @@ pub fn PlayerGamePage(id: GameID, player_id: PlayerID) -> Element {
 #[component]
 fn GameLoader(player_id: PlayerID) -> Element {
     let ws = use_ws();
-    let future: Resource<Result<Game, anyhow::Error>> = use_resource(move || async move {
+    let future: Resource<anyhow::Result<SerializedPlayerGame>> = use_resource(move || async move {
         info!("fetching game state for player view");
-        let response = send_request::<GameAndMetadata>(RPIGameRequest::GMGetGame, ws).await?;
-        let game = Game::from_serialized_game(response.game);
-        *GAME.write() = game.clone();
+        let response =
+            send_request::<PlayerGameAndMetadata>(RPIGameRequest::PlayerGetGame, ws).await?;
+        *GAME.write() = response.game.clone();
         *GAME_LOGS.write() = response.logs;
         *GAME_NAME.write() = response.metadata.name.clone();
-        Ok(game)
+        Ok(response.game)
     });
 
     match &*future.read_unchecked() {
@@ -113,7 +115,7 @@ fn Shell(player_id: PlayerID, scene_id: Option<SceneID>) -> Element {
         class: "player-view-shell flex w-full",
         div {
           class: "player-view-shell__main grow",
-            SceneGrid { scene_id: scene_id, get_creature_actions: get_creature_actions }
+            SceneGrid { scene: game.active_scene, get_creature_actions: get_creature_actions }
         }
         div {
           class: "player-view-shell__sidebar w-96",
@@ -183,18 +185,7 @@ fn Notes(player_id: PlayerID) -> Element {
     let ws = use_ws();
 
     let game = GAME.read();
-    let player_notes_folder_path: FolderPath = vec![
-        "Players".to_string(),
-        player_id.0.clone(),
-        "Notes".to_string(),
-    ]
-    .into();
-    let existing_note = game
-        .campaign
-        .get(&player_notes_folder_path)
-        .ok()
-        .and_then(|notes_folder| notes_folder.notes.get("Scratch"))
-        .cloned();
+    let existing_note = game.notes.get("Scratch").cloned();
 
     // Initialize draft content from existing note on first load
     use_effect({
@@ -283,7 +274,7 @@ fn Notes(player_id: PlayerID) -> Element {
 }
 
 #[component]
-fn CollapsibleInventory(creature: arptypes::Creature) -> Element {
+fn CollapsibleInventory(creature: SerializedCreature) -> Element {
     let mut is_expanded = use_signal(|| false);
 
     rsx! {
@@ -308,7 +299,7 @@ fn CollapsibleInventory(creature: arptypes::Creature) -> Element {
 }
 
 #[component]
-fn CreatureInventory(creature: arptypes::Creature) -> Element {
+fn CreatureInventory(creature: SerializedCreature) -> Element {
     let game = GAME.read();
 
     // Get items from creature's inventory
@@ -356,7 +347,7 @@ fn CreatureInventory(creature: arptypes::Creature) -> Element {
 }
 
 #[component]
-fn InventoryItemMenu(creature: arptypes::Creature, item: Item, count: u64) -> Element {
+fn InventoryItemMenu(creature: SerializedCreature, item: Item, count: u64) -> Element {
     let mut show_menu = use_signal(|| false);
     let mut show_give_modal = use_signal(|| false);
     let mut show_drop_modal = use_signal(|| false);
@@ -395,7 +386,7 @@ fn InventoryItemMenu(creature: arptypes::Creature, item: Item, count: u64) -> El
 
         if show_give_modal() {
             GiveItemModal {
-                creature: creature.clone(),
+                giver: creature.clone(),
                 item: item.clone(),
                 count,
                 on_close: move || show_give_modal.set(false)
@@ -415,7 +406,7 @@ fn InventoryItemMenu(creature: arptypes::Creature, item: Item, count: u64) -> El
 
 #[component]
 fn DropItemModal(
-    creature: arptypes::Creature,
+    creature: SerializedCreature,
     item: Item,
     count: u64,
     on_close: EventHandler<()>,
@@ -493,7 +484,7 @@ fn DropItemModal(
 
 #[component]
 fn GiveItemModal(
-    creature: arptypes::Creature,
+    giver: SerializedCreature,
     item: Item,
     count: u64,
     on_close: EventHandler<()>,
@@ -502,7 +493,7 @@ fn GiveItemModal(
     let mut selected_recipient = use_signal(|| None::<arptypes::CreatureID>);
     let mut give_action = use_action({
         let ws = use_ws();
-        let giver_id = creature.id.clone();
+        let giver_id = giver.id.clone();
         let item_id = item.id.clone();
         move || async move {
             let Some(recipient_id) = selected_recipient() else {
@@ -524,35 +515,21 @@ fn GiveItemModal(
 
     // Get other creatures in the scene that are visible to the player
     let game = GAME.read();
-    let available_recipients: Vec<arptypes::Creature> = {
+    let available_recipients: Vec<SerializedCreature> = {
         // Find which player owns this creature
-        let owning_player = game
-            .players
-            .values()
-            .find(|player| player.creatures.contains(&creature.id));
 
-        if let Some(player) = owning_player {
-            if let Some(scene_id) = &player.scene {
-                if let Some(scene) = game.scenes.get(scene_id) {
-                    scene
-                        .creatures
-                        .iter()
-                        .filter_map(|(cid, (_, visibility))| {
-                            if *cid != creature.id
-                                && *visibility == arptypes::Visibility::AllPlayers
-                            {
-                                game.creatures.get(cid).cloned()
-                            } else {
-                                None
-                            }
-                        })
-                        .collect()
-                } else {
-                    Vec::new()
-                }
-            } else {
-                Vec::new()
-            }
+        if let Some(scene) = &game.active_scene {
+            scene
+                .creatures
+                .iter()
+                .filter_map(|(cid, (_, visibility))| {
+                    if *cid != giver.id && *visibility == arptypes::Visibility::AllPlayers {
+                        game.creatures.get(cid).cloned()
+                    } else {
+                        None
+                    }
+                })
+                .collect()
         } else {
             Vec::new()
         }

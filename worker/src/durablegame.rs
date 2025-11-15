@@ -31,7 +31,13 @@ pub struct WSUser {
     pub player_id: PlayerID,
 }
 
-pub type Sessions = Rc<RefCell<Vec<WebSocket>>>;
+#[derive(Debug, Clone)]
+pub struct SessionInfo {
+    pub socket: WebSocket,
+    pub user: WSUser,
+}
+
+pub type Sessions = Rc<RefCell<Vec<SessionInfo>>>;
 
 impl DurableObject for ArpeggioGame {
     fn new(state: State, env: Env) -> Self {
@@ -122,7 +128,10 @@ impl ArpeggioGame {
                 // 2. listen for broadcasts from the first task and sends a message to all sessions
                 // Maybe there's a simpler way to do this that doesn't involve a channel and two tasks?
 
-                self.sessions.borrow_mut().push(server.clone());
+                self.sessions.borrow_mut().push(SessionInfo {
+                    socket: server.clone(),
+                    user: ws_user.clone(),
+                });
 
                 let account_id = self.env.var("CF_ACCOUNT_ID")?.to_string();
                 let image_delivery_prefix = self.env.var("CF_IMAGE_DELIVERY_PREFIX")?.to_string();
