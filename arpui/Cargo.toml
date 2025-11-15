@@ -19,12 +19,12 @@ futures-util = { version = "*" }
 # because I'm afraid of dependency conflicts between workers-rs and dioxus versions of dependencies)
 getrandom = { version = "0.2.9", features = ["js"] }
 reqwest = { version = "0.12.3", features = ["json"] }
-reqwest-websocket = { version = "0.3" }
+reqwest-websocket = { version = "0.5" }
 serde = { version = "*" }
 serde_json = { version = "*" }
 tracing = "0.1.41"
-uom = { version = "0.35", default-features = false, features = ["u32", "i64", "serde", "si"] }
-uuid = { version = "1.1.2", features = ["v4", "serde"] }
+uom = { version = "0.37", default-features = false, features = ["u32", "i64", "serde", "si"] }
+uuid = { version = "1.18.1", features = ["v4", "serde"] }
 wasm-bindgen = "0.2.105"
 wasm-bindgen-futures = "0.4.42"
 wasm-cookies = "0.2.1"
