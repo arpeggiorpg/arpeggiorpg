@@ -1,5 +1,8 @@
+use anyhow::Context;
 use tracing::info;
 use worker::Storage;
+
+mod v2_sqlite;
 
 const VERSION_KEY: &str = "DURABLEGAME_VERSION";
 
@@ -15,23 +18,32 @@ pub async fn migrate(storage: Storage) -> anyhow::Result<()> {
     }
 }
 
-async fn migrate_from(_storage: Storage, current_version: usize) -> anyhow::Result<()> {
+async fn migrate_from(storage: Storage, current_version: usize) -> anyhow::Result<()> {
     // Rust doesn't allow us to have an array of async function pointers, so... I guess we just have
     // to write some imperative code here instead of iterating through an array of migration
     // functions.
-    let latest_migration = 1;
+    let latest_migration = 2;
     info!(
         event = "running-migrations",
         current_version, latest_migration
     );
 
-    // if current_version < latest_migration {
-    //   run_migration_2(&mut storage)
-    //     .await
-    //     .with_context(|| format!("Running migration 2"))?;
-    //   console_log!("[DO migration] Ran migration 2 successfully!");
-    //   storage.put(VERSION_KEY, 2).await?;
-    // }
+    if current_version < 1 {
+        // Migration 1: Initial setup (no-op, just set version)
+        info!(event = "running-migration-1");
+        storage.put(VERSION_KEY, 1).await?;
+        info!(event = "migration-1-complete");
+    }
+
+    if current_version < 2 {
+        // Migration 2: Migrate from key-value to SQLite
+        info!(event = "running-migration-2", desc = "kv-to-sqlite");
+        v2_sqlite::migrate_kv_to_sqlite(&storage)
+            .await
+            .with_context(|| "Running migration 2 (KV to SQLite)")?;
+        storage.put(VERSION_KEY, 2).await?;
+        info!(event = "migration-2-complete");
+    }
 
     info!(event = "migrations-done");
     Ok(())
