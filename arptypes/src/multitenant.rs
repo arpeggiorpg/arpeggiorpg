@@ -32,6 +32,13 @@ pub struct GameAndMetadata {
     pub logs: VecDeque<(GameIndex, crate::GameLog)>,
 }
 
+#[derive(Clone, PartialEq, Serialize, Deserialize, Debug)]
+pub struct PlayerGameAndMetadata {
+    pub game: crate::SerializedPlayerGame,
+    pub metadata: GameMetadata,
+    pub logs: VecDeque<(GameIndex, crate::GameLog)>, // TODO: filter logs by player/scene relevance
+}
+
 /// The indices stored by GameIndex are a little weird.
 ///
 /// The game_idx (I should call this the snapshot_index) is the actual current snapshot index. The
@@ -88,6 +95,7 @@ pub enum ImageType {
 #[serde(tag = "t")]
 pub enum RPIGameRequest {
     GMGetGame,
+    PlayerGetGame,
     GMCommand {
         command: Box<GMCommand>,
     },

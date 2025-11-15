@@ -10,9 +10,11 @@ use worker::{WebSocket, WebsocketEvent};
 
 use arpeggio::{
     game::GameExt,
-    types::{ChangedGame, GMCommand, GameError, RPIGame},
+    types::{serialize_player_game, ChangedGame, GMCommand, GameError, RPIGame},
 };
-use arptypes::multitenant::{GameAndMetadata, GameMetadata, RPIGameRequest, Role};
+use arptypes::multitenant::{
+    GameAndMetadata, GameMetadata, PlayerGameAndMetadata, RPIGameRequest, Role,
+};
 
 use crate::{
     durablegame::{Sessions, WSUser},
@@ -185,14 +187,20 @@ impl GameSession {
         use RPIGameRequest::*;
         match (self.ws_user.role, request.request) {
             (_, GMGetGame) => {
-                // RADIX: TODO: we need separate GMGetGame and PlayerGetGame commands, where the player only
-                // gets information about the current scene. This is going to be a big change, though.
-
                 let rpi_game = RPIGame(&game);
                 let result = GameAndMetadata {
                     game: rpi_game.serialize_game()?,
                     metadata: self.metadata.clone(),
                     logs: self.game_storage.recent_logs(),
+                };
+                Ok(serde_json::to_value(result)?)
+            }
+            (Role::Player, PlayerGetGame) => {
+                let player_game = serialize_player_game(&self.ws_user.player_id, &game)?;
+                let result = PlayerGameAndMetadata {
+                    game: player_game,
+                    metadata: self.metadata.clone(),
+                    logs: self.game_storage.recent_logs(), // TODO: filter logs by player/scene relevance
                 };
                 Ok(serde_json::to_value(result)?)
             }
@@ -273,6 +281,9 @@ impl GameSession {
                   "final_url": pending_image.final_url.to_string()
                 });
                 Ok(serde_json::to_value(response)?)
+            }
+            (Role::GM, PlayerGetGame) => {
+                Err(anyhow!("GMs should use GMGetGame instead of PlayerGetGame"))
             }
             _ => Err(anyhow!("You can't run that command as that role.")),
         }
