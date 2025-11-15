@@ -119,7 +119,6 @@ impl GameStorage {
             let value = items.get(&key);
             let value: String = serde_wasm_bindgen::from_value(value).map_err(anydbg)?;
             let key: String = serde_wasm_bindgen::from_value(key).map_err(anydbg)?;
-            info!(event = "found-log", ?key);
             if let ["log", _, "idx", log_idx_str] = key.split('-').collect::<Vec<_>>()[..] {
                 let log: GameLog = serde_json::from_str(&value).map_err(|e| {
                     anyhow!("Failed parsing GameLog as JSON:\ncontent: {value:?}\nerror: {e:?}")

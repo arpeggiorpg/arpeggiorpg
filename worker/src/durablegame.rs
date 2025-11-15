@@ -1,3 +1,4 @@
+//! Durable Object implementation using Hibernatable WebSockets API
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 use anyhow::{anyhow, Context};
@@ -6,9 +7,10 @@ use arptypes::multitenant::{GameID, GameMetadata, InvitationID, Role};
 use serde_json::json;
 use tracing::{error, info};
 use uuid::Uuid;
+use worker::durable::WebSocketIncomingMessage;
 use worker::{
-    durable_object, wasm_bindgen, wasm_bindgen_futures, Env, Method, Request, Response, Result,
-    State, WebSocket, WebSocketPair,
+    durable_object, wasm_bindgen, Env, Method, Request, Response, Result, State, WebSocket,
+    WebSocketPair,
 };
 
 use crate::{
@@ -19,7 +21,6 @@ use crate::{
 pub struct ArpeggioGame {
     state: Rc<State>,
     game_storage: RefCell<Option<Rc<GameStorage>>>,
-    sessions: Sessions,
     ws_tokens: RefCell<HashMap<Uuid, WSUser>>,
     metadata: RefCell<Option<GameMetadata>>,
     env: Env,
@@ -31,20 +32,11 @@ pub struct WSUser {
     pub player_id: PlayerID,
 }
 
-#[derive(Debug, Clone)]
-pub struct SessionInfo {
-    pub socket: WebSocket,
-    pub user: WSUser,
-}
-
-pub type Sessions = Rc<RefCell<Vec<SessionInfo>>>;
-
 impl DurableObject for ArpeggioGame {
     fn new(state: State, env: Env) -> Self {
         Self {
             game_storage: RefCell::new(None),
             state: Rc::new(state),
-            sessions: Rc::new(RefCell::new(vec![])),
             ws_tokens: RefCell::new(HashMap::new()),
             metadata: RefCell::new(None),
             env,
@@ -56,24 +48,126 @@ impl DurableObject for ArpeggioGame {
         crate::domigrations::migrate(self.state.storage())
             .await
             .map_err(rust_error)?;
+        self.route(req).await.map_err(rust_error)
+    }
+
+    async fn websocket_message(
+        &self,
+        ws: WebSocket,
+        message: WebSocketIncomingMessage,
+    ) -> Result<()> {
+        let game_storage = self.get_game_storage().await.map_err(rust_error)?;
+
+        // Get metadata if not already loaded
+        let metadata = self.metadata.borrow().clone();
+        let metadata = match metadata {
+            Some(metadata) => metadata,
+            None => {
+                if let Some(game_id) = get_tag("game:", &self.state, &ws) {
+                    let game_id = GameID(Uuid::parse_str(&game_id).map_err(rust_error)?);
+                    let metadata = storage::get_game_metadata(&self.env, game_id)
+                        .await
+                        .map_err(rust_error)?
+                        .ok_or(anyhow!("No metadata!?"))
+                        .map_err(rust_error)?;
+                    *self.metadata.borrow_mut() = Some(metadata.clone());
+                    metadata
+                } else {
+                    return Err("No game ID found in WebSocket tags".into());
+                }
+            }
+        };
+
+        let player_id =
+            get_tag("player_id:", &self.state, &ws).ok_or("No player_id tag found on WebSocket")?;
+        let player_id = PlayerID(player_id);
+
+        let role_str =
+            get_tag("role:", &self.state, &ws).ok_or("No role tag found on WebSocket")?;
+        let role = role_str
+            .parse::<Role>()
+            .map_err(|e| format!("Invalid role tag: {}", e))?;
+
+        let ws_user = WSUser { role, player_id };
+
+        let account_id = self.env.var("CF_ACCOUNT_ID")?.to_string();
+        let image_delivery_prefix = self.env.var("CF_IMAGE_DELIVERY_PREFIX")?.to_string();
+        let images_token = self.env.var("CF_IMAGES_TOKEN")?.to_string();
+
+        // Extract game_id from websocket tags
+        let game_id = if let Some(game_id) = get_tag("game:", &self.state, &ws) {
+            GameID(Uuid::parse_str(&game_id).map_err(rust_error)?)
+        } else {
+            return Err("No game ID found in WebSocket tags".into());
+        };
+        let image_service =
+            CFImageService::new(account_id, images_token, &image_delivery_prefix, game_id)
+                .map_err(rust_error)?;
+
+        // Create a GameSession and handle the event directly
+        let session = wsrpi::GameSession::new(
+            image_service,
+            game_storage,
+            ws.clone(),
+            ws_user.clone(),
+            metadata,
+            self.state.clone(),
+        );
+
+        // Ensure player is registered
+        session.ensure_player().await.map_err(rust_error)?;
+
+        // Handle the WebSocket message
+        match message {
+            WebSocketIncomingMessage::String(text) => {
+                session.handle_event(text).await.map_err(rust_error)?;
+            }
+            WebSocketIncomingMessage::Binary(_) => {
+                // We don't handle binary messages currently
+                info!(event = "binary-message-ignored");
+            }
+        }
+
+        Ok(())
+    }
+
+    async fn websocket_close(
+        &self,
+        ws: WebSocket,
+        _code: usize,
+        _reason: String,
+        _was_clean: bool,
+    ) -> Result<()> {
+        info!(event = "websocket-close", tags = ?self.state.get_tags(&ws));
+        Ok(())
+    }
+}
+
+/// Helper function to extract a tag value by prefix from WebSocket tags
+pub fn get_tag(prefix: &str, state: &State, ws: &WebSocket) -> Option<String> {
+    let tags = state.get_tags(ws);
+    tags.iter()
+        .find(|tag| tag.starts_with(prefix))
+        .map(|tag| tag.strip_prefix(prefix).unwrap().to_string())
+}
+
+impl ArpeggioGame {
+    async fn get_game_storage(&self) -> anyhow::Result<Rc<GameStorage>> {
         let game_storage = self.game_storage.borrow().clone();
-        let game_storage = match game_storage {
-            Some(game_storage) => game_storage,
+        match game_storage {
+            Some(game_storage) => Ok(game_storage),
             None => {
                 let storage = GameStorage::load(self.state.clone())
                     .await
                     .map_err(rust_error)?;
                 let rc_storage = Rc::new(storage);
                 *self.game_storage.borrow_mut() = Some(rc_storage.clone());
-                rc_storage
+                Ok(rc_storage)
             }
-        };
-        self.route(req, game_storage).await.map_err(rust_error)
+        }
     }
-}
 
-impl ArpeggioGame {
-    async fn route(&self, req: Request, game_storage: Rc<GameStorage>) -> anyhow::Result<Response> {
+    async fn route(&self, req: Request) -> anyhow::Result<Response> {
         let path = req.path();
         info!(event="request", method=?req.method(), path=?path);
 
@@ -102,54 +196,18 @@ impl ArpeggioGame {
                 };
                 info!(event = "ws-connect", ?path, ?game_id);
                 let game_id = game_id.parse::<GameID>()?;
-                let metadata = self.metadata.borrow().clone();
-                let metadata = match metadata {
-                    Some(metadata) => metadata,
-                    None => {
-                        let metadata = storage::get_game_metadata(&self.env, game_id)
-                            .await?
-                            .ok_or(anyhow!("No metadata!?"))?;
-                        *self.metadata.borrow_mut() = Some(metadata.clone());
-                        metadata
-                    }
-                };
-                info!(event = "ws-game-metadata", ?metadata);
 
                 let pair = WebSocketPair::new()?;
                 let server = pair.server;
-                // To avoid racking up DO bills, let's close the socket after a while in case someone
-                // leaves their browser on the page. This should NOT be necessary! We should be using
-                // Hibernatable Websockets!
 
-                server.accept()?;
+                // Use hibernatable WebSocket API
+                let game_tag = format!("game:{}", game_id.0.to_string());
+                let player_id_tag = format!("player_id:{}", ws_user.player_id.0);
+                let role_tag = format!("role:{}", ws_user.role.to_string());
 
-                // We have *two* asynchronous tasks here:
-                // 1. listen for messages from the client and act on the game
-                // 2. listen for broadcasts from the first task and sends a message to all sessions
-                // Maybe there's a simpler way to do this that doesn't involve a channel and two tasks?
-
-                self.sessions.borrow_mut().push(SessionInfo {
-                    socket: server.clone(),
-                    user: ws_user.clone(),
-                });
-
-                let account_id = self.env.var("CF_ACCOUNT_ID")?.to_string();
-                let image_delivery_prefix = self.env.var("CF_IMAGE_DELIVERY_PREFIX")?.to_string();
-                let images_token = self.env.var("CF_IMAGES_TOKEN")?.to_string();
-                let image_service =
-                    CFImageService::new(account_id, images_token, &image_delivery_prefix, game_id)?;
-                let session = wsrpi::GameSession::new(
-                    image_service,
-                    game_storage,
-                    server,
-                    self.sessions.clone(),
-                    ws_user,
-                    metadata,
-                );
-                wasm_bindgen_futures::spawn_local(async move {
-                    session.run().await;
-                    info!(event = "ws-session-done");
-                });
+                // Accept the WebSocket with tags for role-based broadcasting and user data
+                self.state
+                    .accept_websocket_with_tags(&server, &[&role_tag, &game_tag, &player_id_tag]);
 
                 Ok(Response::from_websocket(pair.client)?)
             }
