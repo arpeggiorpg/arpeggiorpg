@@ -1,15 +1,15 @@
 use std::collections::VecDeque;
 
 use arptypes::{
-    multitenant::{GameAndMetadata, GameID, GameIndex, RPIGameRequest, Role},
-    Game, GameLog, Item, Note, PlayerCommand, PlayerID, SceneID,
+    GameLog, Item, PlayerID, SceneID, SerializedCreature, SerializedPlayerGame,
+    multitenant::{GameID, GameIndex, PlayerGameAndMetadata, RPIGameRequest, Role},
 };
 use dioxus::prelude::*;
 
-use foldertree::FolderPath;
 use tracing::{error, info};
 
 use crate::{
+    PLAYER_SPEC, PlayerSpec,
     chat::PlayerChat,
     components::{
         creature::CreatureCard,
@@ -18,11 +18,10 @@ use crate::{
         tabs::{TabContent, TabList, TabTrigger, Tabs},
     },
     grid::{CreatureMenuAction, SceneGrid},
-    rpi::{send_request, use_ws, Connector},
-    PlayerSpec, PLAYER_SPEC,
+    rpi::{Connector, send_request, use_ws},
 };
 
-pub static GAME: GlobalSignal<Game> = Signal::global(|| Default::default());
+pub static GAME: GlobalSignal<SerializedPlayerGame> = Signal::global(|| Default::default());
 pub static GAME_LOGS: GlobalSignal<VecDeque<(GameIndex, GameLog)>> =
     Signal::global(|| VecDeque::new());
 pub static GAME_NAME: GlobalSignal<String> = Signal::global(|| String::new());
@@ -37,7 +36,8 @@ pub fn PlayerGamePage(id: GameID, player_id: PlayerID) -> Element {
       Connector {
         role: Role::Player,
         game_id: id,
-        game_signal: GAME.resolve(),
+        game_signal: None,
+        player_game_signal: Some(GAME.resolve()),
         game_logs_signal: GAME_LOGS.resolve(),
 
         GameLoader { player_id }
@@ -48,14 +48,14 @@ pub fn PlayerGamePage(id: GameID, player_id: PlayerID) -> Element {
 #[component]
 fn GameLoader(player_id: PlayerID) -> Element {
     let ws = use_ws();
-    let future: Resource<Result<Game, anyhow::Error>> = use_resource(move || async move {
+    let future: Resource<anyhow::Result<SerializedPlayerGame>> = use_resource(move || async move {
         info!("fetching game state for player view");
-        let response = send_request::<GameAndMetadata>(RPIGameRequest::GMGetGame, ws).await?;
-        let game = Game::from_serialized_game(response.game);
-        *GAME.write() = game.clone();
+        let response =
+            send_request::<PlayerGameAndMetadata>(RPIGameRequest::PlayerGetGame, ws).await?;
+        *GAME.write() = response.game.clone();
         *GAME_LOGS.write() = response.logs;
         *GAME_NAME.write() = response.metadata.name.clone();
-        Ok(game)
+        Ok(response.game)
     });
 
     match &*future.read_unchecked() {
@@ -85,14 +85,14 @@ fn Shell(player_id: PlayerID, scene_id: Option<SceneID>) -> Element {
         default_value: "creatures".to_string(),
         TabList {
             TabTrigger { value: "creatures".to_string(), index: 0usize, "Creatures" }
-            TabTrigger { value: "notes".to_string(), index: 1usize, "Notes" }
+            // TabTrigger { value: "notes".to_string(), index: 1usize, "Notes" }
         }
         TabContent { index: 0usize, value: "creatures".to_string(),
             Creatures { player_id: player_id.clone() }
         }
-        TabContent { index: 1usize, value: "notes".to_string(),
-            Notes { player_id: player_id.clone() }
-        }
+        // TabContent { index: 1usize, value: "notes".to_string(),
+        //     Notes { player_id: player_id.clone() }
+        // }
     }};
     let chat = rsx! {
         PlayerChat { player_id: player_id.clone() }
@@ -113,7 +113,7 @@ fn Shell(player_id: PlayerID, scene_id: Option<SceneID>) -> Element {
         class: "player-view-shell flex w-full",
         div {
           class: "player-view-shell__main grow",
-            SceneGrid { scene_id: scene_id, get_creature_actions: get_creature_actions }
+            SceneGrid { scene: game.active_scene, get_creature_actions: get_creature_actions }
         }
         div {
           class: "player-view-shell__sidebar w-96",
@@ -177,113 +177,113 @@ fn Creatures(player_id: PlayerID) -> Element {
     }
 }
 
+// #[component]
+// fn Notes(player_id: PlayerID) -> Element {
+//     let mut draft_content = use_signal(|| String::new());
+//     let ws = use_ws();
+
+//     let game = GAME.read();
+//     let player_notes_folder_path: FolderPath = vec![
+//         "Players".to_string(),
+//         player_id.0.clone(),
+//         "Notes".to_string(),
+//     ]
+//     .into();
+//     let existing_note = game
+//         .campaign
+//         .get(&player_notes_folder_path)
+//         .ok()
+//         .and_then(|notes_folder| notes_folder.notes.get("Scratch"))
+//         .cloned();
+
+//     // Initialize draft content from existing note on first load
+//     use_effect({
+//         let existing_note = existing_note.clone();
+//         move || {
+//             if let Some(ref note) = existing_note.clone() {
+//                 draft_content.set(note.content.clone());
+//             }
+//         }
+//     });
+
+//     let has_existing_note = existing_note.is_some();
+//     let mut save_action = use_action({
+//         move |content: String| async move {
+//             if content.trim().is_empty() {
+//                 return Ok(());
+//             }
+
+//             let note = Note {
+//                 name: "Scratch".to_string(),
+//                 content,
+//             };
+//             let note_path: FolderPath = vec!["Notes".to_string()].into();
+//             let command = if has_existing_note {
+//                 PlayerCommand::EditNote {
+//                     path: note_path,
+//                     original_name: "Scratch".to_string(),
+//                     note,
+//                 }
+//             } else {
+//                 PlayerCommand::CreateNote {
+//                     path: note_path,
+//                     note,
+//                 }
+//             };
+
+//             let request = RPIGameRequest::PlayerCommand { command };
+
+//             send_request::<()>(request, ws).await
+//         }
+//     });
+
+//     let current_content = draft_content();
+//     let original_content = existing_note
+//         .as_ref()
+//         .map(|n| n.content.as_str())
+//         .unwrap_or("");
+//     let has_changes = current_content != original_content;
+//     let is_saving = save_action.pending();
+
+//     rsx! {
+//         div { class: "player-view-tab player-view-tab--notes flex flex-col h-full",
+//             div { class: "flex justify-between items-center mb-4 p-2 border-b",
+//                 div { class: "flex flex-col",
+//                     span { class: "text-xs text-gray-500", "Players/Notes" }
+//                     span { class: "font-semibold", "Scratch" }
+//                 }
+//                 button {
+//                     class: if has_changes && !is_saving {
+//                         "px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600"
+//                     } else {
+//                         "px-3 py-1 bg-gray-300 text-gray-500 rounded cursor-not-allowed"
+//                     },
+//                     disabled: !has_changes || is_saving,
+//                     onclick: move |_| {
+//                         let content = draft_content();
+//                         save_action.call(content);
+//                     },
+//                     if is_saving {
+//                         "Saving..."
+//                     } else {
+//                         "Save"
+//                     }
+//                 }
+//             }
+//             textarea {
+//                 class: "flex-1 w-full p-3 border border-gray-300 rounded resize-none font-mono text-sm",
+//                 placeholder: "Enter your notes here...",
+//                 value: "{current_content}",
+//                 oninput: move |evt| {
+//                     draft_content.set(evt.value());
+//                 }
+//             }
+//         }
+//     }
+// }
+
 #[component]
-fn Notes(player_id: PlayerID) -> Element {
-    let mut draft_content = use_signal(|| String::new());
-    let ws = use_ws();
-
-    let game = GAME.read();
-    let player_notes_folder_path: FolderPath = vec![
-        "Players".to_string(),
-        player_id.0.clone(),
-        "Notes".to_string(),
-    ]
-    .into();
-    let existing_note = game
-        .campaign
-        .get(&player_notes_folder_path)
-        .ok()
-        .and_then(|notes_folder| notes_folder.notes.get("Scratch"))
-        .cloned();
-
-    // Initialize draft content from existing note on first load
-    use_effect({
-        let existing_note = existing_note.clone();
-        move || {
-            if let Some(ref note) = existing_note.clone() {
-                draft_content.set(note.content.clone());
-            }
-        }
-    });
-
-    let has_existing_note = existing_note.is_some();
-    let mut save_action = use_action({
-        move |content: String| async move {
-            if content.trim().is_empty() {
-                return Ok(());
-            }
-
-            let note = Note {
-                name: "Scratch".to_string(),
-                content,
-            };
-            let note_path: FolderPath = vec!["Notes".to_string()].into();
-            let command = if has_existing_note {
-                PlayerCommand::EditNote {
-                    path: note_path,
-                    original_name: "Scratch".to_string(),
-                    note,
-                }
-            } else {
-                PlayerCommand::CreateNote {
-                    path: note_path,
-                    note,
-                }
-            };
-
-            let request = RPIGameRequest::PlayerCommand { command };
-
-            send_request::<()>(request, ws).await
-        }
-    });
-
-    let current_content = draft_content();
-    let original_content = existing_note
-        .as_ref()
-        .map(|n| n.content.as_str())
-        .unwrap_or("");
-    let has_changes = current_content != original_content;
-    let is_saving = save_action.pending();
-
-    rsx! {
-        div { class: "player-view-tab player-view-tab--notes flex flex-col h-full",
-            div { class: "flex justify-between items-center mb-4 p-2 border-b",
-                div { class: "flex flex-col",
-                    span { class: "text-xs text-gray-500", "Players/Notes" }
-                    span { class: "font-semibold", "Scratch" }
-                }
-                button {
-                    class: if has_changes && !is_saving {
-                        "px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600"
-                    } else {
-                        "px-3 py-1 bg-gray-300 text-gray-500 rounded cursor-not-allowed"
-                    },
-                    disabled: !has_changes || is_saving,
-                    onclick: move |_| {
-                        let content = draft_content();
-                        save_action.call(content);
-                    },
-                    if is_saving {
-                        "Saving..."
-                    } else {
-                        "Save"
-                    }
-                }
-            }
-            textarea {
-                class: "flex-1 w-full p-3 border border-gray-300 rounded resize-none font-mono text-sm",
-                placeholder: "Enter your notes here...",
-                value: "{current_content}",
-                oninput: move |evt| {
-                    draft_content.set(evt.value());
-                }
-            }
-        }
-    }
-}
-
-#[component]
-fn CollapsibleInventory(creature: arptypes::Creature) -> Element {
+fn CollapsibleInventory(creature: SerializedCreature) -> Element {
     let mut is_expanded = use_signal(|| false);
 
     rsx! {
@@ -308,7 +308,7 @@ fn CollapsibleInventory(creature: arptypes::Creature) -> Element {
 }
 
 #[component]
-fn CreatureInventory(creature: arptypes::Creature) -> Element {
+fn CreatureInventory(creature: SerializedCreature) -> Element {
     let game = GAME.read();
 
     // Get items from creature's inventory
@@ -356,7 +356,7 @@ fn CreatureInventory(creature: arptypes::Creature) -> Element {
 }
 
 #[component]
-fn InventoryItemMenu(creature: arptypes::Creature, item: Item, count: u64) -> Element {
+fn InventoryItemMenu(creature: SerializedCreature, item: Item, count: u64) -> Element {
     let mut show_menu = use_signal(|| false);
     let mut show_give_modal = use_signal(|| false);
     let mut show_drop_modal = use_signal(|| false);
@@ -395,7 +395,7 @@ fn InventoryItemMenu(creature: arptypes::Creature, item: Item, count: u64) -> El
 
         if show_give_modal() {
             GiveItemModal {
-                creature: creature.clone(),
+                giver: creature.clone(),
                 item: item.clone(),
                 count,
                 on_close: move || show_give_modal.set(false)
@@ -415,7 +415,7 @@ fn InventoryItemMenu(creature: arptypes::Creature, item: Item, count: u64) -> El
 
 #[component]
 fn DropItemModal(
-    creature: arptypes::Creature,
+    creature: SerializedCreature,
     item: Item,
     count: u64,
     on_close: EventHandler<()>,
@@ -493,7 +493,7 @@ fn DropItemModal(
 
 #[component]
 fn GiveItemModal(
-    creature: arptypes::Creature,
+    giver: SerializedCreature,
     item: Item,
     count: u64,
     on_close: EventHandler<()>,
@@ -502,7 +502,7 @@ fn GiveItemModal(
     let mut selected_recipient = use_signal(|| None::<arptypes::CreatureID>);
     let mut give_action = use_action({
         let ws = use_ws();
-        let giver_id = creature.id.clone();
+        let giver_id = giver.id.clone();
         let item_id = item.id.clone();
         move || async move {
             let Some(recipient_id) = selected_recipient() else {
@@ -524,35 +524,21 @@ fn GiveItemModal(
 
     // Get other creatures in the scene that are visible to the player
     let game = GAME.read();
-    let available_recipients: Vec<arptypes::Creature> = {
+    let available_recipients: Vec<SerializedCreature> = {
         // Find which player owns this creature
-        let owning_player = game
-            .players
-            .values()
-            .find(|player| player.creatures.contains(&creature.id));
 
-        if let Some(player) = owning_player {
-            if let Some(scene_id) = &player.scene {
-                if let Some(scene) = game.scenes.get(scene_id) {
-                    scene
-                        .creatures
-                        .iter()
-                        .filter_map(|(cid, (_, visibility))| {
-                            if *cid != creature.id
-                                && *visibility == arptypes::Visibility::AllPlayers
-                            {
-                                game.creatures.get(cid).cloned()
-                            } else {
-                                None
-                            }
-                        })
-                        .collect()
-                } else {
-                    Vec::new()
-                }
-            } else {
-                Vec::new()
-            }
+        if let Some(scene) = &game.active_scene {
+            scene
+                .creatures
+                .iter()
+                .filter_map(|(cid, (_, visibility))| {
+                    if *cid != giver.id && *visibility == arptypes::Visibility::AllPlayers {
+                        game.creatures.get(cid).cloned()
+                    } else {
+                        None
+                    }
+                })
+                .collect()
         } else {
             Vec::new()
         }

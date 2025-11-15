@@ -1,8 +1,8 @@
 #![allow(non_snake_case)]
 
 use arptypes::{
-    multitenant::{self, GameID, Role},
     PlayerID,
+    multitenant::{self, GameID, Role},
 };
 use dioxus::prelude::*;
 use js_sys::encode_uri_component;
@@ -13,8 +13,8 @@ mod components;
 mod grid;
 mod player_view;
 mod rpi;
-use player_view::{PlayerGamePage, GAME_NAME};
-use rpi::{auth_token, list_games, AUTH_TOKEN};
+use player_view::{GAME_NAME, PlayerGamePage};
+use rpi::{AUTH_TOKEN, auth_token, list_games};
 use wasm_cookies::CookieOptions;
 
 use crate::{
@@ -77,10 +77,9 @@ fn AuthRequiredLayout() -> Element {
             .unwrap_or_else(|| redirect_uri.clone());
 
         format!(
-      "https://accounts.google.com/o/oauth2/v2/auth?client_id={}&redirect_uri={}&response_type=code&scope=openid%20email%20profile&prompt=consent",
-      GOOGLE_CLIENT_ID,
-      encoded_redirect,
-    )
+            "https://accounts.google.com/o/oauth2/v2/auth?client_id={}&redirect_uri={}&response_type=code&scope=openid%20email%20profile&prompt=consent",
+            GOOGLE_CLIENT_ID, encoded_redirect,
+        )
     };
 
     let navigator = navigator();

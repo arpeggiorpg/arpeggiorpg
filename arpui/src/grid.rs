@@ -3,7 +3,10 @@ mod svg_pan_zoom;
 use dioxus::prelude::*;
 
 use crate::{
-    components::creature::ClassIcon, grid::svg_pan_zoom::SVGPanZoom, player_view::GAME, rpi::{send_request, use_ws}
+    components::creature::ClassIcon,
+    grid::svg_pan_zoom::SVGPanZoom,
+    player_view::GAME,
+    rpi::{send_request, use_ws},
 };
 use arptypes::{multitenant::RPIGameRequest, *};
 
@@ -15,27 +18,17 @@ pub static MOVEMENT_OPTIONS: GlobalSignal<Option<(CreatureID, Vec<Point3>)>> =
 
 #[component]
 pub fn SceneGrid(
-    scene_id: Option<SceneID>,
+    scene: Option<Scene>,
     get_creature_actions: Callback<CreatureID, Vec<CreatureMenuAction>>,
 ) -> Element {
-    let game = GAME.read();
     let mut selected_creature_id = use_signal(|| None::<CreatureID>);
     let mut menu_position = use_signal(|| None::<(f64, f64)>);
 
-    let Some(scene_id) = scene_id else {
+    let Some(scene) = scene else {
         return rsx! {
             div {
                 class: "w-full h-full flex items-center justify-center text-gray-500",
                 "Ask your GM to put you in a scene."
-            }
-        };
-    };
-
-    let Some(scene) = game.scenes.get(&scene_id) else {
-        return rsx! {
-            div {
-                class: "w-full h-full flex items-center justify-center text-red-500",
-                "Scene not found!"
             }
         };
     };
@@ -80,7 +73,6 @@ pub fn SceneGrid(
                 // Creatures
                 Creatures {
                     scene: scene.clone(),
-                    game: game.clone(),
                     selected_creature_id: selected_creature_id(),
                     on_creature_click: move |(creature_id, x, y)| {
                         selected_creature_id.set(Some(creature_id));
@@ -93,7 +85,7 @@ pub fn SceneGrid(
             if let Some(creature_id) = selected_creature_id() {
                 if let Some((x, y)) = menu_position() {
                     CreatureMenu {
-                        scene_id: scene_id,
+                        scene_id: scene.id,
                         creature_id: creature_id,
                         position: (x, y),
                         actions: get_creature_actions(creature_id),
@@ -176,7 +168,6 @@ fn TerrainTile(point: Point3, color: String) -> Element {
 #[component]
 fn Creatures(
     scene: Scene,
-    game: Game,
     selected_creature_id: Option<CreatureID>,
     on_creature_click: EventHandler<(CreatureID, f64, f64)>,
 ) -> Element {
@@ -189,7 +180,6 @@ fn Creatures(
                     creature_id: *creature_id,
                     position: *position,
                     visibility: *visibility,
-                    game: game.clone(),
                     selected: selected_creature_id == Some(*creature_id),
                     on_click: on_creature_click
                 }
@@ -203,10 +193,10 @@ fn GridCreature(
     creature_id: CreatureID,
     position: Point3,
     visibility: Visibility,
-    game: Game,
     selected: bool,
     on_click: EventHandler<(CreatureID, f64, f64)>,
 ) -> Element {
+    let game = GAME();
     let creature = game.creatures.get(&creature_id);
     let Some(creature) = creature else {
         return rsx! { g {} }; // Empty group if creature not found
