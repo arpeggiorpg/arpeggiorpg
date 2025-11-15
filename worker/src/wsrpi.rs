@@ -189,7 +189,7 @@ impl GameSession {
         let game = self.game_storage.game();
         use RPIGameRequest::*;
         match (self.ws_user.role, request.request) {
-            (_, GMGetGame) => {
+            (Role::GM, GMGetGame) => {
                 let rpi_game = RPIGame(&game);
                 let result = GameAndMetadata {
                     game: rpi_game.serialize_game()?,
