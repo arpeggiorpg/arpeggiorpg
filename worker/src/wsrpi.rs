@@ -12,8 +12,11 @@ use arpeggio::{
     game::GameExt,
     types::{serialize_player_game, ChangedGame, GMCommand, GameError, RPIGame},
 };
-use arptypes::multitenant::{
-    GameAndMetadata, GameMetadata, PlayerGameAndMetadata, RPIGameRequest, Role,
+use arptypes::{
+    multitenant::{
+        GameAndMetadata, GameIndex, GameMetadata, PlayerGameAndMetadata, RPIGameRequest, Role,
+    },
+    Game, GameLog,
 };
 
 use crate::{
@@ -293,31 +296,67 @@ impl GameSession {
         &self,
         changed_game: Result<ChangedGame, GameError>,
     ) -> anyhow::Result<serde_json::Value> {
-        let changed_game = changed_game.map_err(|e| format!("{e:?}"));
         let result = match changed_game {
             Ok(changed_game) => {
                 let logs_with_indices = self.game_storage.store_game(changed_game.clone()).await?;
-                let rpi_game = RPIGame(&changed_game.game);
-                let game = rpi_game.serialize_game()?;
-                self.broadcast(
-                    &json!({"t": "refresh_game", "game": game, "logs": logs_with_indices}),
-                )?;
+                self.broadcast_refresh_game(&changed_game.game, &logs_with_indices)?;
                 Ok(changed_game.logs)
             }
-            Err(e) => Err(format!("{e:?}")),
+            Err(e) => Err(e),
         };
-        Ok(serde_json::to_value(result)?)
+        // TODO: render GameError better
+        Ok(serde_json::to_value(result.map_err(|e| format!("{e:?}")))?)
     }
 
-    fn broadcast<T: Serialize>(&self, value: &T) -> anyhow::Result<()> {
-        let s = serde_json::to_string::<T>(value)?;
+    fn broadcast_refresh_game(
+        &self,
+        game: &Game,
+        logs_with_indices: &[(GameIndex, GameLog)],
+    ) -> anyhow::Result<()> {
+        // Broadcast role-specific game data
+        let rpi_game = RPIGame(game);
+        let full_game = rpi_game.serialize_game()?;
+
+        self.broadcast(move |user| {
+            match user.role {
+                Role::GM => {
+                    Some(json!({"t": "refresh_game", "game": full_game.clone(), "logs": logs_with_indices}))
+                }
+                Role::Player => {
+                    let player_game = serialize_player_game(&user.player_id, game).ok()?;
+                    Some(json!({"t": "refresh_player_game", "game": player_game, "logs": logs_with_indices}))
+                }
+            }
+        })?;
+        Ok(())
+    }
+
+    fn broadcast<F, T>(&self, message_fn: F) -> anyhow::Result<()>
+    where
+        F: Fn(&WSUser) -> Option<T>,
+        T: Serialize,
+    {
         let mut sessions = self.sessions.borrow_mut();
-        info!(event = "broadcast", num_clients = sessions.len());
-        sessions.retain_mut(|socket| match socket.send_with_str(s.clone()) {
-            Ok(_) => true,
-            Err(e) => {
-                error!(event = "broadcast-error", ?e);
-                false
+        let total_sessions = sessions.len();
+        info!(event = "broadcast", num_clients = total_sessions);
+
+        sessions.retain_mut(|session| {
+            if let Some(message) = message_fn(&session.user) {
+                match serde_json::to_string(&message) {
+                    Ok(s) => match session.socket.send_with_str(s) {
+                        Ok(_) => true,
+                        Err(e) => {
+                            error!(event = "broadcast-error", ?e, user = ?session.user);
+                            false
+                        }
+                    },
+                    Err(e) => {
+                        error!(event = "serialize-error", ?e, user = ?session.user);
+                        true
+                    }
+                }
+            } else {
+                true // Keep sessions that don't get messages
             }
         });
         Ok(())
