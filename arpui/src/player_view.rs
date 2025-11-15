@@ -1,11 +1,13 @@
 use std::collections::VecDeque;
 
 use arptypes::{
-    GameLog, Item, PlayerID, SceneID, SerializedCreature, SerializedPlayerGame,
+    GameLog, Item, Note, PlayerCommand, PlayerID, SceneID, SerializedCreature,
+    SerializedPlayerGame,
     multitenant::{GameID, GameIndex, PlayerGameAndMetadata, RPIGameRequest, Role},
 };
 use dioxus::prelude::*;
 
+use foldertree::FolderPath;
 use tracing::{error, info};
 
 use crate::{
@@ -85,14 +87,14 @@ fn Shell(player_id: PlayerID, scene_id: Option<SceneID>) -> Element {
         default_value: "creatures".to_string(),
         TabList {
             TabTrigger { value: "creatures".to_string(), index: 0usize, "Creatures" }
-            // TabTrigger { value: "notes".to_string(), index: 1usize, "Notes" }
+            TabTrigger { value: "notes".to_string(), index: 1usize, "Notes" }
         }
         TabContent { index: 0usize, value: "creatures".to_string(),
             Creatures { player_id: player_id.clone() }
         }
-        // TabContent { index: 1usize, value: "notes".to_string(),
-        //     Notes { player_id: player_id.clone() }
-        // }
+        TabContent { index: 1usize, value: "notes".to_string(),
+            Notes { player_id: player_id.clone() }
+        }
     }};
     let chat = rsx! {
         PlayerChat { player_id: player_id.clone() }
@@ -177,110 +179,99 @@ fn Creatures(player_id: PlayerID) -> Element {
     }
 }
 
-// #[component]
-// fn Notes(player_id: PlayerID) -> Element {
-//     let mut draft_content = use_signal(|| String::new());
-//     let ws = use_ws();
+#[component]
+fn Notes(player_id: PlayerID) -> Element {
+    let mut draft_content = use_signal(|| String::new());
+    let ws = use_ws();
 
-//     let game = GAME.read();
-//     let player_notes_folder_path: FolderPath = vec![
-//         "Players".to_string(),
-//         player_id.0.clone(),
-//         "Notes".to_string(),
-//     ]
-//     .into();
-//     let existing_note = game
-//         .campaign
-//         .get(&player_notes_folder_path)
-//         .ok()
-//         .and_then(|notes_folder| notes_folder.notes.get("Scratch"))
-//         .cloned();
+    let game = GAME.read();
+    let existing_note = game.notes.get("Scratch").cloned();
 
-//     // Initialize draft content from existing note on first load
-//     use_effect({
-//         let existing_note = existing_note.clone();
-//         move || {
-//             if let Some(ref note) = existing_note.clone() {
-//                 draft_content.set(note.content.clone());
-//             }
-//         }
-//     });
+    // Initialize draft content from existing note on first load
+    use_effect({
+        let existing_note = existing_note.clone();
+        move || {
+            if let Some(ref note) = existing_note.clone() {
+                draft_content.set(note.content.clone());
+            }
+        }
+    });
 
-//     let has_existing_note = existing_note.is_some();
-//     let mut save_action = use_action({
-//         move |content: String| async move {
-//             if content.trim().is_empty() {
-//                 return Ok(());
-//             }
+    let has_existing_note = existing_note.is_some();
+    let mut save_action = use_action({
+        move |content: String| async move {
+            if content.trim().is_empty() {
+                return Ok(());
+            }
 
-//             let note = Note {
-//                 name: "Scratch".to_string(),
-//                 content,
-//             };
-//             let note_path: FolderPath = vec!["Notes".to_string()].into();
-//             let command = if has_existing_note {
-//                 PlayerCommand::EditNote {
-//                     path: note_path,
-//                     original_name: "Scratch".to_string(),
-//                     note,
-//                 }
-//             } else {
-//                 PlayerCommand::CreateNote {
-//                     path: note_path,
-//                     note,
-//                 }
-//             };
+            let note = Note {
+                name: "Scratch".to_string(),
+                content,
+            };
+            let note_path: FolderPath = vec!["Notes".to_string()].into();
+            let command = if has_existing_note {
+                PlayerCommand::EditNote {
+                    path: note_path,
+                    original_name: "Scratch".to_string(),
+                    note,
+                }
+            } else {
+                PlayerCommand::CreateNote {
+                    path: note_path,
+                    note,
+                }
+            };
 
-//             let request = RPIGameRequest::PlayerCommand { command };
+            let request = RPIGameRequest::PlayerCommand { command };
 
-//             send_request::<()>(request, ws).await
-//         }
-//     });
+            send_request::<()>(request, ws).await
+        }
+    });
 
-//     let current_content = draft_content();
-//     let original_content = existing_note
-//         .as_ref()
-//         .map(|n| n.content.as_str())
-//         .unwrap_or("");
-//     let has_changes = current_content != original_content;
-//     let is_saving = save_action.pending();
+    let current_content = draft_content();
+    let original_content = existing_note
+        .as_ref()
+        .map(|n| n.content.as_str())
+        .unwrap_or("");
+    let has_changes = current_content != original_content;
+    let is_saving = save_action.pending();
 
-//     rsx! {
-//         div { class: "player-view-tab player-view-tab--notes flex flex-col h-full",
-//             div { class: "flex justify-between items-center mb-4 p-2 border-b",
-//                 div { class: "flex flex-col",
-//                     span { class: "text-xs text-gray-500", "Players/Notes" }
-//                     span { class: "font-semibold", "Scratch" }
-//                 }
-//                 button {
-//                     class: if has_changes && !is_saving {
-//                         "px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600"
-//                     } else {
-//                         "px-3 py-1 bg-gray-300 text-gray-500 rounded cursor-not-allowed"
-//                     },
-//                     disabled: !has_changes || is_saving,
-//                     onclick: move |_| {
-//                         let content = draft_content();
-//                         save_action.call(content);
-//                     },
-//                     if is_saving {
-//                         "Saving..."
-//                     } else {
-//                         "Save"
-//                     }
-//                 }
-//             }
-//             textarea {
-//                 class: "flex-1 w-full p-3 border border-gray-300 rounded resize-none font-mono text-sm",
-//                 placeholder: "Enter your notes here...",
-//                 value: "{current_content}",
-//                 oninput: move |evt| {
-//                     draft_content.set(evt.value());
-//                 }
-//             }
-//         }
-//     }
-// }
+    rsx! {
+        div { class: "player-view-tab player-view-tab--notes flex flex-col h-full",
+            div { class: "flex justify-between items-center mb-4 p-2 border-b",
+                div { class: "flex flex-col",
+                    span { class: "text-xs text-gray-500", "Players/Notes" }
+                    span { class: "font-semibold", "Scratch" }
+                }
+                button {
+                    class: if has_changes && !is_saving {
+                        "px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600"
+                    } else {
+                        "px-3 py-1 bg-gray-300 text-gray-500 rounded cursor-not-allowed"
+                    },
+                    disabled: !has_changes || is_saving,
+                    onclick: move |_| {
+                        let content = draft_content();
+                        save_action.call(content);
+                    },
+                    if is_saving {
+                        "Saving..."
+                    } else {
+                        "Save"
+                    }
+                }
+            }
+            textarea {
+                class: "flex-1 w-full p-3 border border-gray-300 rounded resize-none font-mono text-sm",
+                placeholder: "Enter your notes here...",
+                value: "{current_content}",
+                oninput: move |evt| {
+                    draft_content.set(evt.value());
+                }
+            }
+        }
+    }
+}
 
 #[component]
 fn CollapsibleInventory(creature: SerializedCreature) -> Element {

@@ -1065,6 +1065,8 @@ pub struct SerializedPlayerGame {
     pub tile_system: TileSystem,
     #[ts(type = "GamePlayers")]
     pub players: IndexedHashMap<Player>,
+    #[ts(type = "Record<string, Note>")]
+    pub notes: IndexedHashMap<Note>,
 }
 
 #[derive(Clone, PartialEq, Debug, Serialize, Deserialize, TS)]

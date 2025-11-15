@@ -213,6 +213,21 @@ pub fn serialize_player_game(
         .filter_map(|&item_id| game.items.get(&item_id).map(|item| item.clone()))
         .collect();
 
+    // Get player's notes from /Players/{PlayerID}/Notes folder
+    let mut notes = indexed::IndexedHashMap::new();
+    let player_notes_path: foldertree::FolderPath = vec![
+        "Players".to_string(),
+        player_id.0.clone(),
+        "Notes".to_string(),
+    ]
+    .into();
+
+    if let Ok(player_folder) = game.campaign.get(&player_notes_path) {
+        for note in player_folder.notes.values() {
+            notes.insert(note.clone());
+        }
+    }
+
     Ok(SerializedPlayerGame {
         current_combat: game.current_combat.clone(),
         active_scene,
@@ -222,6 +237,7 @@ pub fn serialize_player_game(
         items,
         tile_system: game.tile_system,
         players: game.players.clone(),
+        notes,
     })
 }
 
@@ -542,5 +558,7 @@ pub mod test {
         // Classes and items should be empty since no creatures in scope
         assert!(player_game.classes.is_empty());
         assert!(player_game.items.is_empty());
+        // Notes should be empty since no player notes folder exists
+        assert!(player_game.notes.is_empty());
     }
 }
