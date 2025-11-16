@@ -2,7 +2,7 @@ use arptypes::multitenant::GameID;
 use tracing::info;
 use worker::{Env, State, Storage};
 
-mod v2_sqlite;
+mod sqlite_migration;
 
 const VERSION_KEY: &str = "DURABLEGAME_VERSION";
 
@@ -21,7 +21,7 @@ pub async fn migrate(env: Env, state: &State, game_id: GameID) -> anyhow::Result
     let current_version = match try_get_version(storage).await? {
         Some(cv) => cv,
         None => {
-            v2_sqlite::migrate_kv_to_sqlite(env, state, game_id).await?;
+            sqlite_migration::migrate_kv_to_sqlite(env, state, game_id).await?;
             try_get_version(&storage).await?.unwrap_or(0)
         }
     };

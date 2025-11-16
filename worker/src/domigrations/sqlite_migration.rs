@@ -1,7 +1,3 @@
-use std::collections::HashMap;
-
-use serde::{de::Error as _, Deserialize, Deserializer};
-
 use arptypes::{
     multitenant::{GameID, ImageType},
     GameLog,
@@ -9,25 +5,7 @@ use arptypes::{
 use tracing::info;
 use worker::{Env, SqlStorage, State};
 
-#[derive(Deserialize)]
-struct LegacyKVStorage {
-    #[serde(
-        rename = "snapshot-0-chunk-0",
-        deserialize_with = "deserialize_double_encoded"
-    )]
-    snapshot_0: arptypes::Game,
-
-    #[serde(default)]
-    invitations: Vec<String>,
-
-    #[serde(rename = "images-BackgroundImage", default)]
-    background_images: Vec<String>,
-
-    #[serde(rename = "images-CreatureIcon", default)]
-    creature_icons: Vec<String>,
-    #[serde(flatten)]
-    logs: HashMap<String, DoubleEncoded<GameLog>>,
-}
+use crate::legacykv::{fetch_legacy_dump, DoubleEncoded, LegacyKVStorage};
 
 /// This is not a "normal" migration in that it fetches data from an entirely separate
 /// DurableObject, since switching from KV to SQLite required us to completely recreate our Durable
@@ -49,19 +27,7 @@ pub async fn migrate_kv_to_sqlite(env: Env, state: &State, game_id: GameID) -> a
     Ok(())
 }
 
-async fn fetch_legacy_dump(env: Env, game_id: GameID) -> anyhow::Result<Option<LegacyKVStorage>> {
-    let legacy_ns = env.durable_object("ARPEGGIOGAME_LEGACY")?;
-    let legacy_id = legacy_ns.id_from_name(&game_id.to_string())?;
-    let stub = legacy_id.get_stub()?;
-    let mut resp = stub.fetch_with_str("https://dummy/dump").await?;
 
-    if resp.status_code() == 404 {
-        return Ok(None);
-    }
-
-    let dumped: LegacyKVStorage = resp.json().await?;
-    Ok(Some(dumped))
-}
 
 async fn initialize_sqlite_tables(sql: &SqlStorage) -> anyhow::Result<()> {
     info!(event = "initializing-sqlite-tables");
@@ -130,11 +96,11 @@ async fn migrate_logs(sql: &SqlStorage, legacy_kv: &LegacyKVStorage) -> anyhow::
     info!(event = "migrating-logs");
 
     let log_entries: Result<Vec<((usize, usize), GameLog)>, anyhow::Error> = legacy_kv
-        .logs
-        .iter()
-        .filter(|(k, _v)| k.starts_with("log-"))
-        .map(|(k, DoubleEncoded(v))| Ok((parse_log_key(k)?, v.clone())))
-        .collect();
+    .logs
+    .iter()
+    .filter(|(k, _v)| k.starts_with("log-"))
+    .map(|(k, DoubleEncoded(v))| Ok((parse_log_key(k)?, v.clone())))
+    .collect();
     let mut log_entries = log_entries?;
     if log_entries.len() == 0 {
         info!(event = "no-logs-to-migrate");
@@ -236,29 +202,7 @@ pub fn parse_log_key(key: &str) -> anyhow::Result<(usize, usize)> {
     Ok((snapshot_idx, log_idx))
 }
 
-#[derive(Debug)]
-struct DoubleEncoded<T>(T);
 
-impl<'de, T> Deserialize<'de> for DoubleEncoded<T>
-where
-    T: for<'a> Deserialize<'a>,
-{
-    fn deserialize<D>(deser: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        deserialize_double_encoded(deser).map(DoubleEncoded)
-    }
-}
-
-fn deserialize_double_encoded<'de, D, T>(deser: D) -> Result<T, D::Error>
-where
-    D: Deserializer<'de>,
-    T: for<'a> Deserialize<'a>,
-{
-    let s = String::deserialize(deser)?;
-    serde_json::from_str(&s).map_err(D::Error::custom)
-}
 
 #[cfg(test)]
 mod tests {
@@ -285,7 +229,7 @@ mod tests {
         let json = include_str!("dumped-legacy-kv.json");
         let jd = &mut serde_json::Deserializer::from_str(json);
 
-        let legacy_kv: LegacyKVStorage = serde_path_to_error::deserialize(jd).unwrap();
+        let legacy_kv: crate::legacykv::LegacyKVStorage = serde_path_to_error::deserialize(jd).unwrap();
         assert_eq!(legacy_kv.snapshot_0, Default::default());
         assert_eq!(legacy_kv.logs.len(), 110);
         assert_eq!(
