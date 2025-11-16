@@ -8,6 +8,7 @@ use worker::*;
 
 mod cfworker;
 mod domigrations;
+mod dump;
 mod durablegame;
 mod durablestorage;
 mod images;

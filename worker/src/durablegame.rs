@@ -13,7 +13,9 @@ use worker::{
     WebSocketPair,
 };
 
-use crate::{durablestorage::GameStorage, images::CFImageService, rust_error, storage, wsrpi};
+use crate::{
+    dump, durablestorage::GameStorage, images::CFImageService, rust_error, storage, wsrpi,
+};
 
 /// Durable Object for Arpeggio Games, using SQLite-backend storage.
 #[durable_object]
@@ -170,7 +172,16 @@ impl ArpeggioGameSql {
         info!(event="request", method=?req.method(), path=?path);
 
         match path.split('/').collect::<Vec<_>>()[1..] {
-            ["superuser", "dump", _game_id] => dump_storage(&self.state).await,
+            ["superuser", "dump", game_id] => {
+                let game_id = game_id.parse::<GameID>()?;
+                dump::dump_storage(&self.state, &self.env, game_id).await
+            }
+            ["superuser", "destroy", _game_id] => {
+                self.state.storage().delete_all().await?;
+                Ok(Response::from_json(
+                    &serde_json::json!({"status": "deleted"}),
+                )?)
+            }
             ["request-websocket", _game_id, role, player_id] => {
                 // The worker has already authenticated & authorized the user, so we just need to store &
                 // return a token.
@@ -241,21 +252,4 @@ impl ArpeggioGameSql {
             invitations.contains(&invitation_id)
         ))?)
     }
-}
-
-async fn dump_storage(state: &State) -> anyhow::Result<Response> {
-    // TODO: STREAM!
-    info!("Dumping storage!");
-    let storage = state.storage();
-    let map = storage.list().await?;
-
-    // `list()` returns a JS Map; convert it into a serde_json::Value
-    let js_val = wasm_bindgen::JsValue::from(map);
-    let mut data: serde_json::Value = serde_wasm_bindgen::from_value(js_val).map_err(rust_error)?;
-
-    let rows: Vec<serde_json::Value> = storage.sql().exec(".dump", None)?.to_array()?;
-    data.as_object_mut()
-        .unwrap()
-        .insert("SQLite".to_string(), serde_json::Value::Array(rows));
-    return Ok(Response::from_json(&data)?);
 }

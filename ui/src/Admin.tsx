@@ -1,18 +1,14 @@
+import React from "react";
 import useSWR from "swr";
 import * as Z from "zod";
-
-import React from "react";
 import * as A from "./Actions";
-import * as T from "./PTTypes";
+import type * as T from "./PTTypes";
 import { decodeGameMetadata } from "./PTTypes";
 
 export default function Admin() {
-  let { data } = useSWR(
-    "/superuser/games",
-    (k) =>
-      A.ptfetch(k, {}, Z.object({ "games": Z.array(Z.tuple([Z.string(), decodeGameMetadata])) })),
+  const { data } = useSWR("/superuser/games", (k) =>
+    A.ptfetch(k, {}, Z.object({ games: Z.array(Z.tuple([Z.string(), decodeGameMetadata])) })),
   );
-  const [gameDumpId, setGameDumpId] = React.useState<T.GameID | null>(null);
 
   if (!data) {
     return <div>Loading... or maybe there was an error</div>;
@@ -24,32 +20,26 @@ export default function Admin() {
       <ul>
         {data.games.map(([id, meta]) => (
           <li key={id}>
-            {id} - {meta.name}
-            (<button onClick={() => setGameDumpId(id)}>dump</button>)
+            {id} - {meta.name}(
+            <button type="button" onClick={() => logGame(meta.name, id)}>
+              dump
+            </button>
+            <button type="button" onClick={() => destroyGame(id)}>DESTROY</button>
+            )
           </li>
         ))}
       </ul>
 
-      {gameDumpId ? <Dump id={gameDumpId} /> : null}
+      <span>Just look at your console for the dump.</span>
     </div>
   );
 }
 
-function Dump({ id }: { id: T.GameID }) {
-  let { data } = useSWR(
-    `/superuser/dump/${id}`,
-    key => A.ptfetch(key, {}, Z.record(Z.string(), Z.any())),
-    { revalidateOnFocus: false, revalidateIfStale: false, revalidateOnReconnect: false },
-  );
-  if (!data) return <div>No data...</div>;
-  return (
-    <div>
-      <h2>Game {id}</h2>
-      <div>
-        <pre style={{whiteSpace: "pre-wrap"}}>
-          {JSON.stringify(data, Object.keys(data).sort(), 2)}
-        </pre>
-      </div>
-    </div>
-  );
+async function logGame(name: string, id: T.GameID) {
+  const data = await A.ptfetch(`/superuser/dump/${id}`, {}, Z.record(Z.string(), Z.any()));
+  console.log("Dump", name, { data });
+}
+async function destroyGame(id: T.GameID) {
+  const result = await A.ptfetch(`/superuser/destroy/${id}`, {}, Z.record(Z.string(), Z.any()));
+  console.log("DESTROYED GAME:", result);
 }
