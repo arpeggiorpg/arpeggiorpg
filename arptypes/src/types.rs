@@ -95,6 +95,12 @@ macro_rules! uuid_id {
                     .map($type)
             }
         }
+
+        impl From<::uuid::Uuid> for $type {
+            fn from(value: ::uuid::Uuid) -> $type {
+                $type(value)
+            }
+        }
     };
 }
 

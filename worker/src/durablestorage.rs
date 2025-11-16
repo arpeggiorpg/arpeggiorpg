@@ -74,8 +74,6 @@ impl GameStorage {
         Ok(game_storage)
     }
 
-
-
     async fn load_game_snapshot(
         sql: &SqlStorage,
         snapshot_idx: usize,
