@@ -168,6 +168,7 @@ async fn superuser_games(env: Env) -> Result<Response> {
     Response::from_json(&json!({
         "games": games,
         "do_objects": do_objects,
+        "do_namespaces": do_namespaces,
         "arpeggiogame_ids": arpeggiogame_ids,
         "arpeggiogame_legacy_ids": arpeggiogame_legacy_ids
     }))
