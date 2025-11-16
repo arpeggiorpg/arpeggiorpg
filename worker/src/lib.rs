@@ -12,9 +12,9 @@ mod dump;
 mod durablegame;
 mod durablestorage;
 mod images;
+mod legacykv;
 mod storage;
 mod wsrpi;
-mod legacykv;
 
 // Things I've learned about error-handling in workers-rs:
 // - any Err returned from the main worker doesn't seem to do anything other than "Error: The script
@@ -36,7 +36,9 @@ mod legacykv;
 #[event(start)]
 fn start() {
     let fmt_layer = tracing_subscriber::fmt::layer()
-        .json()
+        // note compact() and not json() -- the json format is just really annoying to browse in the
+        // cloudflare log browser
+        .compact()
         .with_ansi(false) // Only partially supported across JavaScript runtimes
         .with_timer(UtcTime::rfc_3339()) // std::time is not available in browsers
         .with_writer(MakeConsoleWriter); // write events to the console
