@@ -45,7 +45,9 @@ impl GameStorage {
         self.recent_logs.borrow().clone()
     }
 
+    #[tracing::instrument(skip(state))]
     pub async fn load(state: Rc<State>) -> anyhow::Result<Self> {
+        info!(event="game-load-start");
         let sql = state.storage().sql();
 
         // Load game from snapshots table (always using snapshot_idx = 0 for now)
@@ -209,8 +211,15 @@ impl GameStorage {
         // Update the cached game
         *self.cached_game.borrow_mut() = changed_game.game.clone();
 
-        // Update the snapshot (always at index 0 for now)
-        Self::store_game_snapshot(&self.sql, 0, &changed_game.game).await?;
+        // TODO: Store a new snapshot if we reach a certain number of un-snapshotted logs.
+        //
+        // - If log_idx > 100, save a NEW snapshot at a new snapshot IDX
+        // - maybe clean up old logs (like, not all logs, just ones from N snapshots back or
+        //   something)
+        // - we will need to update the loading code to actually honor snapshots: we need to get
+        //   only the LATEST snapshot and then apply logs with that snapshot_idx only
+
+        // Self::store_game_snapshot(&self.sql, new_snapshot, &changed_game.game).await?;
 
         // Update recent logs
         let mut recent_logs = self.recent_logs.borrow_mut();
