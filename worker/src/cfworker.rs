@@ -94,7 +94,84 @@ async fn superuser_routes(req: Request, env: Env, path: &[&str]) -> Result<Respo
 
 async fn superuser_games(env: Env) -> Result<Response> {
     let games = storage::list_all_games(&env).await?;
-    Response::from_json(&json!({"games": games}))
+
+    let account_id = env.var("CF_ACCOUNT_ID")?.to_string();
+    let api_token = env.var("CF_API_TOKEN")?.to_string();
+
+    let client = reqwest::Client::new();
+
+    // List Namespaces
+    let namespaces_url = format!(
+        "https://api.cloudflare.com/client/v4/accounts/{account_id}/workers/durable_objects/namespaces"
+    );
+    let namespaces_response = client
+        .get(&namespaces_url)
+        .header("Authorization", format!("Bearer {api_token}"))
+        .header("Content-Type", "application/json")
+        .send()
+        .await
+        .map_err(rust_error)?;
+
+    let do_namespaces: serde_json::Value = if namespaces_response.status().is_success() {
+        namespaces_response.json().await.map_err(rust_error)?
+    } else {
+        json!({"error": format!("Failed to fetch namespaces: {}", namespaces_response.status())})
+    };
+
+    // List Objects for each namespace
+    let mut do_objects = json!({});
+    if let Some(namespaces) = do_namespaces.get("result").and_then(|r| r.as_array()) {
+        for namespace in namespaces {
+            if let Some(namespace_id) = namespace.get("id").and_then(|id| id.as_str()) {
+                let objects_url = format!("https://api.cloudflare.com/client/v4/accounts/{}/workers/durable_objects/namespaces/{}/objects", account_id, namespace_id);
+                let objects_response = client
+                    .get(&objects_url)
+                    .header("Authorization", format!("Bearer {}", api_token))
+                    .header("Content-Type", "application/json")
+                    .send()
+                    .await
+                    .map_err(rust_error)?;
+
+                let objects_result: serde_json::Value = if objects_response.status().is_success() {
+                    objects_response.json().await.map_err(rust_error)?
+                } else {
+                    json!({"error": format!("Failed to fetch objects for namespace {}: {}", namespace_id, objects_response.status())})
+                };
+
+                do_objects[namespace_id] = objects_result;
+            }
+        }
+    }
+
+    // Create mapping of GameIDs to Durable Object IDs
+    let mut arpeggiogame_ids = json!({});
+    let mut arpeggiogame_legacy_ids = json!({});
+
+    for game in &games {
+        let game_id_str = game.0.to_string();
+
+        // Get ARPEGGIOGAME durable object ID
+        if let Ok(namespace) = env.durable_object("ARPEGGIOGAME") {
+            if let Ok(do_id) = namespace.id_from_name(&game_id_str) {
+                arpeggiogame_ids[&game_id_str] = json!(do_id.to_string());
+            }
+        }
+
+        // Get ARPEGGIOGAME_LEGACY durable object ID
+        if let Ok(namespace) = env.durable_object("ARPEGGIOGAME_LEGACY") {
+            if let Ok(do_id) = namespace.id_from_name(&game_id_str) {
+                arpeggiogame_legacy_ids[&game_id_str] = json!(do_id.to_string());
+            }
+        }
+    }
+
+    Response::from_json(&json!({
+        "games": games,
+        "do_namespaces": do_namespaces,
+        "do_objects": do_objects,
+        "arpeggiogame_ids": arpeggiogame_ids,
+        "arpeggiogame_legacy_ids": arpeggiogame_legacy_ids
+    }))
 }
 
 async fn accept_invitation(
