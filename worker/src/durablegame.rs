@@ -169,7 +169,7 @@ impl ArpeggioGameSql {
 
     async fn route(&self, req: Request) -> anyhow::Result<Response> {
         let path = req.path();
-        info!(event="request", method=?req.method(), path=?path);
+        info!(event="request", method=?req.method(), path=?path, "Request (MESSAGE)");
 
         match path.split('/').collect::<Vec<_>>()[1..] {
             ["superuser", "dump", game_id] => {

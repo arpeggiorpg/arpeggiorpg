@@ -38,14 +38,31 @@ pub async fn dump_storage(state: &State, env: &Env, game_id: GameID) -> anyhow::
     data.insert("SQLite".to_string(), serde_json::Value::Object(sqlite_data));
 
     // Add legacy KV data if available
-    if let Some(legacy_data) = legacykv::fetch_legacy_dump(env.clone(), game_id).await? {
+    let legacy_data = legacykv::fetch_legacy_dump(env.clone(), game_id)
+        .await
+        .transpose();
+    if let Some(legacy_data) = legacy_data {
         data.insert(
             "legacy-kv-deserialized".to_string(),
-            serde_json::to_value(legacy_data)?,
+            error_to_json(legacy_data.and_then(|ld| Ok(serde_json::to_value(ld)?))),
         );
     }
-    if let Some(raw_legacy) = legacykv::fetch_raw_legacy_dump(env.clone(), game_id).await? {
-        data.insert("legacy-kv-raw".to_string(), raw_legacy);
+
+    let raw_legacy = legacykv::fetch_raw_legacy_dump(env.clone(), game_id)
+        .await
+        .transpose();
+    if let Some(raw_legacy) = raw_legacy {
+        data.insert("legacy-kv-raw".to_string(), error_to_json(raw_legacy));
+    }
+
+    let raw_legacy_str = legacykv::fetch_raw_legacy_dump_str(env.clone(), game_id)
+        .await
+        .transpose();
+    if let Some(raw_legacy_str) = raw_legacy_str {
+        data.insert(
+            "legacy-kv-str".to_string(),
+            error_to_json(raw_legacy_str.and_then(|rls| Ok(serde_json::Value::String(rls)))),
+        );
     }
 
     Ok(Response::from_json(&data)?)

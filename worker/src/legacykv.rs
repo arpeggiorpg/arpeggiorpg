@@ -40,7 +40,6 @@ impl DurableObject for ArpeggioGame {
     }
 }
 
-
 // The following code is all used on the client side to fetch/process the data that the above
 // durable object returns.
 
@@ -65,10 +64,7 @@ pub struct LegacyKVStorage {
     pub logs: HashMap<String, DoubleEncoded<GameLog>>,
 }
 
-pub async fn fetch_raw_legacy_dump(
-    env: Env,
-    game_id: GameID,
-) -> anyhow::Result<Option<serde_json::Value>> {
+pub async fn fetch_raw_legacy_dump_str(env: Env, game_id: GameID) -> anyhow::Result<Option<String>> {
     let legacy_ns = env.durable_object("ARPEGGIOGAME_LEGACY")?;
     let legacy_id = legacy_ns.id_from_name(&game_id.to_string())?;
     let stub = legacy_id.get_stub()?;
@@ -77,16 +73,29 @@ pub async fn fetch_raw_legacy_dump(
     if resp.status_code() == 404 {
         return Ok(None);
     }
-    Ok(resp.json().await?)
+    Ok(Some(resp.text().await?))
+}
+
+pub async fn fetch_raw_legacy_dump(
+    env: Env,
+    game_id: GameID,
+) -> anyhow::Result<Option<serde_json::Value>> {
+    let text = fetch_raw_legacy_dump_str(env, game_id).await?;
+    if let Some(text) = text {
+        let json = serde_json::from_str(&text)?;
+        return Ok(Some(json));
+    }
+    Ok(None)
 }
 
 pub async fn fetch_legacy_dump(
     env: Env,
     game_id: GameID,
 ) -> anyhow::Result<Option<LegacyKVStorage>> {
-    let json = fetch_raw_legacy_dump(env, game_id).await?;
-    if let Some(json) = json {
-        let x: LegacyKVStorage = serde_json::from_value(json)?;
+    let text = fetch_raw_legacy_dump_str(env, game_id).await?;
+    if let Some(text) = text {
+        let mut deserializer = serde_json::Deserializer::from_str(&text);
+        let x: LegacyKVStorage = serde_path_to_error::deserialize(&mut deserializer)?;
         return Ok(Some(x));
     }
     Ok(None)

@@ -13,7 +13,7 @@ use arptypes::multitenant::{GameID, GameList, GameMetadata, GameProfile, Role, U
 #[event(fetch, respond_with_errors)]
 #[tracing::instrument(name = "worker", skip(req, env, _ctx), fields(method = ?req.method(), path = req.path()))]
 async fn main(req: Request, env: Env, _ctx: Context) -> Result<Response> {
-    info!(event = "start", path = ?req.path());
+    info!(event = "start", path = ?req.path(), "START (MESSAGE)");
 
     if req.path().starts_with("/ws/") {
         // WebSocket requests can't go through the entire HTTP rigmarole
