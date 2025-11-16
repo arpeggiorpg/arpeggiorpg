@@ -8,11 +8,13 @@ use worker::*;
 
 mod cfworker;
 mod domigrations;
+mod dump;
 mod durablegame;
 mod durablestorage;
 mod images;
 mod storage;
 mod wsrpi;
+mod legacykv;
 
 // Things I've learned about error-handling in workers-rs:
 // - any Err returned from the main worker doesn't seem to do anything other than "Error: The script

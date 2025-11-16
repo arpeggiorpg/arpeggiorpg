@@ -1,7 +1,7 @@
 //! Durable Object implementation using Hibernatable WebSockets API
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
-use anyhow::{anyhow, Context};
+use anyhow::anyhow;
 use arpeggio::types::PlayerID;
 use arptypes::multitenant::{GameID, GameMetadata, InvitationID, Role};
 use serde_json::json;
@@ -14,11 +14,12 @@ use worker::{
 };
 
 use crate::{
-    anydbg, durablestorage::GameStorage, images::CFImageService, rust_error, storage, wsrpi,
+    dump, durablestorage::GameStorage, images::CFImageService, rust_error, storage, wsrpi,
 };
 
+/// Durable Object for Arpeggio Games, using SQLite-backend storage.
 #[durable_object]
-pub struct ArpeggioGame {
+pub struct ArpeggioGameSql {
     state: Rc<State>,
     game_storage: RefCell<Option<Rc<GameStorage>>>,
     ws_tokens: RefCell<HashMap<Uuid, WSUser>>,
@@ -32,7 +33,7 @@ pub struct WSUser {
     pub player_id: PlayerID,
 }
 
-impl DurableObject for ArpeggioGame {
+impl DurableObject for ArpeggioGameSql {
     fn new(state: State, env: Env) -> Self {
         Self {
             game_storage: RefCell::new(None),
@@ -45,9 +46,6 @@ impl DurableObject for ArpeggioGame {
 
     #[tracing::instrument(name = "DO", skip(self, req))]
     async fn fetch(&self, req: Request) -> Result<Response> {
-        crate::domigrations::migrate(self.state.storage())
-            .await
-            .map_err(rust_error)?;
         self.route(req).await.map_err(rust_error)
     }
 
@@ -56,27 +54,26 @@ impl DurableObject for ArpeggioGame {
         ws: WebSocket,
         message: WebSocketIncomingMessage,
     ) -> Result<()> {
-        let game_storage = self.get_game_storage().await.map_err(rust_error)?;
-
+        let game_id = if let Some(game_id) = get_tag("game:", &self.state, &ws) {
+            Uuid::parse_str(&game_id).map_err(rust_error)?.into()
+        } else {
+            return Err("No game ID found in WebSocket tags".into());
+        };
         // Get metadata if not already loaded
         let metadata = self.metadata.borrow().clone();
         let metadata = match metadata {
             Some(metadata) => metadata,
             None => {
-                if let Some(game_id) = get_tag("game:", &self.state, &ws) {
-                    let game_id = GameID(Uuid::parse_str(&game_id).map_err(rust_error)?);
-                    let metadata = storage::get_game_metadata(&self.env, game_id)
-                        .await
-                        .map_err(rust_error)?
-                        .ok_or(anyhow!("No metadata!?"))
-                        .map_err(rust_error)?;
-                    *self.metadata.borrow_mut() = Some(metadata.clone());
-                    metadata
-                } else {
-                    return Err("No game ID found in WebSocket tags".into());
-                }
+                let metadata = storage::get_game_metadata(&self.env, game_id)
+                    .await
+                    .map_err(rust_error)?
+                    .ok_or(anyhow!("No metadata!?"))
+                    .map_err(rust_error)?;
+                *self.metadata.borrow_mut() = Some(metadata.clone());
+                metadata
             }
         };
+        let game_storage = self.get_game_storage(game_id).await.map_err(rust_error)?;
 
         let player_id =
             get_tag("player_id:", &self.state, &ws).ok_or("No player_id tag found on WebSocket")?;
@@ -151,8 +148,11 @@ pub fn get_tag(prefix: &str, state: &State, ws: &WebSocket) -> Option<String> {
         .map(|tag| tag.strip_prefix(prefix).unwrap().to_string())
 }
 
-impl ArpeggioGame {
-    async fn get_game_storage(&self) -> anyhow::Result<Rc<GameStorage>> {
+impl ArpeggioGameSql {
+    async fn get_game_storage(&self, game_id: GameID) -> anyhow::Result<Rc<GameStorage>> {
+        crate::domigrations::migrate(self.env.clone(), &self.state, game_id)
+            .await
+            .map_err(rust_error)?;
         let game_storage = self.game_storage.borrow().clone();
         match game_storage {
             Some(game_storage) => Ok(game_storage),
@@ -172,7 +172,16 @@ impl ArpeggioGame {
         info!(event="request", method=?req.method(), path=?path);
 
         match path.split('/').collect::<Vec<_>>()[1..] {
-            ["superuser", "dump", _game_id] => dump_storage(&self.state).await,
+            ["superuser", "dump", game_id] => {
+                let game_id = game_id.parse::<GameID>()?;
+                dump::dump_storage(&self.state, &self.env, game_id).await
+            }
+            ["superuser", "destroy", _game_id] => {
+                self.state.storage().delete_all().await?;
+                Ok(Response::from_json(
+                    &serde_json::json!({"status": "deleted"}),
+                )?)
+            }
             ["request-websocket", _game_id, role, player_id] => {
                 // The worker has already authenticated & authorized the user, so we just need to store &
                 // return a token.
@@ -228,6 +237,9 @@ impl ArpeggioGame {
     ) -> anyhow::Result<Response> {
         let invitation_id = invitation_id.parse()?;
         let storage = self.state.storage();
+        // THIS CODE IS WRONG, It needs to be:
+        // - moved to GameStorage
+        // - changed to use SQLite
         let invitations = storage.get("invitations").await;
         let invitations: Vec<InvitationID> = match invitations {
             Ok(r) => r,
@@ -240,23 +252,4 @@ impl ArpeggioGame {
             invitations.contains(&invitation_id)
         ))?)
     }
-}
-
-async fn dump_storage(state: &State) -> anyhow::Result<Response> {
-    // TODO: STREAM!
-    let mut result = HashMap::new();
-    let items = state.storage().list().await?;
-    for key in items.keys() {
-        let key = key.map_err(anydbg).context("just resolving the key...")?;
-        let value = items.get(&key);
-        info!(event = "dump-storage-key-value", ?key, ?value);
-        let value: serde_json::Value = serde_wasm_bindgen::from_value(value)
-            .map_err(anydbg)
-            .context("parsing the value as a Value")?;
-        let key: String = serde_wasm_bindgen::from_value(key)
-            .map_err(anydbg)
-            .context("parsing the key as a string")?;
-        result.insert(key, value);
-    }
-    Ok(Response::from_json(&result)?)
 }

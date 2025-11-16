@@ -84,6 +84,10 @@ async fn superuser_routes(req: Request, env: Env, path: &[&str]) -> Result<Respo
             let game_id: GameID = game_id.parse().map_err(rust_error)?;
             forward_to_do(req, env, game_id).await
         }
+        ["destroy", game_id] => {
+            let game_id: GameID = game_id.parse().map_err(rust_error)?;
+            forward_to_do(req, env, game_id).await
+        }
         _ => Response::error(format!("No route matched {path:?}"), 404),
     }
 }
