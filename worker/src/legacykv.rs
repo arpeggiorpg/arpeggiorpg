@@ -6,7 +6,10 @@ use serde_json::Value;
 use tracing::info;
 use worker::*;
 
-use arptypes::{multitenant::GameID, GameLog};
+use arptypes::{
+    multitenant::{GameID, GameIndex},
+    GameLog,
+};
 
 /// This is the legacy KV-backed Durable Object. We have since switched to ArpeggioGameSql. This DO
 /// still exists only to export its legacy storage, to be used in domigrations/v2_sqlite.rs.
@@ -61,10 +64,48 @@ pub struct LegacyKVStorage {
     pub creature_icons: Vec<String>,
 
     #[serde(flatten)]
-    pub logs: HashMap<String, DoubleEncoded<GameLog>>,
+    pub extra: HashMap<String, serde_json::Value>,
 }
 
-pub async fn fetch_raw_legacy_dump_str(env: Env, game_id: GameID) -> anyhow::Result<Option<String>> {
+impl LegacyKVStorage {
+    pub fn logs(&self) -> anyhow::Result<Vec<(GameIndex, GameLog)>> {
+        let logs: anyhow::Result<Vec<(GameIndex, GameLog)>> = self
+            .extra
+            .iter()
+            .filter(|(k, _v)| k.starts_with("log"))
+            .map(|(k, v)| {
+                let key = parse_log_key(k)?;
+                let value: String = serde_json::from_value(v.clone())?;
+                let value: GameLog = serde_json::from_str(&value)?;
+                Ok((key, value))
+            })
+            .collect();
+        let mut logs = logs?;
+        logs.sort_by_key(|(k, _v)| *k);
+        Ok(logs)
+    }
+}
+
+pub fn parse_log_key(key: &str) -> anyhow::Result<GameIndex> {
+    // Expected format: "log-{snapshot_idx}-idx-{log_idx}"
+    let parts: Vec<&str> = key.split('-').collect();
+    if parts.len() != 4 || parts[0] != "log" || parts[2] != "idx" {
+        return Err(anyhow::anyhow!("not a log key: {key}"));
+    }
+
+    let snapshot_idx = parts[1].parse()?;
+    let log_idx = parts[3].parse()?;
+
+    Ok(GameIndex {
+        game_idx: snapshot_idx,
+        log_idx,
+    })
+}
+
+pub async fn fetch_raw_legacy_dump_str(
+    env: Env,
+    game_id: GameID,
+) -> anyhow::Result<Option<String>> {
     let legacy_ns = env.durable_object("ARPEGGIOGAME_LEGACY")?;
     let legacy_id = legacy_ns.id_from_name(&game_id.to_string())?;
     let stub = legacy_id.get_stub()?;
@@ -101,21 +142,6 @@ pub async fn fetch_legacy_dump(
     Ok(None)
 }
 
-#[derive(Debug, Serialize)]
-pub struct DoubleEncoded<T>(pub T);
-
-impl<'de, T> Deserialize<'de> for DoubleEncoded<T>
-where
-    T: for<'a> Deserialize<'a>,
-{
-    fn deserialize<D>(deser: D) -> std::result::Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        deserialize_double_encoded(deser).map(DoubleEncoded)
-    }
-}
-
 fn deserialize_double_encoded<'de, D, T>(deser: D) -> std::result::Result<T, D::Error>
 where
     D: Deserializer<'de>,
@@ -123,4 +149,62 @@ where
 {
     let s = String::deserialize(deser)?;
     serde_json::from_str(&s).map_err(D::Error::custom)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_log_key() {
+        let result = parse_log_key("log-000000000-idx-000000001");
+        let parts = result.unwrap();
+        assert_eq!(
+            parts,
+            GameIndex {
+                game_idx: 0,
+                log_idx: 1
+            }
+        );
+
+        let result = parse_log_key("log-000000005-idx-000000123");
+        let parts = result.unwrap();
+        assert_eq!(
+            parts,
+            GameIndex {
+                game_idx: 5,
+                log_idx: 123
+            }
+        );
+
+        // Invalid formats
+        assert!(parse_log_key("invalid-key").is_err());
+        assert!(parse_log_key("log-abc-idx-123").is_err());
+        assert!(parse_log_key("log-123-invalid-456").is_err());
+    }
+
+    #[test]
+    fn test_parse_legacy_storage() {
+        let json = include_str!("domigrations/dumped-legacy-kv.json");
+        let jd = &mut serde_json::Deserializer::from_str(json);
+
+        let legacy_kv: LegacyKVStorage = serde_path_to_error::deserialize(jd).unwrap();
+        assert_eq!(legacy_kv.snapshot_0, Default::default());
+        assert_eq!(legacy_kv.logs().unwrap().len(), 110);
+        assert_eq!(
+            legacy_kv.background_images,
+            vec![
+                "https://arpeggiogame.com/cdn-cgi/imagedelivery/0DU4Tw-CmEbMyEuTLNg6Xg/50125cee-5033-447a-a311-24c9f3d4a994/7e9868fb-457f-4cc7-9864-8a03cf37a0ce",
+                "https://arpeggiogame.com/cdn-cgi/imagedelivery/0DU4Tw-CmEbMyEuTLNg6Xg/50125cee-5033-447a-a311-24c9f3d4a994/99e68793-4bb6-4cca-9a08-8a9305a2a432",
+                "https://arpeggiogame.com/cdn-cgi/imagedelivery/0DU4Tw-CmEbMyEuTLNg6Xg/50125cee-5033-447a-a311-24c9f3d4a994/175349e5-2d31-4bca-8113-82f380d5d109"
+        ]);
+    }
+
+    #[test]
+    fn test_parse_buggydump() {
+        let json = include_str!("domigrations/buggydump.json");
+        let jd = &mut serde_json::Deserializer::from_str(json);
+
+        let _legacy_kv: LegacyKVStorage = serde_path_to_error::deserialize(jd).unwrap();
+    }
 }

@@ -1,11 +1,8 @@
-use arptypes::{
-    multitenant::{GameID, ImageType},
-    GameLog,
-};
+use arptypes::multitenant::{GameID, ImageType};
 use tracing::info;
 use worker::{Env, SqlStorage, State};
 
-use crate::legacykv::{fetch_legacy_dump, DoubleEncoded, LegacyKVStorage};
+use crate::legacykv::{fetch_legacy_dump, LegacyKVStorage};
 
 /// This is not a "normal" migration in that it fetches data from an entirely separate
 /// DurableObject, since switching from KV to SQLite required us to completely recreate our Durable
@@ -26,8 +23,6 @@ pub async fn migrate_kv_to_sqlite(env: Env, state: &State, game_id: GameID) -> a
     info!(event = "sqlite-migration-complete");
     Ok(())
 }
-
-
 
 async fn initialize_sqlite_tables(sql: &SqlStorage) -> anyhow::Result<()> {
     info!(event = "initializing-sqlite-tables");
@@ -95,13 +90,7 @@ async fn migrate_game_snapshot(
 async fn migrate_logs(sql: &SqlStorage, legacy_kv: &LegacyKVStorage) -> anyhow::Result<()> {
     info!(event = "migrating-logs");
 
-    let log_entries: Result<Vec<((usize, usize), GameLog)>, anyhow::Error> = legacy_kv
-    .logs
-    .iter()
-    .filter(|(k, _v)| k.starts_with("log-"))
-    .map(|(k, DoubleEncoded(v))| Ok((parse_log_key(k)?, v.clone())))
-    .collect();
-    let mut log_entries = log_entries?;
+    let log_entries = legacy_kv.logs()?;
     if log_entries.len() == 0 {
         info!(event = "no-logs-to-migrate");
         return Ok(());
@@ -109,16 +98,13 @@ async fn migrate_logs(sql: &SqlStorage, legacy_kv: &LegacyKVStorage) -> anyhow::
 
     info!(event = "found-logs-to-migrate", count = log_entries.len());
 
-    // Sort by snapshot_idx and log_idx to maintain order
-    log_entries.sort_by_key(|li| li.0);
-
     // Insert all logs into SQLite using JSONB format
-    for ((snapshot_idx, log_idx), game_log) in log_entries {
+    for (log_idx, game_log) in log_entries {
         sql.exec(
             "INSERT INTO logs (snapshot_idx, log_idx, game_log) VALUES (?, ?, jsonb(?))",
             Some(vec![
-                (snapshot_idx as i64).into(),
-                (log_idx as i64).into(),
+                (log_idx.game_idx as i64).into(),
+                (log_idx.log_idx as i64).into(),
                 serde_json::to_string(&game_log)?.into(),
             ]),
         )?;
@@ -187,57 +173,4 @@ async fn migrate_images(sql: &SqlStorage, legacy_kv: &LegacyKVStorage) -> anyhow
 
     info!(event = "migrated-images");
     Ok(())
-}
-
-pub fn parse_log_key(key: &str) -> anyhow::Result<(usize, usize)> {
-    // Expected format: "log-{snapshot_idx}-idx-{log_idx}"
-    let parts: Vec<&str> = key.split('-').collect();
-    if parts.len() != 4 || parts[0] != "log" || parts[2] != "idx" {
-        return Err(anyhow::anyhow!("not a log key: {key}"));
-    }
-
-    let snapshot_idx = parts[1].parse()?;
-    let log_idx = parts[3].parse()?;
-
-    Ok((snapshot_idx, log_idx))
-}
-
-
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_parse_log_key() {
-        let result = parse_log_key("log-000000000-idx-000000001");
-        let parts = result.unwrap();
-        assert_eq!(parts, (0, 1));
-
-        let result = parse_log_key("log-000000005-idx-000000123");
-        let parts = result.unwrap();
-        assert_eq!(parts, (5, 123));
-
-        // Invalid formats
-        assert!(parse_log_key("invalid-key").is_err());
-        assert!(parse_log_key("log-abc-idx-123").is_err());
-        assert!(parse_log_key("log-123-invalid-456").is_err());
-    }
-
-    #[test]
-    fn test_parse_legacy_storage() {
-        let json = include_str!("dumped-legacy-kv.json");
-        let jd = &mut serde_json::Deserializer::from_str(json);
-
-        let legacy_kv: crate::legacykv::LegacyKVStorage = serde_path_to_error::deserialize(jd).unwrap();
-        assert_eq!(legacy_kv.snapshot_0, Default::default());
-        assert_eq!(legacy_kv.logs.len(), 110);
-        assert_eq!(
-            legacy_kv.background_images,
-            vec![
-                "https://arpeggiogame.com/cdn-cgi/imagedelivery/0DU4Tw-CmEbMyEuTLNg6Xg/50125cee-5033-447a-a311-24c9f3d4a994/7e9868fb-457f-4cc7-9864-8a03cf37a0ce",
-                "https://arpeggiogame.com/cdn-cgi/imagedelivery/0DU4Tw-CmEbMyEuTLNg6Xg/50125cee-5033-447a-a311-24c9f3d4a994/99e68793-4bb6-4cca-9a08-8a9305a2a432",
-                "https://arpeggiogame.com/cdn-cgi/imagedelivery/0DU4Tw-CmEbMyEuTLNg6Xg/50125cee-5033-447a-a311-24c9f3d4a994/175349e5-2d31-4bca-8113-82f380d5d109"
-        ]);
-    }
 }
