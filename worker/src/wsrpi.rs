@@ -124,8 +124,6 @@ impl GameSession {
     }
 
     async fn handle_request(&self, request: WSRequest) -> anyhow::Result<serde_json::Value> {
-        // TODO: we should not need to load the game on every operation; we should instead just store an
-        // Arc<RefCell(?)<Game>>  in-memory in the durable object.
         let game = self.game_storage.game();
         use RPIGameRequest::*;
         match (self.ws_user.role, request.request) {
@@ -261,8 +259,8 @@ impl GameSession {
         let gm_websockets = self.state.get_websockets_with_tag("role:GM");
         for ws in gm_websockets {
             let message = json!({
-                "t": "refresh_game", 
-                "game": full_game, 
+                "t": "refresh_game",
+                "game": full_game,
                 "logs": logs_with_indices
             });
             if let Err(e) = self.send_to_websocket(&ws, &message) {
@@ -276,11 +274,11 @@ impl GameSession {
             // Get the player ID from the WebSocket tags
             if let Some(player_id_str) = get_tag("player_id:", &self.state, &ws) {
                 let player_id = PlayerID(player_id_str);
-                
+
                 if let Ok(player_game) = serialize_player_game(&player_id, game) {
                     let message = json!({
-                        "t": "refresh_player_game", 
-                        "game": player_game, 
+                        "t": "refresh_player_game",
+                        "game": player_game,
                         "logs": logs_with_indices
                     });
                     if let Err(e) = self.send_to_websocket(&ws, &message) {
@@ -306,4 +304,3 @@ impl GameSession {
             .map_err(|e| anyhow!(format!("{e:?}")))
     }
 }
-
