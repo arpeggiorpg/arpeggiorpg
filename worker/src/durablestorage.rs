@@ -33,7 +33,7 @@ pub struct GameStorage {
     recent_logs: Rc<RefCell<RecentGameLogs>>,
 }
 
-const RECENT_LOGS_SIZE: usize = 100;
+const NUM_LOGS_PER_SNAPSHOT: usize = 100;
 
 /// Storage using SQLite in Durable Objects
 impl GameStorage {
@@ -50,8 +50,10 @@ impl GameStorage {
         info!(event="game-load-start");
         let sql = state.storage().sql();
 
-        // Load game from snapshots table (always using snapshot_idx = 0 for now)
-        let game = match Self::load_game_snapshot(&sql, 0).await? {
+        // Find the most recent snapshot
+        let latest_snapshot_idx = Self::get_latest_snapshot_idx(&sql).await?;
+
+        let game = match Self::load_game_snapshot(&sql, latest_snapshot_idx).await? {
             Some(game) => game,
             None => {
                 info!(event = "new-game");
@@ -61,13 +63,13 @@ impl GameStorage {
             }
         };
 
-        // Load recent logs and apply them to the game
+        // Load recent logs from the most recent 2 snapshot indexes and apply them to the game
         let (final_game, recent_logs, next_log_idx) =
-            Self::load_and_apply_logs(&sql, game, 0).await?;
+            Self::load_and_apply_recent_logs(&sql, game, latest_snapshot_idx).await?;
 
         let game_storage = Self {
             sql,
-            current_snapshot_idx: Cell::new(0),
+            current_snapshot_idx: Cell::new(latest_snapshot_idx),
             next_log_idx: Cell::new(next_log_idx),
             cached_game: Rc::new(RefCell::new(final_game)),
             recent_logs: Rc::new(RefCell::new(recent_logs)),
@@ -114,34 +116,69 @@ impl GameStorage {
         Ok(())
     }
 
-    async fn load_and_apply_logs(
+    async fn get_latest_snapshot_idx(sql: &SqlStorage) -> anyhow::Result<usize> {
+        #[derive(serde::Deserialize)]
+        struct SnapshotRow {
+            snapshot_idx: i64,
+        }
+
+        let rows: Vec<SnapshotRow> = sql
+            .exec(
+                "SELECT MAX(snapshot_idx) as snapshot_idx FROM game_snapshots",
+                None,
+            )?
+            .to_array()?;
+
+        match rows.first() {
+            Some(row) => Ok(row.snapshot_idx as usize),
+            None => Ok(0),
+        }
+    }
+
+    async fn load_and_apply_recent_logs(
         sql: &SqlStorage,
         mut game: Game,
-        snapshot_idx: usize,
+        latest_snapshot_idx: usize,
     ) -> anyhow::Result<(Game, RecentGameLogs, usize)> {
+        // Load logs from the most recent 2 snapshot indexes for history
+        let snapshot_indices = if latest_snapshot_idx == 0 {
+            vec![0]
+        } else {
+            vec![latest_snapshot_idx - 1, latest_snapshot_idx]
+        };
+
         #[derive(serde::Deserialize)]
         struct LogRow {
             log_idx: i64,
             game_log: String,
+            snapshot_idx: i64,
         }
 
-        let rows: Vec<LogRow> = sql
-            .exec(
-                "SELECT log_idx, json(game_log) as game_log FROM logs WHERE snapshot_idx = ? ORDER BY log_idx",
-                Some(vec![(snapshot_idx as i64).into()]),
-            )?
+        let snapshot_indices: Vec<worker::SqlStorageValue> = snapshot_indices
+            .iter()
+            .map(|&idx| (idx as i64).into())
+            .collect();
+
+        let placeholders = vec!["?"; snapshot_indices.len()].join(", ");
+        let query = format!(
+            "SELECT log_idx, json(game_log) as game_log, snapshot_idx FROM logs WHERE snapshot_idx IN ({}) ORDER BY snapshot_idx, log_idx",
+            placeholders
+        );
+
+        let all_rows: Vec<LogRow> = sql
+            .exec(&query, Some(snapshot_indices))?
             .to_array()?;
 
         let mut recent_logs = VecDeque::new();
         let mut next_log_idx = 0;
 
-        if rows.is_empty() {
+        if all_rows.is_empty() {
             return Ok((game, recent_logs, next_log_idx));
         }
 
-        info!(event = "loading-logs", num = rows.len());
+        info!(event = "loading-logs", num = all_rows.len());
 
-        for row in rows {
+        for row in all_rows {
             let log: GameLog = serde_json::from_str(&row.game_log).map_err(|e| {
                 anyhow!(
                     "Failed parsing GameLog as JSON:\ncontent: {:?}\nerror: {:?}",
@@ -150,17 +187,19 @@ impl GameStorage {
                 )
             })?;
 
-            game = game.apply_log(&log)?;
-
             let log_idx = row.log_idx as usize;
-            next_log_idx = log_idx + 1;
+            let snapshot_idx = row.snapshot_idx as usize;
 
-            if recent_logs.len() >= RECENT_LOGS_SIZE {
-                recent_logs.pop_front();
+            // Only apply logs from the latest snapshot to the game state
+            if snapshot_idx == latest_snapshot_idx {
+                game = game.apply_log(&log)?;
+                next_log_idx = log_idx + 1;
             }
+
+            // But add all logs to recent_logs for history browsing
             recent_logs.push_back((
                 GameIndex {
-                    game_idx: 0,
+                    game_idx: snapshot_idx,
                     log_idx,
                 },
                 log,
@@ -169,6 +208,8 @@ impl GameStorage {
 
         Ok((game, recent_logs, next_log_idx))
     }
+
+
 
     /// Update Game storage with changes from a changed_game. Updates the locally cached Game as well
     /// as writing new logs to storage.
@@ -199,7 +240,7 @@ impl GameStorage {
 
             logs_with_indices.push((
                 GameIndex {
-                    game_idx: 0,
+                    game_idx: self.current_snapshot_idx.get(),
                     log_idx,
                 },
                 log,
@@ -211,21 +252,26 @@ impl GameStorage {
         // Update the cached game
         *self.cached_game.borrow_mut() = changed_game.game.clone();
 
-        // TODO: Store a new snapshot if we reach a certain number of un-snapshotted logs.
-        //
-        // - If log_idx > 100, save a NEW snapshot at a new snapshot IDX
-        // - maybe clean up old logs (like, not all logs, just ones from N snapshots back or
-        //   something)
-        // - we will need to update the loading code to actually honor snapshots: we need to get
-        //   only the LATEST snapshot and then apply logs with that snapshot_idx only
+        // Check if we need to create a new snapshot after storing all logs
+        let total_logs_in_snapshot = self.next_log_idx.get();
+        if total_logs_in_snapshot >= NUM_LOGS_PER_SNAPSHOT {
+            let new_snapshot_idx = self.current_snapshot_idx.get() + 1;
+            info!(
+                event = "creating-new-snapshot",
+                new_snapshot_idx,
+                log_count = total_logs_in_snapshot
+            );
 
-        // Self::store_game_snapshot(&self.sql, new_snapshot, &changed_game.game).await?;
+            Self::store_game_snapshot(&self.sql, new_snapshot_idx, &changed_game.game).await?;
+            self.current_snapshot_idx.set(new_snapshot_idx);
 
-        // Update recent logs
+            // Reset log index for the new snapshot - future logs will start at 0 for the new snapshot
+            self.next_log_idx.set(0);
+        }
+
+        // Update recent logs (keep all logs from most recent 2 snapshots)
         let mut recent_logs = self.recent_logs.borrow_mut();
         recent_logs.extend(logs_with_indices.iter().cloned());
-        let drain_to = recent_logs.len().saturating_sub(RECENT_LOGS_SIZE);
-        recent_logs.drain(0..drain_to);
 
         Ok(logs_with_indices)
     }
