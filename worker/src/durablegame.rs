@@ -182,6 +182,7 @@ impl ArpeggioGameSql {
                     &serde_json::json!({"status": "deleted"}),
                 )?)
             }
+            ["test"] => self.run_tests().await,
             ["request-websocket", _game_id, role, player_id] => {
                 // The worker has already authenticated & authorized the user, so we just need to store &
                 // return a token.
@@ -251,5 +252,24 @@ impl ArpeggioGameSql {
         Ok(Response::from_json(&json!(
             invitations.contains(&invitation_id)
         ))?)
+    }
+
+    async fn run_tests(&self) -> anyhow::Result<Response> {
+        // Drop and reinitialize SQLite tables for clean testing
+        self.state.storage().delete_all().await?;
+        let sql = self.state.storage().sql();
+        crate::sqlite::initialize_sqlite_tables(&sql).await?;
+
+        // Run the snapshot test
+        let test_result =
+            match crate::durablestorage::test_snapshot_creation(self.state.clone()).await {
+                Ok(()) => "Ok!".to_string(),
+                Err(e) => format!("Test failed: {e:?}"),
+            };
+
+        Ok(Response::from_json(&json!({
+            "test_result": test_result,
+            "status": "completed"
+        }))?)
     }
 }

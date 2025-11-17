@@ -2,7 +2,10 @@ use arptypes::multitenant::{GameID, ImageType};
 use tracing::info;
 use worker::{Env, SqlStorage, State};
 
-use crate::legacykv::{fetch_legacy_dump, LegacyKVStorage};
+use crate::{
+    legacykv::{fetch_legacy_dump, LegacyKVStorage},
+    sqlite::initialize_sqlite_tables,
+};
 
 /// This is not a "normal" migration in that it fetches data from an entirely separate
 /// DurableObject, since switching from KV to SQLite required us to completely recreate our Durable
@@ -21,49 +24,6 @@ pub async fn migrate_kv_to_sqlite(env: Env, state: &State, game_id: GameID) -> a
         migrate_images(&sql, &dump).await?;
     }
     info!(event = "sqlite-migration-complete");
-    Ok(())
-}
-
-async fn initialize_sqlite_tables(sql: &SqlStorage) -> anyhow::Result<()> {
-    info!(event = "initializing-sqlite-tables");
-
-    // Create logs table
-    sql.exec(
-        "CREATE TABLE IF NOT EXISTS logs (
-            snapshot_idx INTEGER NOT NULL,
-            log_idx INTEGER NOT NULL,
-            game_log BLOB NOT NULL,
-            PRIMARY KEY (snapshot_idx, log_idx)
-        )",
-        None,
-    )?;
-
-    // Create game_snapshots table
-    sql.exec(
-        "CREATE TABLE IF NOT EXISTS game_snapshots (
-            snapshot_idx INTEGER PRIMARY KEY,
-            game BLOB NOT NULL
-        )",
-        None,
-    )?;
-
-    // Create invitations table
-    sql.exec(
-        "CREATE TABLE IF NOT EXISTS invitations (
-            id TEXT PRIMARY KEY
-        )",
-        None,
-    )?;
-
-    // Create images table
-    sql.exec(
-        "CREATE TABLE IF NOT EXISTS images (
-            image_type TEXT NOT NULL,
-            url TEXT NOT NULL
-        )",
-        None,
-    )?;
-
     Ok(())
 }
 
