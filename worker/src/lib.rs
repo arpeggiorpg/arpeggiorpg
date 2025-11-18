@@ -13,7 +13,9 @@ mod durablegame;
 mod durablestorage;
 mod images;
 mod legacykv;
+mod sqlite;
 mod storage;
+mod tests;
 mod wsrpi;
 
 // Things I've learned about error-handling in workers-rs:

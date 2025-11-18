@@ -3,6 +3,7 @@ use arpeggio::types::PlayerID;
 use serde::Deserialize;
 use serde_json::json;
 use tracing::{error, info};
+use uuid::Uuid;
 use worker::{event, Context, Cors, Env, Method, Request, Response, Result};
 
 use crate::{rust_error, storage};
@@ -32,6 +33,9 @@ async fn http_routes(req: Request, env: Env) -> Result<Response> {
     let parts = &path.split('/').collect::<Vec<_>>()[1..];
     if parts == ["oauth", "redirect"] {
         return oauth_redirect(req, env).await;
+    }
+    if parts == ["test"] {
+        return test_endpoint(req, env).await;
     }
 
     let id_token = req.headers().get("x-arpeggio-auth")?;
@@ -75,6 +79,16 @@ async fn http_routes(req: Request, env: Env) -> Result<Response> {
         }
         _ => Response::error(format!("No route matched {path:?}"), 404),
     }
+}
+
+/// Example curl command:
+///     curl https://your-worker.your-subdomain.workers.dev/test
+async fn test_endpoint(req: Request, env: Env) -> Result<Response> {
+    let max_uuid = Uuid::max();
+    let test_game_id = GameID(max_uuid);
+
+    // Forward the test request to the DO
+    forward_to_do(req, env, test_game_id).await
 }
 
 async fn superuser_routes(req: Request, env: Env, path: &[&str]) -> Result<Response> {
@@ -238,7 +252,9 @@ fn durable_object(env: &Env, game_id: &str) -> Result<worker::Stub> {
     // and would mean the type of GameID would have to change from wrapping UUIDs to instead
     // wrapping u256s (or more likely, [u8; 32]. or, more likely, String :P).
     let namespace = env.durable_object("ARPEGGIOGAME")?;
-    namespace.id_from_name(game_id)?.get_stub()
+    let id = namespace.id_from_name(game_id)?;
+    info!(id = id.to_string(), "DO ID");
+    id.get_stub()
 }
 
 /// Forward a simple request to the ArpeggioGame durable object

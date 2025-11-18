@@ -13,6 +13,7 @@ use worker::{
     WebSocketPair,
 };
 
+use crate::durablestorage::{test_snapshot_creation, test_snapshot_creation_multilog};
 use crate::{
     dump, durablestorage::GameStorage, images::CFImageService, rust_error, storage, wsrpi,
 };
@@ -157,9 +158,7 @@ impl ArpeggioGameSql {
         match game_storage {
             Some(game_storage) => Ok(game_storage),
             None => {
-                let storage = GameStorage::load(self.state.clone())
-                    .await
-                    .map_err(rust_error)?;
+                let storage = GameStorage::load(self.state.clone()).map_err(rust_error)?;
                 let rc_storage = Rc::new(storage);
                 *self.game_storage.borrow_mut() = Some(rc_storage.clone());
                 Ok(rc_storage)
@@ -182,6 +181,7 @@ impl ArpeggioGameSql {
                     &serde_json::json!({"status": "deleted"}),
                 )?)
             }
+            ["test"] => self.run_tests().await,
             ["request-websocket", _game_id, role, player_id] => {
                 // The worker has already authenticated & authorized the user, so we just need to store &
                 // return a token.
@@ -251,5 +251,21 @@ impl ArpeggioGameSql {
         Ok(Response::from_json(&json!(
             invitations.contains(&invitation_id)
         ))?)
+    }
+
+    async fn run_tests(&self) -> anyhow::Result<Response> {
+        Ok(Response::from_json(&json!({
+            "results": {
+                "test_snapshot_creation": report(test_snapshot_creation(self.state.clone()).await),
+                "test_snapshot_creation_multilog": report(test_snapshot_creation_multilog(self.state.clone()).await),
+            },
+            "status": "completed"
+        }))?)
+    }
+}
+fn report(r: anyhow::Result<()>) -> String {
+    match r {
+        Ok(()) => "Ok!".to_string(),
+        Err(e) => format!("Test failed: {e:?}"),
     }
 }
