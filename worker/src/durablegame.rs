@@ -13,6 +13,7 @@ use worker::{
     WebSocketPair,
 };
 
+use crate::durablestorage::{test_snapshot_creation, test_snapshot_creation_multilog};
 use crate::{
     dump, durablestorage::GameStorage, images::CFImageService, rust_error, storage, wsrpi,
 };
@@ -253,21 +254,18 @@ impl ArpeggioGameSql {
     }
 
     async fn run_tests(&self) -> anyhow::Result<Response> {
-        // Drop and reinitialize SQLite tables for clean testing
-        self.state.storage().delete_all().await?;
-        let sql = self.state.storage().sql();
-        crate::sqlite::initialize_sqlite_tables(&sql).await?;
-
-        // Run the snapshot test
-        let test_result =
-            match crate::durablestorage::test_snapshot_creation(self.state.clone()) {
-                Ok(()) => "Ok!".to_string(),
-                Err(e) => format!("Test failed: {e:?}"),
-            };
-
         Ok(Response::from_json(&json!({
-            "test_result": test_result,
+            "results": {
+                "test_snapshot_creation": report(test_snapshot_creation(self.state.clone()).await),
+                "test_snapshot_creation_multilog": report(test_snapshot_creation_multilog(self.state.clone()).await),
+            },
             "status": "completed"
         }))?)
+    }
+}
+fn report(r: anyhow::Result<()>) -> String {
+    match r {
+        Ok(()) => "Ok!".to_string(),
+        Err(e) => format!("Test failed: {e:?}"),
     }
 }

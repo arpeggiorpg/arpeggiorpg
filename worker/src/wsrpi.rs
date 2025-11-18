@@ -76,7 +76,7 @@ impl GameSession {
             }
         };
         if let Some(changed_game) = changed_game {
-            self.game_storage.store_game(changed_game)?;
+            self.game_storage.update_game(changed_game)?;
         }
         Ok(())
     }
@@ -230,7 +230,7 @@ impl GameSession {
     ) -> anyhow::Result<serde_json::Value> {
         let result = match changed_game {
             Ok(changed_game) => {
-                let logs_with_indices = self.game_storage.store_game(changed_game.clone())?;
+                let logs_with_indices = self.game_storage.update_game(changed_game.clone())?;
                 self.broadcast_refresh_game(&changed_game.game, &logs_with_indices)?;
                 Ok(changed_game.logs)
             }

@@ -17,6 +17,8 @@ use arptypes::{
     GMCommand,
 };
 
+use crate::tests::test_init;
+
 type RecentGameLogs = VecDeque<(GameIndex, GameLog)>;
 
 /// The state of the game using SQLite storage.
@@ -191,7 +193,7 @@ impl GameStorage {
 
     /// Update Game storage with changes from a changed_game. Updates the locally cached Game as well
     /// as writing new logs to storage.
-    pub fn store_game(
+    pub fn update_game(
         &self,
         changed_game: ChangedGame,
     ) -> anyhow::Result<Vec<(GameIndex, GameLog)>> {
@@ -327,8 +329,8 @@ impl GameStorage {
 
 /// Test snapshot creation
 #[tracing::instrument(skip(state))]
-// again, this shouldn't need to be async, but it is because of `store_game`.
-pub fn test_snapshot_creation(state: Rc<State>) -> anyhow::Result<()> {
+pub async fn test_snapshot_creation(state: Rc<State>) -> anyhow::Result<()> {
+    test_init(&state).await?;
     // Load a real GameStorage instance
     let game_storage = GameStorage::load(state.clone())?;
     assert_eq!(game_storage.current_snapshot_idx.get(), 0);
@@ -337,7 +339,7 @@ pub fn test_snapshot_creation(state: Rc<State>) -> anyhow::Result<()> {
             message: format!("Test message {i}"),
         };
         let changed_game = game_storage.game().perform_gm_command(cmd)?;
-        game_storage.store_game(changed_game)?;
+        game_storage.update_game(changed_game)?;
     }
     assert_eq!(game_storage.current_snapshot_idx.get(), 1);
     assert_eq!(game_storage.recent_logs().len(), 101);
@@ -348,13 +350,67 @@ pub fn test_snapshot_creation(state: Rc<State>) -> anyhow::Result<()> {
     let recent_logs = fresh_storage.recent_logs();
     assert_eq!(recent_logs.len(), 101);
 
-    let new_snapshot_logs: Vec<(GameIndex, _)> = recent_logs
-        .into_iter()
+    let old_snapshot_logs = recent_logs
+        .iter()
+        .filter(|(gi, _gl)| gi.game_idx == 0)
+        .count();
+    assert_eq!(old_snapshot_logs, 100);
+    let new_snapshot_logs = recent_logs
+        .iter()
         .filter(|(gi, _gl)| gi.game_idx == 1)
-        .collect();
-    assert_eq!(new_snapshot_logs.len(), 1);
+        .count();
+    assert_eq!(new_snapshot_logs, 1);
     Ok(())
 }
 
-// TODO: Test that even if applying multiple logs in one call to store_game, the snapshot is created
-// at exactly NUM_LOGS_PER_SNAPSHOT.
+/// Test that multi-log commands don't allow log count to go above NUM_LOGS_PER_SNAPSHOT.
+#[tracing::instrument(skip(state))]
+pub async fn test_snapshot_creation_multilog(state: Rc<State>) -> anyhow::Result<()> {
+    test_init(&state).await?;
+    let game_storage = GameStorage::load(state.clone())?;
+    assert_eq!(game_storage.current_snapshot_idx.get(), 0);
+    assert_eq!(game_storage.recent_logs().len(), 0);
+    for i in 0..98 {
+        let cmd = GMCommand::ChatFromGM {
+            message: format!("Test message {i}"),
+        };
+        let changed_game = game_storage.game().perform_gm_command(cmd)?;
+        game_storage.update_game(changed_game)?;
+    }
+    assert_eq!(game_storage.current_snapshot_idx.get(), 0);
+    assert_eq!(game_storage.recent_logs().len(), 98);
+
+    // we could use GMCommand::CreateNote, but it may not continue generating multiple logs in the
+    // future, so let's just manually build a ChangedGame with multiple logs.
+    let grouped_logs: Vec<_> = (0..5)
+        .into_iter()
+        .map(|i| GameLog::ChatFromGM {
+            message: format!("msg {i}"),
+        })
+        .collect();
+    let game = game_storage.game();
+    let changed = game.change_with_logs(grouped_logs)?;
+
+    game_storage.update_game(changed)?;
+
+    assert_eq!(game_storage.current_snapshot_idx.get(), 1);
+    assert_eq!(game_storage.recent_logs().len(), 103);
+
+    // Verify persisted state by loading a fresh GameStorage
+    let fresh_storage = GameStorage::load(state.clone())?;
+    assert_eq!(fresh_storage.current_snapshot_idx.get(), 1);
+    let recent_logs = fresh_storage.recent_logs();
+    assert_eq!(recent_logs.len(), 103);
+
+    let old_snapshot_logs = recent_logs
+        .iter()
+        .filter(|(gi, _gl)| gi.game_idx == 0)
+        .count();
+    assert_eq!(old_snapshot_logs, 100);
+    let new_snapshot_logs = recent_logs
+        .iter()
+        .filter(|(gi, _gl)| gi.game_idx == 1)
+        .count();
+    assert_eq!(new_snapshot_logs, 3);
+    Ok(())
+}
