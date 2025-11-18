@@ -76,7 +76,7 @@ impl GameSession {
             }
         };
         if let Some(changed_game) = changed_game {
-            self.game_storage.store_game(changed_game).await?;
+            self.game_storage.store_game(changed_game)?;
         }
         Ok(())
     }
@@ -90,14 +90,10 @@ impl GameSession {
                 info!(event = "handling-request", ?request);
                 let response = self.handle_request(request).await;
                 match response {
-                    Ok(result) => {
-                        self.send(&json!({"id": request_id, "payload": &result}))?
-                    }
+                    Ok(result) => self.send(&json!({"id": request_id, "payload": &result}))?,
                     Err(e) => {
                         error!(event = "error-handling-request", ?e);
-                        self.send(
-                            &json!({"id": request_id, "error": format!("{e:?}")}),
-                        )?
+                        self.send(&json!({"id": request_id, "error": format!("{e:?}")}))?
                     }
                 }
             }
@@ -107,9 +103,8 @@ impl GameSession {
                 let error_response =
                     json!({"error": format!("Couldn't parse as a WSRequest: {e}")});
                 let mut error_response = error_response.as_object().unwrap().clone();
-                if let Ok(value) = serde_json::from_str::<
-                    serde_json::Map<String, serde_json::Value>,
-                >(&text)
+                if let Ok(value) =
+                    serde_json::from_str::<serde_json::Map<String, serde_json::Value>>(&text)
                 {
                     error_response.insert(
                         "id".to_string(),
@@ -194,20 +189,20 @@ impl GameSession {
             }
 
             (Role::GM, GMGenerateInvitation) => {
-                let invitation_id = self.game_storage.create_invitation().await?;
+                let invitation_id = self.game_storage.create_invitation()?;
                 Ok(serde_json::to_value(invitation_id)?)
             }
             (Role::GM, GMListInvitations) => {
-                let invitations = self.game_storage.list_invitations().await?;
+                let invitations = self.game_storage.list_invitations()?;
                 Ok(serde_json::to_value(invitations)?)
             }
             (Role::GM, GMDeleteInvitation { invitation_id }) => {
-                let invitations = self.game_storage.delete_invitation(invitation_id).await?;
+                let invitations = self.game_storage.delete_invitation(invitation_id)?;
                 Ok(serde_json::to_value(invitations)?)
             }
             (_, UploadImageFromURL { url, purpose }) => {
                 let url = self.image_service.upload_from_url(&url, purpose).await?;
-                self.game_storage.register_image(&url, purpose).await?;
+                self.game_storage.register_image(&url, purpose)?;
 
                 let response = json!({"image_url": url.to_string()});
                 Ok(serde_json::to_value(response)?)
@@ -215,8 +210,7 @@ impl GameSession {
             (_, RequestUploadImage { purpose }) => {
                 let pending_image = self.image_service.request_upload_image(purpose).await?;
                 self.game_storage
-                    .register_image(&pending_image.final_url, purpose)
-                    .await?;
+                    .register_image(&pending_image.final_url, purpose)?;
                 let response = json!({
                   "upload_url": pending_image.upload_url.to_string(),
                   "final_url": pending_image.final_url.to_string()
@@ -236,7 +230,7 @@ impl GameSession {
     ) -> anyhow::Result<serde_json::Value> {
         let result = match changed_game {
             Ok(changed_game) => {
-                let logs_with_indices = self.game_storage.store_game(changed_game.clone()).await?;
+                let logs_with_indices = self.game_storage.store_game(changed_game.clone())?;
                 self.broadcast_refresh_game(&changed_game.game, &logs_with_indices)?;
                 Ok(changed_game.logs)
             }
@@ -300,7 +294,6 @@ impl GameSession {
 
     fn send_to_websocket<T: Serialize>(&self, ws: &WebSocket, value: &T) -> anyhow::Result<()> {
         let s = serde_json::to_string::<T>(value)?;
-        ws.send_with_str(s)
-            .map_err(|e| anyhow!(format!("{e:?}")))
+        ws.send_with_str(s).map_err(|e| anyhow!(format!("{e:?}")))
     }
 }

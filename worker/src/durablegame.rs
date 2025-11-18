@@ -157,9 +157,7 @@ impl ArpeggioGameSql {
         match game_storage {
             Some(game_storage) => Ok(game_storage),
             None => {
-                let storage = GameStorage::load(self.state.clone())
-                    .await
-                    .map_err(rust_error)?;
+                let storage = GameStorage::load(self.state.clone()).map_err(rust_error)?;
                 let rc_storage = Rc::new(storage);
                 *self.game_storage.borrow_mut() = Some(rc_storage.clone());
                 Ok(rc_storage)
@@ -262,7 +260,7 @@ impl ArpeggioGameSql {
 
         // Run the snapshot test
         let test_result =
-            match crate::durablestorage::test_snapshot_creation(self.state.clone()).await {
+            match crate::durablestorage::test_snapshot_creation(self.state.clone()) {
                 Ok(()) => "Ok!".to_string(),
                 Err(e) => format!("Test failed: {e:?}"),
             };
