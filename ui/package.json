@@ -30,7 +30,7 @@
     "react-color": "^2.19.3",
     "react-dom": "^18.2.0",
     "react-resizable-panels": "^0.0.54",
-    "react-router-dom": "^6.16.0",
+    "react-router-dom": "^6.30.3",
     "react-use-cookie": "^1.4.0",
     "semantic-ui-css": "^2.5.0",
     "semantic-ui-react": "^2.1.4",
