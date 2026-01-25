@@ -46,7 +46,9 @@ pub struct PlayerGameAndMetadata {
 /// to when a new command is performed) So a
 ///
 /// e.g., a GameIndex of 0/0 has one snapshot and no logs.
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Debug, Default, TS, PartialOrd, Ord)]
+#[derive(
+    Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Debug, Default, TS, PartialOrd, Ord,
+)]
 pub struct GameIndex {
     // ORDER MATTERS since we are deriving PartialOrd
     pub game_idx: usize,

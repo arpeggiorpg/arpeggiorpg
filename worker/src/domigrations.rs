@@ -9,7 +9,7 @@ const VERSION_KEY: &str = "DURABLEGAME_VERSION";
 async fn try_get_version(storage: &Storage) -> anyhow::Result<Option<usize>> {
     let current_version = storage.get::<usize>(VERSION_KEY).await;
     match current_version {
-        Ok(current_version) => Ok(Some(current_version)),
+        Ok(current_version) => Ok(current_version),
         Err(worker::Error::JsError(e)) if e == "No such value in storage." => Ok(None),
         Err(e) => Err(e)?,
     }

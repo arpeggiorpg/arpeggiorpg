@@ -1,8 +1,8 @@
 #![allow(non_snake_case)]
 
 use arptypes::{
-    PlayerID,
     multitenant::{self, GameID, Role},
+    PlayerID,
 };
 use dioxus::prelude::*;
 use js_sys::encode_uri_component;
@@ -13,8 +13,8 @@ mod components;
 mod grid;
 mod player_view;
 mod rpi;
-use player_view::{GAME_NAME, PlayerGamePage};
-use rpi::{AUTH_TOKEN, auth_token, list_games};
+use player_view::{PlayerGamePage, GAME_NAME};
+use rpi::{auth_token, list_games, AUTH_TOKEN};
 use wasm_cookies::CookieOptions;
 
 use crate::{
@@ -55,8 +55,10 @@ fn main() {
 }
 
 fn App() -> Element {
+    let components_css = asset!("/assets/dx-components-theme.css");
+    info!("What is this? {components_css:?}  display: {components_css}");
     rsx! {
-        document::Stylesheet { href: asset!("/assets/dx-components-theme.css") }
+        document::Stylesheet { href: components_css }
         document::Stylesheet { href: asset!("/assets/tailwind.css") }
 
         Router::<Route> {}

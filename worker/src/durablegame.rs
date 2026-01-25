@@ -3,14 +3,14 @@ use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 use anyhow::anyhow;
 use arpeggio::types::PlayerID;
-use arptypes::multitenant::{GameID, GameMetadata, InvitationID, Role};
+use arptypes::multitenant::{GameID, GameMetadata, Role};
 use serde_json::json;
 use tracing::{error, info};
 use uuid::Uuid;
 use worker::durable::WebSocketIncomingMessage;
 use worker::{
-    durable_object, wasm_bindgen, Env, Method, Request, Response, Result, State, WebSocket,
-    WebSocketPair,
+    durable_object, wasm_bindgen, DurableObject, Env, Method, Request, Response, Result, State,
+    WebSocket, WebSocketPair,
 };
 
 use crate::durablestorage::{test_snapshot_creation, test_snapshot_creation_multilog};
@@ -220,8 +220,9 @@ impl ArpeggioGameSql {
 
                 Ok(Response::from_websocket(pair.client)?)
             }
-            ["g", "invitations", _game_id, invitation_id] if req.method() == Method::Get => {
-                self.check_invitation(req, invitation_id).await
+            ["g", "invitations", game_id, invitation_id] if req.method() == Method::Get => {
+                let game_id = game_id.parse::<GameID>()?;
+                self.check_invitation(game_id, invitation_id).await
             }
             _ => {
                 error!(event = "unknown-route", ?path);
@@ -232,25 +233,13 @@ impl ArpeggioGameSql {
 
     async fn check_invitation(
         &self,
-        _req: Request,
+        game_id: GameID,
         invitation_id: &str,
     ) -> anyhow::Result<Response> {
         let invitation_id = invitation_id.parse()?;
-        let storage = self.state.storage();
-        // THIS CODE IS WRONG, It needs to be:
-        // - moved to GameStorage
-        // - changed to use SQLite
-        let invitations = storage.get("invitations").await;
-        let invitations: Vec<InvitationID> = match invitations {
-            Ok(r) => r,
-            Err(e) => {
-                error!(event = "invitation-fetch-error", ?e);
-                vec![]
-            }
-        };
-        Ok(Response::from_json(&json!(
-            invitations.contains(&invitation_id)
-        ))?)
+        let game_storage = self.get_game_storage(game_id).await?;
+        let exists = game_storage.check_invitation(invitation_id)?;
+        Ok(Response::from_json(&json!(exists))?)
     }
 
     async fn run_tests(&self) -> anyhow::Result<Response> {

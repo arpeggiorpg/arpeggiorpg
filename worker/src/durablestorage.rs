@@ -317,6 +317,25 @@ impl GameStorage {
         self.list_invitations()
     }
 
+    pub fn check_invitation(&self, invitation_id: InvitationID) -> anyhow::Result<bool> {
+        #[derive(serde::Deserialize)]
+        struct CountRow {
+            count: i64,
+        }
+
+        let rows: Vec<CountRow> = self
+            .state
+            .storage()
+            .sql()
+            .exec(
+                "SELECT COUNT(*) as count FROM invitations WHERE id = ?",
+                Some(vec![invitation_id.to_string().into()]),
+            )?
+            .to_array()?;
+
+        Ok(rows.first().map(|r| r.count > 0).unwrap_or(false))
+    }
+
     pub fn register_image(&self, url: &worker::Url, image_type: ImageType) -> anyhow::Result<()> {
         self.state.storage().sql().exec(
             "INSERT INTO images (image_type, url) VALUES (?, ?)",
