@@ -402,7 +402,6 @@ pub async fn test_snapshot_creation_multilog(state: Rc<State>) -> anyhow::Result
     // we could use GMCommand::CreateNote, but it may not continue generating multiple logs in the
     // future, so let's just manually build a ChangedGame with multiple logs.
     let grouped_logs: Vec<_> = (0..5)
-        .into_iter()
         .map(|i| GameLog::ChatFromGM {
             message: format!("msg {i}"),
         })

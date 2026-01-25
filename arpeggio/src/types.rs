@@ -177,7 +177,7 @@ pub fn serialize_player_game(
     let mut creature_class_ids = HashSet::new();
 
     if let Some(scene) = &active_scene {
-        for (&creature_id, _pos) in &scene.creatures {
+        for &creature_id in scene.creatures.keys() {
             if let Some(creature) = game.creatures.get(&creature_id) {
                 if let Some(class) = game.classes.get(&creature.class) {
                     let dynamic_creature = DynamicCreature {
@@ -187,7 +187,7 @@ pub fn serialize_player_game(
                     };
                     let serialized_creature = dynamic_creature.serialize_creature();
                     creatures.insert(creature_id, serialized_creature);
-                    creature_class_ids.insert(creature.class.clone());
+                    creature_class_ids.insert(creature.class);
                 }
             }
         }
@@ -196,7 +196,7 @@ pub fn serialize_player_game(
     // Get classes for creatures in the scene
     let classes = creature_class_ids
         .iter()
-        .filter_map(|class_id| game.classes.get(class_id).map(|class| class.clone()))
+        .filter_map(|class_id| game.classes.get(class_id).cloned())
         .collect();
 
     // Get items from scene and player's creatures
@@ -210,7 +210,7 @@ pub fn serialize_player_game(
                 .filter_map(|creature_id| game.creatures.get(creature_id))
                 .flat_map(|creature| creature.inventory.keys()),
         )
-        .filter_map(|&item_id| game.items.get(&item_id).map(|item| item.clone()))
+        .filter_map(|&item_id| game.items.get(&item_id).cloned())
         .collect();
 
     // Get player's notes from /Players/{PlayerID}/Notes folder

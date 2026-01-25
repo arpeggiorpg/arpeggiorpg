@@ -22,7 +22,7 @@ pub async fn migrate(env: Env, state: &State, game_id: GameID) -> anyhow::Result
         Some(cv) => cv,
         None => {
             sqlite_migration::migrate_kv_to_sqlite(env, state, game_id).await?;
-            try_get_version(&storage).await?.unwrap_or(0)
+            try_get_version(storage).await?.unwrap_or(0)
         }
     };
     migrate_from(state.storage(), current_version).await

@@ -210,9 +210,9 @@ impl ArpeggioGameSql {
                 let server = pair.server;
 
                 // Use hibernatable WebSocket API
-                let game_tag = format!("game:{}", game_id.0.to_string());
+                let game_tag = format!("game:{}", game_id.0);
                 let player_id_tag = format!("player_id:{}", ws_user.player_id.0);
-                let role_tag = format!("role:{}", ws_user.role.to_string());
+                let role_tag = format!("role:{}", ws_user.role);
 
                 // Accept the WebSocket with tags for role-based broadcasting and user data
                 self.state

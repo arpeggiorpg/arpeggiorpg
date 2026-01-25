@@ -762,7 +762,7 @@ impl GameExt for Game {
             } => self.change_with(GameLog::AddCreatureToScene {
                 scene_id,
                 creature_id,
-                visibility: visibility.clone(),
+                visibility: *visibility,
             }),
             RemoveCreatureFromScene {
                 scene_id,
@@ -1604,7 +1604,7 @@ impl GameExt for Game {
                     .mutate(&scene_id, move |scene| {
                         let entry = scene.creatures.get_mut(&creature_id);
                         let entry = entry.expect("Already checked that creature exists?!");
-                        entry.1 = visibility.clone();
+                        entry.1 = *visibility;
                     })
                     .ok_or_else(|| GameError::SceneNotFound(scene_id))?;
             }
@@ -1616,7 +1616,7 @@ impl GameExt for Game {
                 self.scenes
                     .mutate(&scene_id, move |s| {
                         s.creatures
-                            .insert(creature_id, (Point3::new(0, 0, 0), visibility.clone()));
+                            .insert(creature_id, (Point3::new(0, 0, 0), *visibility));
                     })
                     .ok_or_else(|| GameError::SceneNotFound(scene_id))?;
             }

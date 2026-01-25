@@ -61,7 +61,7 @@ pub async fn dump_storage(state: &State, env: &Env, game_id: GameID) -> anyhow::
     if let Some(raw_legacy_str) = raw_legacy_str {
         data.insert(
             "legacy-kv-str".to_string(),
-            error_to_json(raw_legacy_str.and_then(|rls| Ok(serde_json::Value::String(rls)))),
+            error_to_json(raw_legacy_str.map(|rls| serde_json::Value::String(rls))),
         );
     }
 

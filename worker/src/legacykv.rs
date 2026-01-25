@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 
-use anyhow;
 use serde::{de::Error as _, Deserialize, Deserializer, Serialize};
 use serde_json::Value;
 use tracing::info;

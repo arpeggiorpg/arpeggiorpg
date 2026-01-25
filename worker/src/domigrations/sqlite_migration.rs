@@ -51,7 +51,7 @@ async fn migrate_logs(sql: &SqlStorage, legacy_kv: &LegacyKVStorage) -> anyhow::
     info!(event = "migrating-logs");
 
     let log_entries = legacy_kv.logs()?;
-    if log_entries.len() == 0 {
+    if log_entries.is_empty() {
         info!(event = "no-logs-to-migrate");
         return Ok(());
     }
@@ -97,12 +97,12 @@ async fn migrate_invitations(sql: &SqlStorage, legacy_kv: &LegacyKVStorage) -> a
 async fn migrate_images(sql: &SqlStorage, legacy_kv: &LegacyKVStorage) -> anyhow::Result<()> {
     info!(event = "migrating-images");
     let background_images = &legacy_kv.background_images;
-    if background_images.len() == 0 {
+    if background_images.is_empty() {
         info!(event = "no-background-images-to-migrate");
         return Ok(());
     }
     let creature_icons = &legacy_kv.creature_icons;
-    if creature_icons.len() == 0 {
+    if creature_icons.is_empty() {
         info!(event = "no-creature-icons-to-migrate");
         return Ok(());
     }
