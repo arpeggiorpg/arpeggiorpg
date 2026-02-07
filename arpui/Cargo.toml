@@ -9,8 +9,6 @@ anyhow = { version = "1.0.75", features = ["backtrace"] }
 arptypes = { path = "../arptypes", version = "*" }
 dioxus = { version = "0.7.0", features = ["web", "router"] }
 foldertree = { path = "../foldertree", version = "*" }
-# Dioxus wanted to add this when I did `dx components add button`, but nothing actually uses it so I'm commenting it out
-# dioxus-primitives = { git = "https://github.com/DioxusLabs/components", version = "0.0.1", default-features = false }
 futures = "0.3.30"
 futures-util = { version = "*" }
 # arpeggio depend on rand, which depends on getrandom, which by default does not work on WASM. We

@@ -678,6 +678,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "dioxus-attributes"
+version = "0.1.0"
+source = "git+https://github.com/DioxusLabs/components#4acbf53dd86b1b3dc8cd7e409002bf922f37b4e1"
+dependencies = [
+ "dioxus-rsx",
+ "proc-macro2",
+ "quote",
+ "syn 2.0.108",
+]
+
+[[package]]
 name = "dioxus-cli-config"
 version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -986,10 +997,11 @@ dependencies = [
 [[package]]
 name = "dioxus-primitives"
 version = "0.0.1"
-source = "git+https://github.com/DioxusLabs/components#8e25631c7d4234ee070509156ed2abebb7b1d6e9"
+source = "git+https://github.com/DioxusLabs/components#4acbf53dd86b1b3dc8cd7e409002bf922f37b4e1"
 dependencies = [
  "dioxus",
- "dioxus-time",
+ "dioxus-attributes",
+ "dioxus-sdk-time",
  "lazy-js-bundle 0.6.2",
  "num-integer",
  "time",
@@ -1044,6 +1056,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "dioxus-sdk-time"
+version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "80c25ae93a3f72e734873b97fbd09d9b1b6adff97205fb0ffd8543e3564fb78e"
+dependencies = [
+ "dioxus",
+ "futures",
+ "gloo-timers",
+ "tokio",
+]
+
+[[package]]
 name = "dioxus-signals"
 version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1080,17 +1104,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.108",
-]
-
-[[package]]
-name = "dioxus-time"
-version = "0.7.0"
-source = "git+https://github.com/ealmloff/dioxus-std?branch=0.7#e5a74354cd36be440febdd6b701f584bd552bd62"
-dependencies = [
- "dioxus",
- "futures",
- "gloo-timers",
- "tokio",
 ]
 
 [[package]]

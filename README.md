@@ -15,6 +15,24 @@ MIT-licensed: http://opensource.org/licenses/MIT
 
 # Building/running (for dev/test)
 
+## First-time setup
+
+First, create worker/.dev.vars with:
+
+```
+GOOGLE_CLIENT_SECRET=xyz
+GOOGLE_CLIENT_ID=abc (only if you're not me)
+FRONTEND_URL=http://127.0.0.1:8080/
+```
+
+Then run
+
+```shell
+just create-schema-local
+```
+
+## Running
+
 To start the backend, which is implemented as a CloudFlare worker written in Rust:
 
 ```shell
