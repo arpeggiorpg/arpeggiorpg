@@ -25,16 +25,20 @@ pub fn Modal(
 
     let mut popover_ref = use_signal(|| None::<web_sys::HtmlElement>);
 
-    // Effect to show/hide modal based on open prop
-    use_effect(move || {
-        if let Some(popover) = popover_ref() {
-            if open {
-                let _ = popover.show_popover();
-            } else {
-                let _ = popover.hide_popover();
+    info!(ref = ?popover_ref(), ?open, "Modal use_effect");
+    if let Some(popover) = popover_ref() {
+        if open {
+            info!("Trying to show popover!");
+            if let Err(error) = popover.show_popover() {
+                error!(?error, "Error showing popover!");
+            }
+        } else {
+            info!("Trying to hide popover!");
+            if let Err(error) = popover.hide_popover() {
+                error!(?error, "Error hiding popover!");
             }
         }
-    });
+    }
 
     // Handle escape key to close modal
     let handle_keydown = move |evt: Event<KeyboardData>| {
@@ -46,7 +50,8 @@ pub fn Modal(
     };
 
     // Default classes
-    let default_backdrop_class = "modal-backdrop fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4";
+    let default_backdrop_class =
+        "modal-backdrop fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4";
     let default_modal_class = "modal-content bg-white rounded-lg shadow-xl max-w-md w-full mx-auto";
 
     let final_backdrop_class = match backdrop_class {
