@@ -137,6 +137,8 @@ fn CampaignFolder(path: FolderPath, display_name: String, depth: usize, start_op
     let mut show_menu = use_signal(|| false);
     let mut show_import_modal = use_signal(|| false);
     let mut show_move_modal = use_signal(|| false);
+    let mut show_rename_modal = use_signal(|| false);
+    let mut show_delete_modal = use_signal(|| false);
 
     let folder = match game.campaign.get(&path) {
         Ok(folder) => folder,
@@ -208,9 +210,30 @@ fn CampaignFolder(path: FolderPath, display_name: String, depth: usize, start_op
                                 onclick: move |evt: Event<MouseData>| {
                                     evt.stop_propagation();
                                     show_menu.set(false);
+                                    show_rename_modal.set(true);
+                                },
+                                "Rename this folder"
+                            }
+                            button {
+                                class: "block w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-100",
+                                onclick: move |evt: Event<MouseData>| {
+                                    evt.stop_propagation();
+                                    show_menu.set(false);
                                     show_move_modal.set(true);
                                 },
                                 "Move this folder"
+                            }
+                            button {
+                                class: "block w-full px-3 py-2 text-left text-sm text-red-700 hover:bg-red-50",
+                                onclick: move |evt: Event<MouseData>| {
+                                    evt.stop_propagation();
+                                    show_menu.set(false);
+                                    show_delete_modal.set(true);
+                                },
+                                "Delete this folder"
+                            }
+                            div {
+                                class: "my-1 border-t border-gray-200"
                             }
                         }
                         button {
@@ -237,6 +260,20 @@ fn CampaignFolder(path: FolderPath, display_name: String, depth: usize, start_op
                 MoveFolderModal {
                     path: path.clone(),
                     on_close: move |_| show_move_modal.set(false),
+                }
+            }
+
+            if show_rename_modal() {
+                RenameFolderModal {
+                    path: path.clone(),
+                    on_close: move |_| show_rename_modal.set(false),
+                }
+            }
+
+            if show_delete_modal() {
+                DeleteFolderModal {
+                    path: path.clone(),
+                    on_close: move |_| show_delete_modal.set(false),
                 }
             }
 
@@ -386,6 +423,190 @@ fn ImportModuleModal(path: FolderPath, on_close: EventHandler<()>) -> Element {
                     variant: ButtonVariant::Outline,
                     onclick: move |_| on_close.call(()),
                     "Close"
+                }
+            }
+        }
+    }
+}
+
+#[component]
+fn RenameFolderModal(path: FolderPath, on_close: EventHandler<()>) -> Element {
+    let ws = use_ws();
+    let Some((parent_path, current_name)) = path.up() else {
+        return rsx! {};
+    };
+
+    let mut new_name = use_signal(|| current_name.clone());
+    let mut rename_action = use_action({
+        let ws = ws.clone();
+        let parent_path = parent_path.clone();
+        let current_name = current_name.clone();
+        let on_close = on_close.clone();
+        move |next_name: String| {
+            let ws = ws.clone();
+            let parent_path = parent_path.clone();
+            let current_name = current_name.clone();
+            let on_close = on_close.clone();
+            async move {
+                let command = GMCommand::RenameFolderItem {
+                    path: parent_path,
+                    item_id: FolderItemID::SubfolderID(current_name),
+                    new_name: next_name,
+                };
+                let result = send_request::<Result<Vec<GameLog>, String>>(
+                    RPIGameRequest::GMCommand {
+                        command: Box::new(command),
+                    },
+                    ws,
+                )
+                .await?;
+                result.map_err(anyhow::Error::msg)?;
+                on_close.call(());
+                Ok::<(), anyhow::Error>(())
+            }
+        }
+    });
+
+    let can_rename = {
+        let candidate = new_name().trim().to_string();
+        !candidate.is_empty() && candidate != current_name
+    };
+
+    rsx! {
+        crate::components::modal::Modal {
+            open: true,
+            on_close: move |_| on_close.call(()),
+            class: "p-6",
+            h3 {
+                class: "text-lg font-semibold text-gray-800 mb-2",
+                "Rename Folder"
+            }
+            p {
+                class: "text-sm text-gray-600 mb-4",
+                "Current name: {current_name}"
+            }
+            input {
+                class: "w-full rounded border border-gray-300 px-3 py-2 text-sm",
+                r#type: "text",
+                value: "{new_name}",
+                autofocus: true,
+                oninput: move |evt| new_name.set(evt.value()),
+                onkeydown: move |evt| {
+                    if evt.key() == Key::Enter && can_rename && !rename_action.pending() {
+                        let next_name = new_name().trim().to_string();
+                        rename_action.call(next_name);
+                    }
+                },
+            }
+            match rename_action.value() {
+                Some(Err(err)) => rsx! {
+                    p {
+                        class: "mt-2 text-sm text-red-600",
+                        "Rename failed: {err}"
+                    }
+                },
+                _ => rsx! {},
+            }
+            div {
+                class: "mt-4 flex justify-end gap-2",
+                Button {
+                    variant: ButtonVariant::Outline,
+                    onclick: move |_| on_close.call(()),
+                    "Cancel"
+                }
+                Button {
+                    variant: ButtonVariant::Primary,
+                    disabled: !can_rename || rename_action.pending(),
+                    onclick: move |_| {
+                        let next_name = new_name().trim().to_string();
+                        rename_action.call(next_name);
+                    },
+                    if rename_action.pending() {
+                        "Renaming..."
+                    } else {
+                        "Rename"
+                    }
+                }
+            }
+        }
+    }
+}
+
+#[component]
+fn DeleteFolderModal(path: FolderPath, on_close: EventHandler<()>) -> Element {
+    let ws = use_ws();
+    let Some((parent_path, current_name)) = path.up() else {
+        return rsx! {};
+    };
+
+    let folder_label = folder_path_label(&path);
+    let mut delete_action = use_action({
+        let ws = ws.clone();
+        let parent_path = parent_path.clone();
+        let current_name = current_name.clone();
+        let on_close = on_close.clone();
+        move || {
+            let ws = ws.clone();
+            let parent_path = parent_path.clone();
+            let current_name = current_name.clone();
+            let on_close = on_close.clone();
+            async move {
+                let command = GMCommand::DeleteFolderItem {
+                    path: parent_path,
+                    item_id: FolderItemID::SubfolderID(current_name),
+                };
+                let result = send_request::<Result<Vec<GameLog>, String>>(
+                    RPIGameRequest::GMCommand {
+                        command: Box::new(command),
+                    },
+                    ws,
+                )
+                .await?;
+                result.map_err(anyhow::Error::msg)?;
+                on_close.call(());
+                Ok::<(), anyhow::Error>(())
+            }
+        }
+    });
+
+    rsx! {
+        crate::components::modal::Modal {
+            open: true,
+            on_close: move |_| on_close.call(()),
+            class: "p-6",
+            h3 {
+                class: "text-lg font-semibold text-gray-800 mb-2",
+                "Delete Folder"
+            }
+            p {
+                class: "text-sm text-gray-600 mb-4",
+                "Delete {folder_label}? This only works if the folder is empty."
+            }
+            match delete_action.value() {
+                Some(Err(err)) => rsx! {
+                    p {
+                        class: "mb-3 text-sm text-red-600",
+                        "Delete failed: {err}"
+                    }
+                },
+                _ => rsx! {},
+            }
+            div {
+                class: "mt-4 flex justify-end gap-2",
+                Button {
+                    variant: ButtonVariant::Outline,
+                    onclick: move |_| on_close.call(()),
+                    "Cancel"
+                }
+                Button {
+                    variant: ButtonVariant::Destructive,
+                    disabled: delete_action.pending(),
+                    onclick: move |_| delete_action.call(),
+                    if delete_action.pending() {
+                        "Deleting..."
+                    } else {
+                        "Delete"
+                    }
                 }
             }
         }
