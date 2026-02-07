@@ -134,6 +134,11 @@ pub async fn fetch_legacy_dump(
 ) -> anyhow::Result<Option<LegacyKVStorage>> {
     let text = fetch_raw_legacy_dump_str(env, game_id).await?;
     if let Some(text) = text {
+        // An empty legacy DO returns "{}" — there's no legacy data to migrate.
+        let parsed: serde_json::Value = serde_json::from_str(&text)?;
+        if parsed.as_object().is_some_and(|o| o.is_empty()) {
+            return Ok(None);
+        }
         let mut deserializer = serde_json::Deserializer::from_str(&text);
         let x: LegacyKVStorage = serde_path_to_error::deserialize(&mut deserializer)?;
         return Ok(Some(x));

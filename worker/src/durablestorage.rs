@@ -13,7 +13,7 @@ use arpeggio::{
     types::{ChangedGame, Game, GameLog},
 };
 use arptypes::{
-    multitenant::{GameIndex, ImageType, InvitationID},
+    multitenant::{GameID, GameIndex, ImageType, InvitationID},
     GMCommand,
 };
 
@@ -430,5 +430,51 @@ pub async fn test_snapshot_creation_multilog(state: Rc<State>) -> anyhow::Result
         .filter(|(gi, _gl)| gi.game_idx == 1)
         .count();
     assert_eq!(new_snapshot_logs, 3);
+    Ok(())
+}
+
+/// Test that a brand-new game DO can be initialized from scratch, exercising the full
+/// migration + load path that `get_game_storage` uses.
+#[tracing::instrument(skip(state, env))]
+pub async fn test_fresh_game_initialization(
+    state: Rc<State>,
+    env: worker::Env,
+) -> anyhow::Result<()> {
+    // Wipe everything to simulate a brand-new Durable Object
+    state.storage().delete_all().await?;
+
+    // Use a test game ID (same max UUID that the /test endpoint uses)
+    let test_game_id = GameID(uuid::Uuid::max());
+
+    // Run the full migration path, just like get_game_storage does
+    crate::domigrations::migrate(env, &state, test_game_id).await?;
+
+    // Now load GameStorage, which should create a default game snapshot
+    let game_storage = GameStorage::load(state.clone())?;
+    assert_eq!(game_storage.current_snapshot_idx.get(), 0);
+    assert_eq!(game_storage.recent_logs().len(), 0);
+
+    // Verify the game is a valid default
+    let game = game_storage.game();
+    assert!(game.current_combat.is_none());
+    assert_eq!(game.creatures.len(), 0);
+    assert_eq!(game.scenes.len(), 0);
+
+    // Run a GM command to verify the game is functional
+    let cmd = GMCommand::ChatFromGM {
+        message: "Hello from fresh game".to_string(),
+    };
+    let changed_game = game_storage.game().perform_gm_command(cmd)?;
+    game_storage.update_game(changed_game)?;
+    assert_eq!(game_storage.recent_logs().len(), 1);
+
+    // Reload from storage to verify persistence
+    let fresh_storage = GameStorage::load(state.clone())?;
+    assert_eq!(fresh_storage.current_snapshot_idx.get(), 0);
+    assert_eq!(fresh_storage.recent_logs().len(), 1);
+
+    let game = fresh_storage.game();
+    assert!(game.current_combat.is_none());
+
     Ok(())
 }

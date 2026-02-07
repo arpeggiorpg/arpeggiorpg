@@ -13,7 +13,9 @@ use worker::{
     WebSocket, WebSocketPair,
 };
 
-use crate::durablestorage::{test_snapshot_creation, test_snapshot_creation_multilog};
+use crate::durablestorage::{
+    test_fresh_game_initialization, test_snapshot_creation, test_snapshot_creation_multilog,
+};
 use crate::{
     dump, durablestorage::GameStorage, images::CFImageService, rust_error, storage, wsrpi,
 };
@@ -247,6 +249,7 @@ impl ArpeggioGameSql {
             "results": {
                 "test_snapshot_creation": report(test_snapshot_creation(self.state.clone()).await),
                 "test_snapshot_creation_multilog": report(test_snapshot_creation_multilog(self.state.clone()).await),
+                "test_fresh_game_initialization": report(test_fresh_game_initialization(self.state.clone(), self.env.clone()).await),
             },
             "status": "completed"
         }))?)
