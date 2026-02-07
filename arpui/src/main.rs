@@ -91,27 +91,46 @@ fn AuthRequiredLayout() -> Element {
     rsx! {
       if !has_auth_token {
         div {
-          Button {
-            variant: ButtonVariant::Primary,
-            onclick: move |_e| {
-              let target: NavigationTarget<Route> = google_oauth_url.parse().unwrap();
-              navigator.push(target);
-            },
-            "Log in with Google"
+          class: "flex h-full items-center justify-center",
+          div {
+            class: "flex flex-col items-center gap-4",
+            h1 {
+              class: "text-xl font-bold text-gray-800",
+              "ArpeggioRPG"
+            }
+            p {
+              class: "text-gray-500",
+              "Sign in to manage your games"
+            }
+            Button {
+              variant: ButtonVariant::Primary,
+              onclick: move |_e| {
+                let target: NavigationTarget<Route> = google_oauth_url.parse().unwrap();
+                navigator.push(target);
+              },
+              "Log in with Google"
+            }
           }
         }
       } else {
         div {
           class: "flex h-full flex-col",
           div {
-            class: "flex justify-between",
+            class: "flex items-center justify-between px-4 py-2 border-b border-gray-200 bg-white",
             h1 {
+              class: "font-semibold text-gray-800",
               Link { to: Route::GameListPage {}, "ArpeggioRPG" }
-              " — {GAME_NAME}"
+              span {
+                class: "font-medium text-gray-500",
+                " — {GAME_NAME}"
+              }
             }
             div {
-              class: "rightNavThing",
-              Link { to: Route::GameListPage {}, "Game List"}
+              class: "flex items-center gap-3",
+              Link { to: Route::GameListPage {},
+                class: "text-sm text-gray-600 hover:text-gray-800",
+                "Game List"
+              }
               Button {
                 variant: ButtonVariant::Ghost,
                 onclick: move |_event| {
@@ -122,7 +141,10 @@ fn AuthRequiredLayout() -> Element {
               }
             }
           }
-          Outlet::<Route> {}
+          div {
+            class: "flex-1 overflow-y-auto",
+            Outlet::<Route> {}
+          }
         }
       }
     }
@@ -154,8 +176,18 @@ fn GameListPage() -> Element {
         Some(Ok(list)) => rsx! {
           GameList {list: list.clone()}
         },
-        Some(Err(e)) => rsx! { "Error! {e:?}" },
-        None => rsx! {"Loading games!"},
+        Some(Err(e)) => rsx! {
+          div {
+            class: "p-6 text-red-600",
+            "Error! {e:?}"
+          }
+        },
+        None => rsx! {
+          div {
+            class: "p-6 text-gray-500",
+            "Loading games..."
+          }
+        },
     }
 }
 
@@ -164,41 +196,93 @@ fn GameList(list: multitenant::GameList) -> Element {
     let mut show_create_modal = use_signal(|| false);
 
     info!(create = ?show_create_modal(), "Showing create modal?");
-    let gm_games = list
+    let gm_games_vec: Vec<_> = list
         .games
         .iter()
-        .filter(|(profile, _)| profile.role == Role::GM);
-    let player_games = list
+        .filter(|(profile, _)| profile.role == Role::GM)
+        .collect();
+    let player_games_vec: Vec<_> = list
         .games
         .iter()
-        .filter(|(profile, _)| profile.role == Role::Player);
+        .filter(|(profile, _)| profile.role == Role::Player)
+        .collect();
 
     rsx! {
-      h1 { "You are GM of these games" }
-      ul {
-        for (profile, metadata) in gm_games {
-          li {
-            Link { to: Route::GMGamePage {id: profile.game_id}, "{metadata.name} (as {profile.profile_name})"}
+      div {
+        class: "p-6 mx-auto space-y-4",
+        // GM Games section
+        div {
+          class: "bg-white rounded-lg shadow-md p-4",
+          div {
+            class: "flex items-center justify-between mb-3",
+            h2 {
+              class: "text-lg font-semibold text-gray-800",
+              "Your Games (GM)"
+            }
+            Button {
+              variant: ButtonVariant::Primary,
+              onclick: move |_| {
+                info!("Create New button clicked");
+                show_create_modal.set(true);
+              },
+              "Create New"
+            }
+          }
+          if gm_games_vec.is_empty() {
+            p {
+              class: "text-sm text-gray-500 italic",
+              "You haven't created any games yet."
+            }
+          } else {
+            ul {
+              class: "space-y-1",
+              for (profile, metadata) in &gm_games_vec {
+                li {
+                  class: "px-3 py-2 rounded-md hover:bg-gray-100",
+                  Link {
+                    to: Route::GMGamePage {id: profile.game_id},
+                    class: "text-blue-700 font-medium",
+                    "{metadata.name}"
+                  }
+                  span {
+                    class: "text-sm text-gray-500 ml-4",
+                    "(as {profile.profile_name})"
+                  }
+                }
+              }
+            }
           }
         }
-        li {
-          Button {
-            variant: ButtonVariant::Primary,
-            onclick: move |_| {
-              info!("Create New button clicked");
-              show_create_modal.set(true);
-            },
-            "Create New"
+
+        // Player Games section
+        div {
+          class: "bg-white rounded-lg shadow-md p-4",
+          h2 {
+            class: "text-lg font-semibold text-gray-800 mb-3",
+            "Games You Play In"
           }
-        }
-      }
-      h1 { "You are a Player of these games" }
-      ul {
-        for (profile, metadata) in player_games {
-          li {
-            a {
-              href: "/{profile.role.to_string().to_lowercase()}/{profile.game_id}/{profile.profile_name}",
-              "{metadata.name} (as {profile.profile_name})"
+          if player_games_vec.is_empty() {
+            p {
+              class: "text-sm text-gray-500 italic",
+              "You haven't joined any games as a player yet."
+            }
+          } else {
+            ul {
+              class: "space-y-1",
+              for (profile, metadata) in &player_games_vec {
+                li {
+                  class: "px-3 py-2 rounded-md hover:bg-gray-100",
+                  a {
+                    href: "/{profile.role.to_string().to_lowercase()}/{profile.game_id}/{profile.profile_name}",
+                    class: "text-blue-700 font-medium",
+                    "{metadata.name}"
+                  }
+                  span {
+                    class: "text-sm text-gray-500 ml-4",
+                    "(as {profile.profile_name})"
+                  }
+                }
+              }
             }
           }
         }
