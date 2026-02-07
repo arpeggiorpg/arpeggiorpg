@@ -133,38 +133,9 @@ fn CampaignTreeCard() -> Element {
 #[component]
 fn CampaignFolder(path: FolderPath, display_name: String, depth: usize, start_open: bool) -> Element {
     let game = GM_GAME();
-    let ws = use_ws();
     let mut is_expanded = use_signal(move || start_open);
-    let mut import_action = use_action({
-        let ws = ws.clone();
-        let path = path.clone();
-        move |file: dioxus::html::FileData| {
-            let ws = ws.clone();
-            let path = path.clone();
-            async move {
-                let file_name = file.name();
-                let file_contents = file
-                    .read_string()
-                    .await
-                    .map_err(|e| anyhow::anyhow!("Failed to read file '{file_name}': {e}"))?;
-                let module = parse_module_file_contents(&file_contents)?;
-                let command = GMCommand::LoadModule {
-                    name: file_name.clone(),
-                    source: ModuleSource::Module,
-                    game: module,
-                    path: path.child(file_name.clone()),
-                };
-                send_request::<serde_json::Value>(
-                    RPIGameRequest::GMCommand {
-                        command: Box::new(command),
-                    },
-                    ws,
-                )
-                .await?;
-                Ok::<String, anyhow::Error>(file_name)
-            }
-        }
-    });
+    let mut show_menu = use_signal(|| false);
+    let mut show_import_modal = use_signal(|| false);
 
     let folder = match game.campaign.get(&path) {
         Ok(folder) => folder,
@@ -203,16 +174,50 @@ fn CampaignFolder(path: FolderPath, display_name: String, depth: usize, start_op
             class: "space-y-1",
             style: "{padding_style}",
 
-            button {
-                class: "w-full rounded border border-gray-200 bg-gray-50 px-3 py-2 text-left hover:bg-gray-100",
-                onclick: move |_| is_expanded.toggle(),
-                div {
-                    class: "flex items-center gap-2",
-                    span {
-                        class: "text-xs text-gray-500",
-                        if is_expanded() { "v" } else { ">" }
+            div {
+                class: "relative flex items-center gap-2 rounded border border-gray-200 bg-gray-50 px-3 py-2",
+                button {
+                    class: "flex-1 text-left hover:bg-gray-100",
+                    onclick: move |_| is_expanded.toggle(),
+                    div {
+                        class: "flex items-center gap-2",
+                        span {
+                            class: "text-xs text-gray-500",
+                            if is_expanded() { "v" } else { ">" }
+                        }
+                        span { class: "text-sm font-medium text-gray-800", "Folder: {display_name}" }
                     }
-                    span { class: "text-sm font-medium text-gray-800", "Folder: {display_name}" }
+                }
+
+                button {
+                    class: "rounded px-2 py-1 text-sm text-gray-600 hover:bg-gray-200",
+                    onclick: move |evt: Event<MouseData>| {
+                        evt.stop_propagation();
+                        show_menu.toggle();
+                    },
+                    "..."
+                }
+
+                if show_menu() {
+                    div {
+                        class: "absolute right-0 top-full z-10 mt-1 w-48 rounded border border-gray-200 bg-white py-1 shadow-lg",
+                        button {
+                            class: "block w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-100",
+                            onclick: move |evt: Event<MouseData>| {
+                                evt.stop_propagation();
+                                show_menu.set(false);
+                                show_import_modal.set(true);
+                            },
+                            "Import Module Here"
+                        }
+                    }
+                }
+            }
+
+            if show_import_modal() {
+                ImportModuleModal {
+                    path: path.clone(),
+                    on_close: move |_| show_import_modal.set(false),
                 }
             }
 
@@ -250,45 +255,6 @@ fn CampaignFolder(path: FolderPath, display_name: String, depth: usize, start_op
                         icon: "[I]",
                         names: item_names,
                     }
-                    div {
-                        class: "pt-1",
-                        label {
-                            class: "text-xs font-semibold uppercase tracking-wide text-gray-500",
-                            "Import Module Here"
-                        }
-                        input {
-                            class: "mt-1 block w-full cursor-pointer rounded border border-gray-300 bg-white px-2 py-1 text-xs text-gray-700",
-                            r#type: "file",
-                            accept: ".arpeggiogame,.json",
-                            disabled: import_action.pending(),
-                            onchange: move |evt: FormEvent| {
-                                if let Some(file) = evt.files().into_iter().next() {
-                                    import_action.call(file);
-                                }
-                            },
-                        }
-                        if import_action.pending() {
-                            p {
-                                class: "mt-1 text-xs text-gray-500",
-                                "Importing module..."
-                            }
-                        }
-                        match import_action.value() {
-                            Some(Err(err)) => rsx! {
-                                p {
-                                    class: "mt-1 text-xs text-red-600",
-                                    "Import failed: {err}"
-                                }
-                            },
-                            Some(Ok(name)) => rsx! {
-                                p {
-                                    class: "mt-1 text-xs text-green-700",
-                                    "Imported module: {name.read()}"
-                                }
-                            },
-                            None => rsx! {},
-                        }
-                    }
 
                     if !child_names.is_empty() {
                         div {
@@ -309,6 +275,98 @@ fn CampaignFolder(path: FolderPath, display_name: String, depth: usize, start_op
                             }
                         }
                     }
+                }
+            }
+        }
+    }
+}
+
+#[component]
+fn ImportModuleModal(path: FolderPath, on_close: EventHandler<()>) -> Element {
+    let ws = use_ws();
+    let destination = folder_path_label(&path);
+    let mut import_action = use_action({
+        let ws = ws.clone();
+        let path = path.clone();
+        move |file: dioxus::html::FileData| {
+            let ws = ws.clone();
+            let path = path.clone();
+            async move {
+                let file_name = file.name();
+                let file_contents = file
+                    .read_string()
+                    .await
+                    .map_err(|e| anyhow::anyhow!("Failed to read file '{file_name}': {e}"))?;
+                let module = parse_module_file_contents(&file_contents)?;
+                let command = GMCommand::LoadModule {
+                    name: file_name.clone(),
+                    source: ModuleSource::Module,
+                    game: module,
+                    path: path.child(file_name.clone()),
+                };
+                send_request::<serde_json::Value>(
+                    RPIGameRequest::GMCommand {
+                        command: Box::new(command),
+                    },
+                    ws,
+                )
+                .await?;
+                Ok::<String, anyhow::Error>(file_name)
+            }
+        }
+    });
+
+    rsx! {
+        crate::components::modal::Modal {
+            open: true,
+            on_close: move |_| on_close.call(()),
+            class: "p-6",
+            h3 {
+                class: "text-lg font-semibold text-gray-800 mb-2",
+                "Import Module Here"
+            }
+            p {
+                class: "text-sm text-gray-600 mb-4",
+                "Destination folder: {destination}"
+            }
+            input {
+                class: "block w-full cursor-pointer rounded border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700",
+                r#type: "file",
+                accept: ".arpeggiogame,.json",
+                disabled: import_action.pending(),
+                onchange: move |evt: FormEvent| {
+                    if let Some(file) = evt.files().into_iter().next() {
+                        import_action.call(file);
+                    }
+                },
+            }
+            if import_action.pending() {
+                p {
+                    class: "mt-2 text-sm text-gray-500",
+                    "Importing module..."
+                }
+            }
+            match import_action.value() {
+                Some(Err(err)) => rsx! {
+                    p {
+                        class: "mt-2 text-sm text-red-600",
+                        "Import failed: {err}"
+                    }
+                },
+                Some(Ok(name)) => rsx! {
+                    p {
+                        class: "mt-2 text-sm text-green-700",
+                        "Imported module: {name.read()}"
+                    }
+                },
+                None => rsx! {},
+            }
+            div {
+                class: "mt-4 flex justify-end",
+                Button {
+                    variant: ButtonVariant::Outline,
+                    onclick: move |_| on_close.call(()),
+                    "Close"
                 }
             }
         }
@@ -426,6 +484,14 @@ fn parse_module_file_contents(contents: &str) -> anyhow::Result<Game> {
     Err(anyhow::anyhow!(
         "File does not look like a valid Arpeggio module JSON."
     ))
+}
+
+fn folder_path_label(path: &FolderPath) -> String {
+    if path.is_root() {
+        "/".to_string()
+    } else {
+        path.to_string()
+    }
 }
 
 #[component]
