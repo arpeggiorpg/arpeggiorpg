@@ -49,6 +49,26 @@ pub async fn create_game(name: String) -> Result<GameID, anyhow::Error> {
     Ok(resp.game_id)
 }
 
+pub async fn check_invitation(
+    game_id: GameID,
+    invitation_id: multitenant::InvitationID,
+) -> Result<bool, anyhow::Error> {
+    rpi_get(&format!("g/invitations/{game_id}/{invitation_id}")).await
+}
+
+pub async fn accept_invitation(
+    game_id: GameID,
+    invitation_id: multitenant::InvitationID,
+    profile_name: String,
+) -> Result<(), anyhow::Error> {
+    let _resp: serde_json::Value = rpi_post(
+        &format!("g/invitations/{game_id}/{invitation_id}/accept"),
+        &profile_name,
+    )
+    .await?;
+    Ok(())
+}
+
 type ResponseHandler = Sender<anyhow::Result<serde_json::Value>>;
 type ResponseHandlers = HashMap<uuid::Uuid, ResponseHandler>;
 

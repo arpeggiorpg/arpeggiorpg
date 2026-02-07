@@ -2,7 +2,7 @@
 
 use arptypes::{
     PlayerID,
-    multitenant::{self, GameID, Role},
+    multitenant::{self, GameID, InvitationID, Role},
 };
 use dioxus::prelude::*;
 use js_sys::encode_uri_component;
@@ -15,7 +15,7 @@ mod grid;
 mod player_view;
 mod rpi;
 use gm_view::GMGamePage;
-use player_view::{GAME_NAME, PlayerGamePage};
+use player_view::{AcceptInvitationPage, GAME_NAME, PlayerGamePage};
 use rpi::{AUTH_TOKEN, auth_token, list_games};
 use wasm_cookies::CookieOptions;
 
@@ -50,6 +50,8 @@ enum Route {
     GMGamePage { id: GameID },
     #[route("/player/:id/:player_id")]
     PlayerGamePage { id: GameID, player_id: PlayerID },
+    #[route("/invitations/:game_id/:invitation_id")]
+    AcceptInvitationPage { game_id: GameID, invitation_id: InvitationID },
 }
 
 fn main() {
