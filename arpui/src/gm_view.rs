@@ -1,7 +1,7 @@
 use std::collections::VecDeque;
 
 use arptypes::{
-    Folder, Game, GameLog,
+    Folder, GMCommand, Game, GameLog, ModuleSource, SerializedGame,
     multitenant::{GameAndMetadata, GameID, GameIndex, InvitationID, RPIGameRequest, Role},
 };
 use dioxus::prelude::*;
@@ -133,7 +133,38 @@ fn CampaignTreeCard() -> Element {
 #[component]
 fn CampaignFolder(path: FolderPath, display_name: String, depth: usize, start_open: bool) -> Element {
     let game = GM_GAME();
+    let ws = use_ws();
     let mut is_expanded = use_signal(move || start_open);
+    let mut import_action = use_action({
+        let ws = ws.clone();
+        let path = path.clone();
+        move |file: dioxus::html::FileData| {
+            let ws = ws.clone();
+            let path = path.clone();
+            async move {
+                let file_name = file.name();
+                let file_contents = file
+                    .read_string()
+                    .await
+                    .map_err(|e| anyhow::anyhow!("Failed to read file '{file_name}': {e}"))?;
+                let module = parse_module_file_contents(&file_contents)?;
+                let command = GMCommand::LoadModule {
+                    name: file_name.clone(),
+                    source: ModuleSource::Module,
+                    game: module,
+                    path: path.child(file_name.clone()),
+                };
+                send_request::<serde_json::Value>(
+                    RPIGameRequest::GMCommand {
+                        command: Box::new(command),
+                    },
+                    ws,
+                )
+                .await?;
+                Ok::<String, anyhow::Error>(file_name)
+            }
+        }
+    });
 
     let folder = match game.campaign.get(&path) {
         Ok(folder) => folder,
@@ -218,6 +249,45 @@ fn CampaignFolder(path: FolderPath, display_name: String, depth: usize, start_op
                         title: "Items",
                         icon: "[I]",
                         names: item_names,
+                    }
+                    div {
+                        class: "pt-1",
+                        label {
+                            class: "text-xs font-semibold uppercase tracking-wide text-gray-500",
+                            "Import Module Here"
+                        }
+                        input {
+                            class: "mt-1 block w-full cursor-pointer rounded border border-gray-300 bg-white px-2 py-1 text-xs text-gray-700",
+                            r#type: "file",
+                            accept: ".arpeggiogame,.json",
+                            disabled: import_action.pending(),
+                            onchange: move |evt: FormEvent| {
+                                if let Some(file) = evt.files().into_iter().next() {
+                                    import_action.call(file);
+                                }
+                            },
+                        }
+                        if import_action.pending() {
+                            p {
+                                class: "mt-1 text-xs text-gray-500",
+                                "Importing module..."
+                            }
+                        }
+                        match import_action.value() {
+                            Some(Err(err)) => rsx! {
+                                p {
+                                    class: "mt-1 text-xs text-red-600",
+                                    "Import failed: {err}"
+                                }
+                            },
+                            Some(Ok(name)) => rsx! {
+                                p {
+                                    class: "mt-1 text-xs text-green-700",
+                                    "Imported module: {name.read()}"
+                                }
+                            },
+                            None => rsx! {},
+                        }
                     }
 
                     if !child_names.is_empty() {
@@ -326,6 +396,36 @@ fn sorted_class_names(game: &Game, folder: &Folder) -> Vec<String> {
         .collect();
     names.sort();
     names
+}
+
+fn parse_module_file_contents(contents: &str) -> anyhow::Result<Game> {
+    if let Ok(game) = serde_json::from_str::<Game>(contents) {
+        return Ok(game);
+    }
+
+    if let Ok(game) = serde_json::from_str::<SerializedGame>(contents) {
+        return Ok(Game::from_serialized_game(game));
+    }
+
+    #[derive(serde::Deserialize)]
+    struct WrappedGame {
+        game: Game,
+    }
+    if let Ok(wrapped) = serde_json::from_str::<WrappedGame>(contents) {
+        return Ok(wrapped.game);
+    }
+
+    #[derive(serde::Deserialize)]
+    struct WrappedSerializedGame {
+        game: SerializedGame,
+    }
+    if let Ok(wrapped) = serde_json::from_str::<WrappedSerializedGame>(contents) {
+        return Ok(Game::from_serialized_game(wrapped.game));
+    }
+
+    Err(anyhow::anyhow!(
+        "File does not look like a valid Arpeggio module JSON."
+    ))
 }
 
 #[component]
