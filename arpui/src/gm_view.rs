@@ -1,10 +1,11 @@
 use std::collections::VecDeque;
 
 use arptypes::{
-    Game, GameLog,
+    Folder, Game, GameLog,
     multitenant::{GameAndMetadata, GameID, GameIndex, InvitationID, RPIGameRequest, Role},
 };
 use dioxus::prelude::*;
+use foldertree::FolderPath;
 use tracing::{error, info};
 
 use crate::{
@@ -99,9 +100,232 @@ fn Shell(game: Game, game_id: GameID) -> Element {
                 }
             }
 
+            CampaignTreeCard {}
+
             Invitations { game_id }
         }
     }
+}
+
+#[component]
+fn CampaignTreeCard() -> Element {
+    rsx! {
+        div {
+            class: "bg-white rounded-lg shadow-md p-4",
+            h2 {
+                class: "text-lg font-semibold text-gray-800 mb-1",
+                "Campaign"
+            }
+            p {
+                class: "text-sm text-gray-500 mb-3",
+                "Folder tree with scenes, creatures, notes, classes, abilities, and items."
+            }
+            CampaignFolder {
+                path: FolderPath::root(),
+                display_name: "Campaign".to_string(),
+                depth: 0,
+                start_open: true,
+            }
+        }
+    }
+}
+
+#[component]
+fn CampaignFolder(path: FolderPath, display_name: String, depth: usize, start_open: bool) -> Element {
+    let game = GM_GAME();
+    let mut is_expanded = use_signal(move || start_open);
+
+    let folder = match game.campaign.get(&path) {
+        Ok(folder) => folder,
+        Err(_) => {
+            return rsx! {
+                div {
+                    class: "text-sm text-red-600",
+                    "Missing folder at {path}"
+                }
+            };
+        }
+    };
+
+    let mut child_names: Vec<String> = match game.campaign.get_children(&path) {
+        Ok(children) => children.iter().cloned().collect(),
+        Err(_) => Vec::new(),
+    };
+    child_names.sort();
+
+    let note_names = sorted_note_names(folder);
+    let class_names = sorted_class_names(&game, folder);
+    let ability_names = sorted_ability_names(&game, folder);
+    let scene_names = sorted_scene_names(&game, folder);
+    let creature_names = sorted_creature_names(&game, folder);
+    let item_names = sorted_item_names(&game, folder);
+
+    let padding_style = format!("margin-left: {}rem;", depth as f32 * 0.85);
+    let path_key = if path.is_root() {
+        "/".to_string()
+    } else {
+        path.to_string()
+    };
+
+    rsx! {
+        div {
+            class: "space-y-1",
+            style: "{padding_style}",
+
+            button {
+                class: "w-full rounded border border-gray-200 bg-gray-50 px-3 py-2 text-left hover:bg-gray-100",
+                onclick: move |_| is_expanded.toggle(),
+                div {
+                    class: "flex items-center gap-2",
+                    span {
+                        class: "text-xs text-gray-500",
+                        if is_expanded() { "v" } else { ">" }
+                    }
+                    span { class: "text-sm font-medium text-gray-800", "Folder: {display_name}" }
+                }
+            }
+
+            if is_expanded() {
+                div {
+                    class: "ml-2 space-y-2 border-l border-gray-200 pl-3 pb-1",
+
+                    FolderContentSection {
+                        title: "Notes",
+                        icon: "[N]",
+                        names: note_names,
+                    }
+                    FolderContentSection {
+                        title: "Classes",
+                        icon: "[C]",
+                        names: class_names,
+                    }
+                    FolderContentSection {
+                        title: "Abilities",
+                        icon: "[A]",
+                        names: ability_names,
+                    }
+                    FolderContentSection {
+                        title: "Scenes",
+                        icon: "[S]",
+                        names: scene_names,
+                    }
+                    FolderContentSection {
+                        title: "Creatures",
+                        icon: "[R]",
+                        names: creature_names,
+                    }
+                    FolderContentSection {
+                        title: "Items",
+                        icon: "[I]",
+                        names: item_names,
+                    }
+
+                    if !child_names.is_empty() {
+                        div {
+                            class: "pt-1 text-xs font-semibold uppercase tracking-wide text-gray-500",
+                            "Folders"
+                        }
+                    }
+
+                    div {
+                        class: "space-y-1",
+                        for child_name in child_names {
+                            CampaignFolder {
+                                key: "{path_key}/{child_name}",
+                                path: path.child(child_name.clone()),
+                                display_name: child_name,
+                                depth: depth + 1,
+                                start_open: false,
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+#[component]
+fn FolderContentSection(title: &'static str, icon: &'static str, names: Vec<String>) -> Element {
+    if names.is_empty() {
+        return rsx! {};
+    }
+
+    rsx! {
+        div {
+            class: "space-y-1",
+            div {
+                class: "text-xs font-semibold uppercase tracking-wide text-gray-500",
+                "{title}"
+            }
+            div {
+                class: "space-y-1",
+                for (index, name) in names.iter().enumerate() {
+                    div {
+                        key: "{title}-{index}",
+                        class: "text-sm text-gray-700",
+                        "{icon} {name}"
+                    }
+                }
+            }
+        }
+    }
+}
+
+fn sorted_note_names(folder: &Folder) -> Vec<String> {
+    let mut names: Vec<String> = folder.notes.keys().cloned().collect();
+    names.sort();
+    names
+}
+
+fn sorted_scene_names(game: &Game, folder: &Folder) -> Vec<String> {
+    let mut names: Vec<String> = folder
+        .scenes
+        .iter()
+        .filter_map(|id| game.scenes.get(id).map(|scene| scene.name.clone()))
+        .collect();
+    names.sort();
+    names
+}
+
+fn sorted_creature_names(game: &Game, folder: &Folder) -> Vec<String> {
+    let mut names: Vec<String> = folder
+        .creatures
+        .iter()
+        .filter_map(|id| game.creatures.get(id).map(|creature| creature.name.clone()))
+        .collect();
+    names.sort();
+    names
+}
+
+fn sorted_item_names(game: &Game, folder: &Folder) -> Vec<String> {
+    let mut names: Vec<String> = folder
+        .items
+        .iter()
+        .filter_map(|id| game.items.get(id).map(|item| item.name.clone()))
+        .collect();
+    names.sort();
+    names
+}
+
+fn sorted_ability_names(game: &Game, folder: &Folder) -> Vec<String> {
+    let mut names: Vec<String> = folder
+        .abilities
+        .iter()
+        .filter_map(|id| game.abilities.get(id).map(|ability| ability.name.clone()))
+        .collect();
+    names.sort();
+    names
+}
+
+fn sorted_class_names(game: &Game, folder: &Folder) -> Vec<String> {
+    let mut names: Vec<String> = folder
+        .classes
+        .iter()
+        .filter_map(|id| game.classes.get(id).map(|class| class.name.clone()))
+        .collect();
+    names.sort();
+    names
 }
 
 #[component]
