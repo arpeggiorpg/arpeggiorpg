@@ -49,10 +49,12 @@ pub async fn create_game(name: String) -> Result<GameID, anyhow::Error> {
     Ok(resp.game_id)
 }
 
+pub use arptypes::multitenant::InvitationCheck;
+
 pub async fn check_invitation(
     game_id: GameID,
     invitation_id: multitenant::InvitationID,
-) -> Result<bool, anyhow::Error> {
+) -> Result<InvitationCheck, anyhow::Error> {
     rpi_get(&format!("g/invitations/{game_id}/{invitation_id}")).await
 }
 

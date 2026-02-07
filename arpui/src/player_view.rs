@@ -21,7 +21,7 @@ use crate::{
         tabs::{TabContent, TabList, TabTrigger, Tabs},
     },
     grid::{CreatureMenuAction, SceneGrid},
-    rpi::{self, Connector, send_request, use_ws},
+    rpi::{self, Connector, InvitationCheck, send_request, use_ws},
 };
 
 pub static GAME: GlobalSignal<SerializedPlayerGame> = Signal::global(|| Default::default());
@@ -637,8 +637,15 @@ pub fn AcceptInvitationPage(game_id: GameID, invitation_id: InvitationID) -> Ele
     let mut accept_action = use_action(move |name: String| {
         let navigator = navigator.clone();
         async move {
-            rpi::accept_invitation(game_id, invitation_id, name).await?;
-            navigator.push(Route::GameListPage);
+            match rpi::accept_invitation(game_id, invitation_id, name).await {
+                Ok(()) => {
+                    navigator.push(Route::GameListPage);
+                }
+                Err(e) => {
+                    error!(?e, "Failed to accept invitation");
+                    accept_error.set(Some("Something went wrong. Please try again.".to_string()));
+                }
+            }
             Ok::<(), anyhow::Error>(())
         }
     });
@@ -664,7 +671,10 @@ pub fn AcceptInvitationPage(game_id: GameID, invitation_id: InvitationID) -> Ele
                 p { class: "text-red-600", "Error checking invitation: {e}" }
             }
         },
-        Some(Ok(false)) => rsx! {
+        Some(Ok(InvitationCheck {
+            invitation_valid: false,
+            ..
+        })) => rsx! {
             div {
                 class: "flex h-full items-center justify-center",
                 div {
@@ -678,58 +688,118 @@ pub fn AcceptInvitationPage(game_id: GameID, invitation_id: InvitationID) -> Ele
                 }
             }
         },
-        Some(Ok(true)) => rsx! {
-            div {
-                class: "flex h-full items-center justify-center",
+        Some(Ok(
+            check @ InvitationCheck {
+                already_member: true,
+                ..
+            },
+        )) => {
+            let name = check
+                .game_name
+                .clone()
+                .unwrap_or_else(|| "this game".to_string());
+            let game_link =
+                check
+                    .member_profile_name
+                    .as_ref()
+                    .map(|profile_name| Route::PlayerGamePage {
+                        id: game_id,
+                        player_id: profile_name.clone(),
+                    });
+            rsx! {
                 div {
-                    class: "bg-white rounded-lg shadow-md p-6 flex flex-col gap-4",
-                    h2 {
-                        class: "text-lg font-semibold text-gray-800",
-                        "You've been invited!"
-                    }
-                    p {
-                        class: "text-sm text-gray-600",
-                        "Enter a name to join this game as a player."
-                    }
-                    input {
-                        class: "border rounded px-3 py-2 w-full",
-                        r#type: "text",
-                        placeholder: "Your player name",
-                        value: "{profile_name}",
-                        autofocus: true,
-                        oninput: move |evt| profile_name.set(evt.value()),
-                        onkeydown: move |evt| {
-                            if evt.key() == Key::Enter && !accept_action.pending() {
-                                do_accept();
-                            }
-                        },
-                    }
-                    if let Some(err) = accept_error() {
-                        p {
-                            class: "text-red-600 text-sm",
-                            "{err}"
-                        }
-                    }
+                    class: "flex h-full items-center justify-center",
                     div {
-                        class: "flex justify-end gap-2",
-                        Link {
-                            to: Route::GameListPage {},
-                            class: "text-sm text-gray-500 py-2 px-3",
-                            "Cancel"
+                        class: "bg-white rounded-lg shadow-md p-6 flex flex-col gap-4 text-center",
+                        h2 {
+                            class: "text-lg font-semibold text-gray-800",
+                            "Already a member"
                         }
-                        Button {
-                            variant: ButtonVariant::Primary,
-                            disabled: accept_action.pending() || profile_name().trim().is_empty(),
-                            onclick: move |_| do_accept(),
-                            if accept_action.pending() {
-                                "Joining..."
-                            } else {
-                                "Join as a Player"
+                        p {
+                            class: "text-sm text-gray-600",
+                            "You're already a member of {name}."
+                        }
+                        if let Some(route) = game_link {
+                            Link {
+                                to: route,
+                                class: "text-blue-700 text-sm",
+                                "Go to {name} →"
+                            }
+                        } else {
+                            Link {
+                                to: Route::GameListPage {},
+                                class: "text-blue-700 text-sm",
+                                "Go to Game List"
                             }
                         }
                     }
                 }
             }
-        },
+        }
+        Some(Ok(
+            check @ InvitationCheck {
+                invitation_valid: true,
+                already_member: false,
+                ..
+            },
+        )) => {
+            let name = check
+                .game_name
+                .clone()
+                .unwrap_or_else(|| "a game".to_string());
+            rsx! {
+                div {
+                    class: "flex h-full items-center justify-center",
+                    div {
+                        class: "bg-white rounded-lg shadow-md p-6 flex flex-col gap-4",
+                        h2 {
+                            class: "text-lg font-semibold text-gray-800",
+                            "You've been invited to {name}!"
+                        }
+                        p {
+                            class: "text-sm text-gray-600",
+                            "Enter a name to join as a player."
+                        }
+                        input {
+                            class: "border rounded px-3 py-2 w-full",
+                            r#type: "text",
+                            placeholder: "Your player name",
+                            value: "{profile_name}",
+                            autofocus: true,
+                            oninput: move |evt| profile_name.set(evt.value()),
+                            onkeydown: move |evt| {
+                                if evt.key() == Key::Enter && !accept_action.pending() {
+                                    do_accept();
+                                }
+                            },
+                        }
+                        if let Some(err) = accept_error() {
+                            p {
+                                class: "text-red-600 text-sm",
+                                "{err}"
+                            }
+                        }
+                        div {
+                            class: "flex justify-end gap-2",
+                            Link {
+                                to: Route::GameListPage {},
+                                class: "text-sm text-gray-500 py-2 px-3",
+                                "Cancel"
+                            }
+                            Button {
+                                variant: ButtonVariant::Primary,
+                                disabled: accept_action.pending() || profile_name().trim().is_empty(),
+                                onclick: move |_| do_accept(),
+                                if accept_action.pending() {
+                                    "Joining..."
+                                } else {
+                                    "Join as a Player"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 }

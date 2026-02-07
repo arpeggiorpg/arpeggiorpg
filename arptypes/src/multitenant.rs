@@ -84,6 +84,14 @@ pub struct Invitation {
     pub game_id: GameID,
 }
 
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct InvitationCheck {
+    pub invitation_valid: bool,
+    pub already_member: bool,
+    pub game_name: Option<String>,
+    pub member_profile_name: Option<PlayerID>,
+}
+
 #[derive(Clone, Copy, Serialize, Deserialize, Debug, TS, strum::EnumString, strum::Display)]
 #[serde(tag = "t")]
 pub enum ImageType {

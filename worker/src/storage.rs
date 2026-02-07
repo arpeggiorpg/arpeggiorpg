@@ -93,6 +93,26 @@ pub async fn check_game_access(
     statement.first(None).await
 }
 
+pub async fn check_player_membership(
+    env: &Env,
+    user_id: UserID,
+    game_id: GameID,
+) -> worker::Result<Option<PlayerID>> {
+    let db = env.d1("DB")?;
+    let statement = db.prepare(
+        "SELECT profile_name FROM user_games WHERE user_id = ? AND game_id = ? AND role = 'Player' LIMIT 1",
+    );
+    let statement = statement.bind(&[user_id.to_string().into(), game_id.to_string().into()])?;
+
+    #[derive(Deserialize)]
+    struct Row {
+        profile_name: PlayerID,
+    }
+
+    let result: Option<Row> = statement.first(None).await?;
+    Ok(result.map(|r| r.profile_name))
+}
+
 pub async fn create_profile(
     env: &Env,
     game_id: GameID,

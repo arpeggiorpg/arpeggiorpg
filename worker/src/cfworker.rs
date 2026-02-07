@@ -7,7 +7,9 @@ use uuid::Uuid;
 use worker::{event, Context, Cors, Env, Method, Request, Response, Result};
 
 use crate::{rust_error, storage};
-use arptypes::multitenant::{GameID, GameList, GameMetadata, GameProfile, Role, UserID};
+use arptypes::multitenant::{
+    GameID, GameList, GameMetadata, GameProfile, InvitationCheck, Role, UserID,
+};
 
 /// The main cloudflare Worker for Arpeggio. Handles routes for listing &
 /// creating games, etc, and forwarding websockets to the Durable Object.
@@ -70,9 +72,9 @@ async fn http_routes(req: Request, env: Env) -> Result<Response> {
         }
         ["g", "create"] => create_game(req, env, user_id).await,
         ["g", "list"] => list_games(req, env, user_id).await,
-        ["g", "invitations", game_id, _invitation_id] if req.method() == Method::Get => {
+        ["g", "invitations", game_id, invitation_id] if req.method() == Method::Get => {
             let game_id: GameID = game_id.parse().map_err(rust_error)?;
-            forward_to_do(req, env, game_id).await
+            check_invitation(env, user_id, game_id, invitation_id).await
         }
         ["g", "invitations", game_id, invitation_id, "accept"] if req.method() == Method::Post => {
             accept_invitation(req, env, user_id, game_id, invitation_id).await
@@ -186,6 +188,42 @@ async fn superuser_games(env: Env) -> Result<Response> {
         "arpeggiogame_ids": arpeggiogame_ids,
         "arpeggiogame_legacy_ids": arpeggiogame_legacy_ids
     }))
+}
+
+async fn check_invitation(
+    env: Env,
+    user_id: UserID,
+    game_id: GameID,
+    invitation_id: &str,
+) -> Result<Response> {
+    // Check if the invitation exists by forwarding to the DO
+    let stub = durable_object(&env, &game_id.to_string())?;
+    let mut check_response = stub
+        .fetch_with_str(&format!(
+            "https://fake-host/g/invitations/{game_id}/{invitation_id}"
+        ))
+        .await?;
+    let invitation_valid: bool = check_response.json().await?;
+
+    // Check if the user is already a player in this game
+    let member_profile_name = storage::check_player_membership(&env, user_id, game_id)
+        .await
+        .map_err(rust_error)?;
+
+    // Look up the game name
+    let game_name = storage::get_game_metadata(&env, game_id)
+        .await
+        .map_err(rust_error)?
+        .map(|m| m.name);
+
+    let resp = InvitationCheck {
+        invitation_valid,
+        already_member: member_profile_name.is_some(),
+        game_name,
+        member_profile_name,
+    };
+
+    Response::from_json(&resp)
 }
 
 async fn accept_invitation(
