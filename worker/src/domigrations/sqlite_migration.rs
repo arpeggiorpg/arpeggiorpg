@@ -10,6 +10,7 @@ use crate::{
 /// This is not a "normal" migration in that it fetches data from an entirely separate
 /// DurableObject, since switching from KV to SQLite required us to completely recreate our Durable
 /// Objects (very annoyingly).
+#[tracing::instrument(skip(env, state))]
 pub async fn migrate_kv_to_sqlite(env: Env, state: &State, game_id: GameID) -> anyhow::Result<()> {
     let storage = &state.storage();
     let sql = storage.sql();

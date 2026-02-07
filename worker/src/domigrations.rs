@@ -15,7 +15,7 @@ async fn try_get_version(storage: &Storage) -> anyhow::Result<Option<usize>> {
     }
 }
 
-#[tracing::instrument(skip(state))]
+#[tracing::instrument(skip(env, state))]
 pub async fn migrate(env: Env, state: &State, game_id: GameID) -> anyhow::Result<()> {
     let storage = &state.storage();
     let current_version = match try_get_version(storage).await? {
@@ -28,6 +28,7 @@ pub async fn migrate(env: Env, state: &State, game_id: GameID) -> anyhow::Result
     migrate_from(state.storage(), current_version).await
 }
 
+#[tracing::instrument(skip(storage))]
 async fn migrate_from(storage: Storage, current_version: usize) -> anyhow::Result<()> {
     // Rust doesn't allow us to have an array of async function pointers, so... I guess we just have
     // to write some imperative code here instead of iterating through an array of migration
