@@ -8,3 +8,4 @@ artifacts
 rpi/storage
 mprocs.yaml
 assets/*/*.png
+.DS_Store

@@ -10,9 +10,11 @@ use tracing::{error, info};
 
 mod chat;
 mod components;
+mod gm_view;
 mod grid;
 mod player_view;
 mod rpi;
+use gm_view::GMGamePage;
 use player_view::{GAME_NAME, PlayerGamePage};
 use rpi::{AUTH_TOKEN, auth_token, list_games};
 use wasm_cookies::CookieOptions;
@@ -373,21 +375,5 @@ fn CreateGameModal(open: bool, on_close: EventHandler<()>) -> Element {
           }
         }
       }
-    }
-}
-
-#[component]
-fn GMGamePage(id: GameID) -> Element {
-    use_effect(move || *PLAYER_SPEC.write() = Some(PlayerSpec::GM));
-    rsx! {
-      "id: {id:?}"
-      div { "NYI"}
-    }
-}
-
-#[component]
-fn GMGame() -> Element {
-    rsx! {
-      "Hi GM"
     }
 }
