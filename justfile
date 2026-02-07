@@ -34,3 +34,6 @@ create-schema-local:
 
 create-schema-production:
     cd worker; ./node_modules/.bin/wrangler d1 execute DB --file=./schema.sql
+
+worker-tests:
+    curl http://localhost:8787/test
