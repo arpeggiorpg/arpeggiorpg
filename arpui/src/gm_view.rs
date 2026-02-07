@@ -1,7 +1,7 @@
 use std::collections::VecDeque;
 
 use arptypes::{
-    Folder, FolderItemID, GMCommand, Game, GameLog, ModuleSource, SerializedGame,
+    Folder, FolderItemID, GMCommand, Game, GameLog, ModuleSource, SceneID, SerializedGame,
     multitenant::{GameAndMetadata, GameID, GameIndex, InvitationID, RPIGameRequest, Role},
 };
 use dioxus::prelude::*;
@@ -10,7 +10,11 @@ use tracing::{error, info};
 
 use crate::{
     PLAYER_SPEC, PlayerSpec,
-    components::button::{Button, ButtonVariant},
+    components::{
+        button::{Button, ButtonVariant},
+        split_pane::{SplitDirection, SplitPane},
+    },
+    grid::GMSceneGrid,
     player_view::GAME_NAME,
     rpi::{Connector, send_request, use_ws},
 };
@@ -49,9 +53,9 @@ fn GameLoader(game_id: GameID) -> Element {
     });
 
     match &*future.read_unchecked() {
-        Some(Ok(game)) => {
+        Some(Ok(_game)) => {
             rsx! {
-                Shell { game: game.clone(), game_id }
+                Shell { game_id }
             }
         }
         Some(Err(err)) => {
@@ -65,11 +69,18 @@ fn GameLoader(game_id: GameID) -> Element {
 }
 
 #[component]
-fn Shell(game: Game, game_id: GameID) -> Element {
+fn Shell(game_id: GameID) -> Element {
     let game = GM_GAME();
+    let mut selected_scene_id = use_signal(|| game.active_scene);
     let num_scenes = game.scenes.len();
     let num_creatures = game.creatures.len();
     let num_classes = game.classes.len();
+    let shown_scene_id = selected_scene_id().or(game.active_scene);
+    let shown_scene = shown_scene_id.and_then(|sid| game.scenes.get(&sid).cloned());
+    let shown_scene_name = shown_scene
+        .as_ref()
+        .map(|s| s.name.clone())
+        .unwrap_or_else(|| "None".to_string());
     let active_scene_name = game
         .active_scene
         .and_then(|sid| game.scenes.get(&sid))
@@ -78,37 +89,65 @@ fn Shell(game: Game, game_id: GameID) -> Element {
 
     rsx! {
         div {
-            class: "flex flex-col gap-4 p-6",
+            class: "flex h-full w-full",
             div {
-                class: "bg-white rounded-lg shadow-md p-4",
-                h2 {
-                    class: "text-lg font-semibold text-gray-800 mb-3",
-                    "Game Overview"
+                class: "grow min-w-0",
+                GMSceneGrid {
+                    scene: shown_scene
                 }
-                div {
-                    class: "space-y-2 text-sm text-gray-700",
-                    p { "Active Scene: {active_scene_name}" }
-                    p { "Scenes: {num_scenes}" }
-                    p { "Creatures: {num_creatures}" }
-                    p { "Classes: {num_classes}" }
-                    if game.current_combat.is_some() {
-                        p {
-                            class: "font-medium text-blue-700",
-                            "Combat is active"
+            }
+            div {
+                class: "w-[30rem] border-l border-gray-200 bg-white",
+                SplitPane {
+                    direction: SplitDirection::Vertical,
+                    initial_size: 65.0,
+                    first: rsx! {
+                        div {
+                            class: "h-full overflow-y-auto p-4",
+                            CampaignTreeCard {
+                                selected_scene_id: shown_scene_id,
+                                on_select_scene: move |scene_id| selected_scene_id.set(Some(scene_id)),
+                            }
+                        }
+                    },
+                    second: rsx! {
+                        div {
+                            class: "h-full overflow-y-auto p-4 space-y-4",
+                            div {
+                                class: "bg-white rounded-lg shadow-md p-4",
+                                h2 {
+                                    class: "text-lg font-semibold text-gray-800 mb-3",
+                                    "Game Overview"
+                                }
+                                div {
+                                    class: "space-y-2 text-sm text-gray-700",
+                                    p { "Showing Scene: {shown_scene_name}" }
+                                    p { "Active Scene: {active_scene_name}" }
+                                    p { "Scenes: {num_scenes}" }
+                                    p { "Creatures: {num_creatures}" }
+                                    p { "Classes: {num_classes}" }
+                                    if game.current_combat.is_some() {
+                                        p {
+                                            class: "font-medium text-blue-700",
+                                            "Combat is active"
+                                        }
+                                    }
+                                }
+                            }
+                            Invitations { game_id }
                         }
                     }
                 }
             }
-
-            CampaignTreeCard {}
-
-            Invitations { game_id }
         }
     }
 }
 
 #[component]
-fn CampaignTreeCard() -> Element {
+fn CampaignTreeCard(
+    selected_scene_id: Option<SceneID>,
+    on_select_scene: EventHandler<SceneID>,
+) -> Element {
     rsx! {
         div {
             class: "bg-white rounded-lg shadow-md p-4",
@@ -125,13 +164,22 @@ fn CampaignTreeCard() -> Element {
                 display_name: "Campaign".to_string(),
                 depth: 0,
                 start_open: true,
+                selected_scene_id,
+                on_select_scene,
             }
         }
     }
 }
 
 #[component]
-fn CampaignFolder(path: FolderPath, display_name: String, depth: usize, start_open: bool) -> Element {
+fn CampaignFolder(
+    path: FolderPath,
+    display_name: String,
+    depth: usize,
+    start_open: bool,
+    selected_scene_id: Option<SceneID>,
+    on_select_scene: EventHandler<SceneID>,
+) -> Element {
     let game = GM_GAME();
     let mut is_expanded = use_signal(move || start_open);
     let mut show_menu = use_signal(|| false);
@@ -161,7 +209,7 @@ fn CampaignFolder(path: FolderPath, display_name: String, depth: usize, start_op
     let note_names = sorted_note_names(folder);
     let class_names = sorted_class_names(&game, folder);
     let ability_names = sorted_ability_names(&game, folder);
-    let scene_names = sorted_scene_names(&game, folder);
+    let scene_entries = sorted_scene_entries(&game, folder);
     let creature_names = sorted_creature_names(&game, folder);
     let item_names = sorted_item_names(&game, folder);
 
@@ -296,10 +344,10 @@ fn CampaignFolder(path: FolderPath, display_name: String, depth: usize, start_op
                         icon: "[A]",
                         names: ability_names,
                     }
-                    FolderContentSection {
-                        title: "Scenes",
-                        icon: "[S]",
-                        names: scene_names,
+                    SceneContentSection {
+                        scenes: scene_entries,
+                        selected_scene_id,
+                        on_select_scene: on_select_scene.clone(),
                     }
                     FolderContentSection {
                         title: "Creatures",
@@ -328,6 +376,8 @@ fn CampaignFolder(path: FolderPath, display_name: String, depth: usize, start_op
                                 display_name: child_name,
                                 depth: depth + 1,
                                 start_open: false,
+                                selected_scene_id,
+                                on_select_scene: on_select_scene.clone(),
                             }
                         }
                     }
@@ -759,6 +809,53 @@ fn MoveFolderModal(path: FolderPath, on_close: EventHandler<()>) -> Element {
     }
 }
 
+#[derive(Clone, PartialEq)]
+struct SceneEntry {
+    id: SceneID,
+    name: String,
+}
+
+#[component]
+fn SceneContentSection(
+    scenes: Vec<SceneEntry>,
+    selected_scene_id: Option<SceneID>,
+    on_select_scene: EventHandler<SceneID>,
+) -> Element {
+    if scenes.is_empty() {
+        return rsx! {};
+    }
+
+    rsx! {
+        div {
+            class: "space-y-1",
+            div {
+                class: "text-xs font-semibold uppercase tracking-wide text-gray-500",
+                "Scenes"
+            }
+            div {
+                class: "space-y-1",
+                for scene in scenes {
+                    {
+                        let is_selected = selected_scene_id == Some(scene.id);
+                        rsx! {
+                            button {
+                                key: "{scene.id}",
+                                class: if is_selected {
+                                    "block w-full rounded bg-blue-50 px-2 py-1 text-left text-sm text-blue-800"
+                                } else {
+                                    "block w-full rounded px-2 py-1 text-left text-sm text-gray-700 hover:bg-gray-50"
+                                },
+                                onclick: move |_| on_select_scene.call(scene.id),
+                                "[S] {scene.name}"
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
 #[component]
 fn FolderContentSection(title: &'static str, icon: &'static str, names: Vec<String>) -> Element {
     if names.is_empty() {
@@ -792,14 +889,19 @@ fn sorted_note_names(folder: &Folder) -> Vec<String> {
     names
 }
 
-fn sorted_scene_names(game: &Game, folder: &Folder) -> Vec<String> {
-    let mut names: Vec<String> = folder
+fn sorted_scene_entries(game: &Game, folder: &Folder) -> Vec<SceneEntry> {
+    let mut entries: Vec<SceneEntry> = folder
         .scenes
         .iter()
-        .filter_map(|id| game.scenes.get(id).map(|scene| scene.name.clone()))
+        .filter_map(|id| {
+            game.scenes.get(id).map(|scene| SceneEntry {
+                id: scene.id,
+                name: scene.name.clone(),
+            })
+        })
         .collect();
-    names.sort();
-    names
+    entries.sort_by(|a, b| a.name.cmp(&b.name));
+    entries
 }
 
 fn sorted_creature_names(game: &Game, folder: &Folder) -> Vec<String> {

@@ -4,6 +4,7 @@ use dioxus::prelude::*;
 
 use crate::{
     components::creature::ClassIcon,
+    gm_view::GM_GAME,
     grid::svg_pan_zoom::SVGPanZoom,
     player_view::GAME,
     rpi::{send_request, use_ws},
@@ -101,6 +102,42 @@ pub fn SceneGrid(
 }
 
 #[component]
+pub fn GMSceneGrid(scene: Option<Scene>) -> Element {
+    let Some(scene) = scene else {
+        return rsx! {
+            div {
+                class: "w-full h-full flex items-center justify-center text-gray-500",
+                "Select a scene from the Campaign tree."
+            }
+        };
+    };
+
+    rsx! {
+        div {
+            class: "w-full h-full bg-gray-200 relative",
+            SVGPanZoom {
+                class: "w-full h-full",
+                view_box: "-1000 -1000 2000 2000",
+                preserve_aspect_ratio: "xMidYMid slice",
+
+                if !scene.background_image_url.is_empty() {
+                    BackgroundImage { scene: scene.clone() }
+                }
+
+                Terrain {
+                    terrain: scene.terrain.clone(),
+                    has_background_image: !scene.background_image_url.is_empty()
+                }
+
+                GMCreatures {
+                    scene: scene.clone(),
+                }
+            }
+        }
+    }
+}
+
+#[component]
 fn BackgroundImage(scene: Scene) -> Element {
     let (bg_x_scale, bg_y_scale) = scene.background_image_scale;
     let (offset_x, offset_y) = scene.background_image_offset.unwrap_or((0, 0));
@@ -189,6 +226,23 @@ fn Creatures(
 }
 
 #[component]
+fn GMCreatures(scene: Scene) -> Element {
+    rsx! {
+        g {
+            id: "creatures",
+            for (creature_id, (position, visibility)) in &scene.creatures {
+                GMGridCreature {
+                    key: "gm-creature-{creature_id}",
+                    creature_id: *creature_id,
+                    position: *position,
+                    visibility: *visibility,
+                }
+            }
+        }
+    }
+}
+
+#[component]
 fn GridCreature(
     creature_id: CreatureID,
     position: Point3,
@@ -260,6 +314,73 @@ fn GridCreature(
                 }
             } else {
                 // Render creature as colored rectangle with name
+                rect {
+                    x: x,
+                    y: y,
+                    width: width,
+                    height: height,
+                    rx: CORNER_RADIUS,
+                    ry: CORNER_RADIUS,
+                    fill: class_color,
+                    stroke: "black",
+                    stroke_width: "1"
+                }
+                text {
+                    x: x + (width as i64) / 2,
+                    y: y + 20,
+                    font_size: "50",
+                    text_anchor: "middle",
+                    dominant_baseline: "hanging",
+                    style: "pointer-events: none",
+                    fill: "white",
+                    stroke: "black",
+                    stroke_width: "1",
+                    paint_order: "stroke",
+                    {creature.name.chars().take(4).collect::<String>()}
+                }
+            }
+        }
+    }
+}
+
+#[component]
+fn GMGridCreature(creature_id: CreatureID, position: Point3, visibility: Visibility) -> Element {
+    let game = GM_GAME();
+    let Some(creature) = game.creatures.get(&creature_id) else {
+        return rsx! { g {} };
+    };
+
+    let class = game.classes.get(&creature.class);
+    let class_color = class.map(|c| c.color.as_str()).unwrap_or("gray");
+
+    let x = position.x_cm();
+    let y = position.y_cm();
+    let width = creature.size.x_cm();
+    let height = creature.size.y_cm();
+
+    let opacity = match visibility {
+        Visibility::GMOnly => 0.4,
+        _ => 1.0,
+    };
+
+    rsx! {
+        g {
+            opacity: opacity,
+            if !creature.icon_url.is_empty() {
+                image {
+                    href: creature.icon_url.clone(),
+                    width: width,
+                    height: height,
+                    rx: CORNER_RADIUS,
+                    ry: CORNER_RADIUS,
+                    x: x,
+                    y: y,
+                    stroke: "black",
+                    stroke_width: "1",
+                    fill: "white",
+                    fill_opacity: "1"
+                }
+            } else {
                 rect {
                     x: x,
                     y: y,
