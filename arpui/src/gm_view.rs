@@ -1,7 +1,7 @@
 use std::collections::VecDeque;
 
 use arptypes::{
-    Folder, GMCommand, Game, GameLog, ModuleSource, SerializedGame,
+    Folder, FolderItemID, GMCommand, Game, GameLog, ModuleSource, SerializedGame,
     multitenant::{GameAndMetadata, GameID, GameIndex, InvitationID, RPIGameRequest, Role},
 };
 use dioxus::prelude::*;
@@ -136,6 +136,7 @@ fn CampaignFolder(path: FolderPath, display_name: String, depth: usize, start_op
     let mut is_expanded = use_signal(move || start_open);
     let mut show_menu = use_signal(|| false);
     let mut show_import_modal = use_signal(|| false);
+    let mut show_move_modal = use_signal(|| false);
 
     let folder = match game.campaign.get(&path) {
         Ok(folder) => folder,
@@ -201,6 +202,17 @@ fn CampaignFolder(path: FolderPath, display_name: String, depth: usize, start_op
                 if show_menu() {
                     div {
                         class: "absolute right-0 top-full z-10 mt-1 w-48 rounded border border-gray-200 bg-white py-1 shadow-lg",
+                        if !path.is_root() {
+                            button {
+                                class: "block w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-100",
+                                onclick: move |evt: Event<MouseData>| {
+                                    evt.stop_propagation();
+                                    show_menu.set(false);
+                                    show_move_modal.set(true);
+                                },
+                                "Move this folder"
+                            }
+                        }
                         button {
                             class: "block w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-100",
                             onclick: move |evt: Event<MouseData>| {
@@ -218,6 +230,13 @@ fn CampaignFolder(path: FolderPath, display_name: String, depth: usize, start_op
                 ImportModuleModal {
                     path: path.clone(),
                     on_close: move |_| show_import_modal.set(false),
+                }
+            }
+
+            if show_move_modal() {
+                MoveFolderModal {
+                    path: path.clone(),
+                    on_close: move |_| show_move_modal.set(false),
                 }
             }
 
@@ -374,6 +393,152 @@ fn ImportModuleModal(path: FolderPath, on_close: EventHandler<()>) -> Element {
 }
 
 #[component]
+fn MoveFolderModal(path: FolderPath, on_close: EventHandler<()>) -> Element {
+    let ws = use_ws();
+    let game = GM_GAME();
+    let mut search_term = use_signal(String::new);
+    let mut selected_destination = use_signal(|| None::<FolderPath>);
+
+    let source_path_parts = path.up();
+    let folder_name = folder_path_label(&path);
+
+    let mut move_action = use_action({
+        let ws = ws.clone();
+        let on_close = on_close.clone();
+        let source_path_parts = source_path_parts.clone();
+        move |destination: FolderPath| {
+            let ws = ws.clone();
+            let on_close = on_close.clone();
+            let source_path_parts = source_path_parts.clone();
+            async move {
+                let (source, folder_name) = source_path_parts
+                    .clone()
+                    .ok_or_else(|| anyhow::anyhow!("Root folder cannot be moved."))?;
+                let item_id = FolderItemID::SubfolderID(folder_name);
+                let command = GMCommand::MoveFolderItem {
+                    source,
+                    item_id,
+                    destination,
+                };
+                let result = send_request::<Result<Vec<GameLog>, String>>(
+                    RPIGameRequest::GMCommand {
+                        command: Box::new(command),
+                    },
+                    ws,
+                )
+                .await?;
+                result.map_err(anyhow::Error::msg)?;
+                on_close.call(());
+                Ok::<(), anyhow::Error>(())
+            }
+        }
+    });
+
+    let mut all_folders = collect_all_folder_paths(&game);
+    all_folders.sort();
+
+    let search_lower = search_term().to_lowercase();
+    let mut filtered_destinations: Vec<FolderPath> = all_folders
+        .into_iter()
+        .filter(|destination| {
+            let label = folder_path_label(destination).to_lowercase();
+            label.contains(&search_lower)
+        })
+        .collect();
+    if filtered_destinations.len() > 60 {
+        filtered_destinations.truncate(60);
+    }
+
+    rsx! {
+        crate::components::modal::Modal {
+            open: true,
+            on_close: move |_| on_close.call(()),
+            class: "p-6",
+            h3 {
+                class: "text-lg font-semibold text-gray-800 mb-2",
+                "Move Folder"
+            }
+            p {
+                class: "text-sm text-gray-600 mb-4",
+                "Move {folder_name} to a destination folder."
+            }
+
+            input {
+                class: "w-full rounded border border-gray-300 px-3 py-2 text-sm",
+                r#type: "text",
+                placeholder: "Search folders...",
+                value: "{search_term}",
+                oninput: move |evt| search_term.set(evt.value()),
+            }
+
+            div {
+                class: "mt-3 max-h-72 overflow-y-auto rounded border border-gray-200",
+                if filtered_destinations.is_empty() {
+                    div {
+                        class: "px-3 py-2 text-sm text-gray-500",
+                        "No folders match your search."
+                    }
+                } else {
+                    for destination in filtered_destinations {
+                        {
+                            let label = folder_path_label(&destination);
+                            let is_selected = selected_destination()
+                                .as_ref()
+                                .is_some_and(|selected| selected == &destination);
+                            rsx! {
+                                button {
+                                    key: "{label}",
+                                    class: if is_selected {
+                                        "block w-full border-b border-gray-100 bg-blue-50 px-3 py-2 text-left text-sm text-blue-800"
+                                    } else {
+                                        "block w-full border-b border-gray-100 px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
+                                    },
+                                    onclick: move |_| selected_destination.set(Some(destination.clone())),
+                                    "{label}"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            match move_action.value() {
+                Some(Err(err)) => rsx! {
+                    p {
+                        class: "mt-2 text-sm text-red-600",
+                        "Move failed: {err}"
+                    }
+                },
+                _ => rsx! {},
+            }
+
+            div {
+                class: "mt-4 flex justify-end gap-2",
+                Button {
+                    variant: ButtonVariant::Outline,
+                    onclick: move |_| on_close.call(()),
+                    "Cancel"
+                }
+                Button {
+                    variant: ButtonVariant::Primary,
+                    disabled: selected_destination().is_none() || move_action.pending(),
+                    onclick: move |_| {
+                        if let Some(destination) = selected_destination() {
+                            move_action.call(destination);
+                        }
+                    },
+                    if move_action.pending() {
+                        "Moving..."
+                    } else {
+                        "Move"
+                    }
+                }
+            }
+        }
+    }
+}
+
+#[component]
 fn FolderContentSection(title: &'static str, icon: &'static str, names: Vec<String>) -> Element {
     if names.is_empty() {
         return rsx! {};
@@ -492,6 +657,13 @@ fn folder_path_label(path: &FolderPath) -> String {
     } else {
         path.to_string()
     }
+}
+
+fn collect_all_folder_paths(game: &Game) -> Vec<FolderPath> {
+    game.campaign
+        .walk_paths(&FolderPath::root())
+        .cloned()
+        .collect()
 }
 
 #[component]
