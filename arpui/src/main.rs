@@ -1,24 +1,25 @@
 #![allow(non_snake_case)]
 
 use arptypes::{
-    multitenant::{self, GameID, Role},
     PlayerID,
+    multitenant::{self, GameID, Role},
 };
 use dioxus::prelude::*;
 use js_sys::encode_uri_component;
-use tracing::info;
+use tracing::{error, info};
 
 mod chat;
 mod components;
 mod grid;
 mod player_view;
 mod rpi;
-use player_view::{PlayerGamePage, GAME_NAME};
-use rpi::{auth_token, list_games, AUTH_TOKEN};
+use player_view::{GAME_NAME, PlayerGamePage};
+use rpi::{AUTH_TOKEN, auth_token, list_games};
 use wasm_cookies::CookieOptions;
 
 use crate::{
     components::button::{Button, ButtonVariant},
+    components::modal::Modal,
     rpi::rpi_url,
 };
 
@@ -160,6 +161,9 @@ fn GameListPage() -> Element {
 
 #[component]
 fn GameList(list: multitenant::GameList) -> Element {
+    let mut show_create_modal = use_signal(|| false);
+
+    info!(create = ?show_create_modal(), "Showing create modal?");
     let gm_games = list
         .games
         .iter()
@@ -177,6 +181,16 @@ fn GameList(list: multitenant::GameList) -> Element {
             Link { to: Route::GMGamePage {id: profile.game_id}, "{metadata.name} (as {profile.profile_name})"}
           }
         }
+        li {
+          Button {
+            variant: ButtonVariant::Primary,
+            onclick: move |_| {
+              info!("Create New button clicked");
+              show_create_modal.set(true);
+            },
+            "Create New"
+          }
+        }
       }
       h1 { "You are a Player of these games" }
       ul {
@@ -185,6 +199,92 @@ fn GameList(list: multitenant::GameList) -> Element {
             a {
               href: "/{profile.role.to_string().to_lowercase()}/{profile.game_id}/{profile.profile_name}",
               "{metadata.name} (as {profile.profile_name})"
+            }
+          }
+        }
+      }
+
+      CreateGameModal {
+        open: show_create_modal(),
+        on_close: move |_| show_create_modal.set(false),
+      }
+    }
+}
+
+#[component]
+fn CreateGameModal(open: bool, on_close: EventHandler<()>) -> Element {
+    let mut game_name = use_signal(|| "Name of your Game".to_string());
+    let mut error_msg: Signal<Option<String>> = use_signal(|| None);
+    let navigator = navigator();
+
+    info!(?open, "CreateGameModal");
+    let mut create_action = use_action(move |name: String| {
+        let navigator = navigator.clone();
+        async move {
+            match rpi::create_game(name).await {
+                Ok(game_id) => {
+                    on_close.call(());
+                    navigator.push(Route::GMGamePage { id: game_id });
+                }
+                Err(e) => {
+                    error!(?e, "Failed to create game");
+                    error_msg.set(Some(format!("Failed to create game: {e}")));
+                }
+            }
+            Ok::<(), anyhow::Error>(())
+        }
+    });
+
+    let mut do_submit = move || {
+        info!("Create game button clicked, name: {}", game_name());
+        create_action.call(game_name().clone());
+    };
+
+    rsx! {
+      Modal {
+        open,
+        on_close: move |_| on_close.call(()),
+        class: "p-6",
+        h2 {
+          class: "text-lg font-semibold mb-4",
+          "Create Game"
+        }
+        div {
+          class: "flex flex-col gap-4",
+          input {
+            class: "border rounded px-3 py-2 w-full",
+            r#type: "text",
+            value: "{game_name}",
+            autofocus: true,
+            oninput: move |evt| game_name.set(evt.value()),
+            onkeydown: move |evt| {
+              if evt.key() == Key::Enter && !create_action.pending() {
+                do_submit();
+              }
+            },
+          }
+          if let Some(err) = error_msg() {
+            p {
+              class: "text-red-600 text-sm",
+              "{err}"
+            }
+          }
+          div {
+            class: "flex justify-end gap-2",
+            Button {
+              variant: ButtonVariant::Outline,
+              onclick: move |_| on_close.call(()),
+              "Cancel"
+            }
+            Button {
+              variant: ButtonVariant::Primary,
+              disabled: create_action.pending(),
+              onclick: move |_| do_submit(),
+              if create_action.pending() {
+                "Creating..."
+              } else {
+                "Create"
+              }
             }
           }
         }

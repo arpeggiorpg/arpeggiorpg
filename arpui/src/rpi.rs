@@ -40,6 +40,15 @@ pub async fn list_games() -> Result<multitenant::GameList, anyhow::Error> {
     rpi_get("g/list").await
 }
 
+pub async fn create_game(name: String) -> Result<GameID, anyhow::Error> {
+    #[derive(serde::Deserialize)]
+    struct CreateGameResponse {
+        game_id: GameID,
+    }
+    let resp: CreateGameResponse = rpi_post("g/create", &name).await?;
+    Ok(resp.game_id)
+}
+
 type ResponseHandler = Sender<anyhow::Result<serde_json::Value>>;
 type ResponseHandlers = HashMap<uuid::Uuid, ResponseHandler>;
 
@@ -240,6 +249,22 @@ async fn rpi_get<T: serde::de::DeserializeOwned>(path: &str) -> Result<T, anyhow
     let response = client
         .get(url)
         .header("x-arpeggio-auth", AUTH_TOKEN())
+        .send()
+        .await?;
+    response.json().await.map_err(|e| e.into())
+}
+
+async fn rpi_post<B: serde::Serialize, T: serde::de::DeserializeOwned>(
+    path: &str,
+    body: &B,
+) -> Result<T, anyhow::Error> {
+    let rpi_url = rpi_url();
+    let url = format!("{rpi_url}/{path}");
+    let client = reqwest::Client::new();
+    let response = client
+        .post(url)
+        .header("x-arpeggio-auth", AUTH_TOKEN())
+        .json(body)
         .send()
         .await?;
     response.json().await.map_err(|e| e.into())
