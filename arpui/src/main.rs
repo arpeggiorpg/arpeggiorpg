@@ -10,6 +10,7 @@ use tracing::{error, info};
 
 mod chat;
 mod components;
+mod gfx;
 mod gm_view;
 mod grid;
 mod player_view;

@@ -14,7 +14,7 @@ use crate::{
         button::{Button, ButtonVariant},
         split_pane::{SplitDirection, SplitPane},
     },
-    grid::SceneGrid,
+    gfx::dioxus::GMWgpuScenePrototype,
     player_view::GAME_NAME,
     rpi::{Connector, send_request, use_ws},
 };
@@ -110,9 +110,16 @@ fn Shell(game_id: GameID) -> Element {
             class: "flex h-full w-full",
             div {
                 class: "grow min-w-0",
-                SceneGrid {
-                    scene: shown_scene,
-                    get_creature_actions: None,
+                if let Some(scene) = shown_scene {
+                    GMWgpuScenePrototype {
+                        key: "{scene.id}",
+                        scene_id: scene.id,
+                    }
+                } else {
+                    div {
+                        class: "w-full h-full flex items-center justify-center text-gray-500",
+                        "Select a scene."
+                    }
                 }
             }
             div {
