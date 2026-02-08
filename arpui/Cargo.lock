@@ -60,6 +60,7 @@ dependencies = [
 name = "arp3d"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "bytemuck",
  "glam",
  "wgpu",

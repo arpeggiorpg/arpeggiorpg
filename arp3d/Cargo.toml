@@ -7,3 +7,4 @@ edition = "2024"
 wgpu = { version = "26.0.1", features = ["webgl"] }
 glam = "0.30"
 bytemuck = { version = "1.21", features = ["derive"] }
+anyhow = "1.0"

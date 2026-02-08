@@ -210,6 +210,79 @@ impl SceneRenderer {
     }
 }
 
+pub async fn render_scene_on_surface(
+    instance: &wgpu::Instance,
+    surface: &wgpu::Surface<'_>,
+    client_width: u32,
+    client_height: u32,
+    scene: &Scene3d,
+) -> anyhow::Result<(u32, u32)> {
+    let adapter = instance
+        .request_adapter(&wgpu::RequestAdapterOptions {
+            power_preference: wgpu::PowerPreference::default(),
+            compatible_surface: Some(surface),
+            force_fallback_adapter: false,
+        })
+        .await?;
+
+    let (device, queue) = adapter
+        .request_device(&wgpu::DeviceDescriptor {
+            label: Some("Arp3D Device"),
+            required_features: wgpu::Features::empty(),
+            required_limits: wgpu::Limits::downlevel_webgl2_defaults(),
+            memory_hints: Default::default(),
+            trace: Default::default(),
+        })
+        .await?;
+
+    let max_texture_size = device.limits().max_texture_dimension_2d;
+    let width = client_width.min(max_texture_size).max(1);
+    let height = client_height.min(max_texture_size).max(1);
+
+    let surface_caps = surface.get_capabilities(&adapter);
+    let surface_format = surface_caps
+        .formats
+        .iter()
+        .copied()
+        .find(|f| f.is_srgb())
+        .unwrap_or(surface_caps.formats[0]);
+
+    let config = wgpu::SurfaceConfiguration {
+        usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+        format: surface_format,
+        width,
+        height,
+        present_mode: wgpu::PresentMode::AutoVsync,
+        alpha_mode: surface_caps.alpha_modes[0],
+        view_formats: vec![],
+        desired_maximum_frame_latency: 2,
+    };
+    surface.configure(&device, &config);
+
+    let renderer = SceneRenderer::new(&device, &config, scene);
+    let output = match surface.get_current_texture() {
+        Ok(output) => output,
+        Err(wgpu::SurfaceError::Lost | wgpu::SurfaceError::Outdated) => {
+            surface.configure(&device, &config);
+            surface.get_current_texture()?
+        }
+        Err(err) => return Err(anyhow::anyhow!("surface error: {err:?}")),
+    };
+
+    let view = output
+        .texture
+        .create_view(&wgpu::TextureViewDescriptor::default());
+    let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+        label: Some("Arp3D Render Encoder"),
+    });
+
+    renderer.render(&mut encoder, &view);
+    queue.submit(std::iter::once(encoder.finish()));
+    output.present();
+
+    Ok((width, height))
+}
+
 fn build_scene_mesh(scene: &Scene3d) -> (Vec<Vertex>, Vec<u32>, Option<SceneBounds>) {
     let mut vertices = Vec::with_capacity((scene.terrain.len() + scene.creatures.len()) * 24);
     let mut indices = Vec::with_capacity((scene.terrain.len() + scene.creatures.len()) * 36);
