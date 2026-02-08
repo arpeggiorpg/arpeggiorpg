@@ -122,7 +122,7 @@ fn Shell(player_id: PlayerID, scene_id: Option<SceneID>) -> Element {
         }
     }};
     let chat = rsx! {
-        PlayerChat { player_id: player_id.clone() }
+        PlayerChat {}
     };
     let game = use_player_game();
 

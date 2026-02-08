@@ -10,8 +10,10 @@ use tracing::{error, info};
 
 use crate::{
     GAME_SOURCE, GameSource,
+    chat::GMChat,
     components::{
         button::{Button, ButtonVariant},
+        split_pane::{SplitDirection, SplitPane},
         tabs::{TabContent, TabList, TabTrigger, Tabs},
     },
     gfx::dioxus::GMWgpuScenePrototype,
@@ -113,34 +115,48 @@ fn Shell(game_id: GameID) -> Element {
             div {
                 class: "w-[30rem] h-full min-h-0 overflow-hidden border-l border-gray-200 bg-white flex flex-col",
                 style: "min-height: min(800px, 100%);",
-                Tabs {
-                    class: "h-full min-h-0 flex flex-col overflow-hidden".to_string(),
-                    default_value: "campaign".to_string(),
-                    TabList {
-                        TabTrigger { value: "campaign".to_string(), index: 0usize, "Campaign" }
-                        TabTrigger { value: "invitations".to_string(), index: 1usize, "Invitations" }
-                    }
-                    TabContent {
-                        class: "h-full min-h-0 overflow-hidden".to_string(),
-                        index: 0usize,
-                        value: "campaign".to_string(),
-                        div {
-                            class: "h-full min-h-0 overflow-y-auto p-4",
-                            CampaignTreeCard {
-                                selected_scene_id: shown_scene_id,
-                                on_select_scene: move |scene_id| selected_scene_id.set(Some(scene_id)),
+                SplitPane {
+                    direction: SplitDirection::Vertical,
+                    initial_size: 70.0,
+                    min_size: 35.0,
+                    max_size: 90.0,
+                    first: rsx! {
+                        Tabs {
+                            class: "h-full min-h-0 flex flex-col overflow-hidden".to_string(),
+                            default_value: "campaign".to_string(),
+                            TabList {
+                                TabTrigger { value: "campaign".to_string(), index: 0usize, "Campaign" }
+                                TabTrigger { value: "invitations".to_string(), index: 1usize, "Invitations" }
+                            }
+                            TabContent {
+                                class: "h-full min-h-0 overflow-hidden".to_string(),
+                                index: 0usize,
+                                value: "campaign".to_string(),
+                                div {
+                                    class: "h-full min-h-0 overflow-y-auto p-4",
+                                    CampaignTreeCard {
+                                        selected_scene_id: shown_scene_id,
+                                        on_select_scene: move |scene_id| selected_scene_id.set(Some(scene_id)),
+                                    }
+                                }
+                            }
+                            TabContent {
+                                class: "h-full min-h-0 overflow-hidden".to_string(),
+                                index: 1usize,
+                                value: "invitations".to_string(),
+                                div {
+                                    class: "h-full min-h-0 overflow-y-auto p-4",
+                                    Invitations { game_id }
+                                }
                             }
                         }
-                    }
-                    TabContent {
-                        class: "h-full min-h-0 overflow-hidden".to_string(),
-                        index: 1usize,
-                        value: "invitations".to_string(),
+                    },
+                    second: rsx! {
                         div {
-                            class: "h-full min-h-0 overflow-y-auto p-4",
-                            Invitations { game_id }
+                            class: "h-full min-h-0 p-4",
+                            GMChat {}
                         }
-                    }
+                    },
                 }
             }
         }
