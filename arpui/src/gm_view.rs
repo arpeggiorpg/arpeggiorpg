@@ -15,6 +15,7 @@ use crate::{
         tabs::{TabContent, TabList, TabTrigger, Tabs},
     },
     gfx::dioxus::GMWgpuScenePrototype,
+    grid::{CreatureMenuAction, SceneGrid},
     rpi::{Connector, send_request, use_ws},
 };
 
@@ -24,6 +25,12 @@ struct GMGameContext(Memo<Game>);
 fn use_gm_game() -> Game {
     let game = use_context::<GMGameContext>().0;
     game()
+}
+
+#[derive(Clone, Copy, PartialEq)]
+enum GMSceneViewMode {
+    TwoD,
+    ThreeD,
 }
 
 #[component]
@@ -86,23 +93,59 @@ fn GMGameProvider(children: Element) -> Element {
 fn Shell(game_id: GameID) -> Element {
     let game = use_gm_game();
     let mut selected_scene_id = use_signal(|| game.active_scene);
+    let mut scene_view_mode = use_signal(|| GMSceneViewMode::ThreeD);
     let shown_scene_id = selected_scene_id().or(game.active_scene);
     let shown_scene = shown_scene_id.and_then(|sid| game.scenes.get(&sid).cloned());
+    let gm_creature_actions: Option<Callback<arptypes::CreatureID, Vec<CreatureMenuAction>>> =
+        None;
 
     rsx! {
         div {
             class: "flex h-full min-h-0 w-full overflow-hidden",
             div {
-                class: "grow min-h-0 min-w-0",
-                if let Some(scene) = shown_scene {
-                    GMWgpuScenePrototype {
-                        key: "{scene.id}",
-                        scene: scene,
+                class: "grow min-h-0 min-w-0 relative",
+                match scene_view_mode() {
+                    GMSceneViewMode::TwoD => rsx! {
+                        SceneGrid {
+                            scene: shown_scene.clone(),
+                            get_creature_actions: gm_creature_actions,
+                        }
+                    },
+                    GMSceneViewMode::ThreeD => rsx! {
+                        if let Some(scene) = shown_scene.clone() {
+                            GMWgpuScenePrototype {
+                                key: "{scene.id}",
+                                scene: scene,
+                            }
+                        } else {
+                            div {
+                                class: "w-full h-full flex items-center justify-center text-gray-500",
+                                "Select a scene."
+                            }
+                        }
                     }
-                } else {
-                    div {
-                        class: "w-full h-full flex items-center justify-center text-gray-500",
-                        "Select a scene."
+                }
+                div {
+                    class: "absolute top-3 left-3 z-20 inline-flex items-center gap-1 rounded-md border border-gray-300 bg-white/90 p-1 shadow-sm backdrop-blur-sm",
+                    button {
+                        r#type: "button",
+                        class: if scene_view_mode() == GMSceneViewMode::TwoD {
+                            "px-3 py-1 text-sm rounded bg-blue-600 text-white"
+                        } else {
+                            "px-3 py-1 text-sm rounded text-gray-700 hover:bg-gray-100"
+                        },
+                        onclick: move |_| scene_view_mode.set(GMSceneViewMode::TwoD),
+                        "2D"
+                    }
+                    button {
+                        r#type: "button",
+                        class: if scene_view_mode() == GMSceneViewMode::ThreeD {
+                            "px-3 py-1 text-sm rounded bg-blue-600 text-white"
+                        } else {
+                            "px-3 py-1 text-sm rounded text-gray-700 hover:bg-gray-100"
+                        },
+                        onclick: move |_| scene_view_mode.set(GMSceneViewMode::ThreeD),
+                        "3D"
                     }
                 }
             }
