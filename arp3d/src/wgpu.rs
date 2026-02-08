@@ -1,0 +1,635 @@
+use bytemuck::{Pod, Zeroable};
+use glam::{Mat4, Vec3};
+use wgpu::util::DeviceExt;
+
+use crate::Scene3d;
+
+#[repr(C)]
+#[derive(Copy, Clone, Pod, Zeroable)]
+struct Vertex {
+    position: [f32; 3],
+    color: [f32; 3],
+}
+
+impl Vertex {
+    const ATTRIBS: [wgpu::VertexAttribute; 2] =
+        wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x3];
+
+    fn desc() -> wgpu::VertexBufferLayout<'static> {
+        wgpu::VertexBufferLayout {
+            array_stride: std::mem::size_of::<Vertex>() as wgpu::BufferAddress,
+            step_mode: wgpu::VertexStepMode::Vertex,
+            attributes: &Self::ATTRIBS,
+        }
+    }
+}
+
+#[repr(C)]
+#[derive(Copy, Clone, Pod, Zeroable)]
+struct Uniforms {
+    mvp: [[f32; 4]; 4],
+}
+
+#[derive(Clone, Copy)]
+struct SceneBounds {
+    min: Vec3,
+    max: Vec3,
+}
+
+pub struct SceneRenderer {
+    pipeline: wgpu::RenderPipeline,
+    vertex_buffer: wgpu::Buffer,
+    index_buffer: wgpu::Buffer,
+    index_count: u32,
+    _uniform_buffer: wgpu::Buffer,
+    bind_group: wgpu::BindGroup,
+    depth_view: wgpu::TextureView,
+}
+
+impl SceneRenderer {
+    pub fn new(device: &wgpu::Device, config: &wgpu::SurfaceConfiguration, scene: &Scene3d) -> Self {
+        let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+            label: Some("Arp3D Scene Shader"),
+            source: wgpu::ShaderSource::Wgsl(SHADER_SOURCE.into()),
+        });
+
+        let (mut vertices, mut indices, bounds) = build_scene_mesh(scene);
+        if vertices.is_empty() {
+            vertices.push(Vertex {
+                position: [0.0, 0.0, 0.0],
+                color: [0.0, 0.0, 0.0],
+            });
+        }
+        if indices.is_empty() {
+            indices.push(0);
+        }
+
+        let index_count = if scene.terrain.is_empty() && scene.creatures.is_empty() {
+            0
+        } else {
+            indices.len() as u32
+        };
+
+        let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Arp3D Vertex Buffer"),
+            contents: bytemuck::cast_slice(&vertices),
+            usage: wgpu::BufferUsages::VERTEX,
+        });
+        let index_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Arp3D Index Buffer"),
+            contents: bytemuck::cast_slice(&indices),
+            usage: wgpu::BufferUsages::INDEX,
+        });
+
+        let uniforms = Uniforms {
+            mvp: scene_mvp(config.width, config.height, bounds).to_cols_array_2d(),
+        };
+        let uniform_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Arp3D Uniform Buffer"),
+            contents: bytemuck::cast_slice(&[uniforms]),
+            usage: wgpu::BufferUsages::UNIFORM,
+        });
+
+        let bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("Arp3D Bind Group Layout"),
+            entries: &[wgpu::BindGroupLayoutEntry {
+                binding: 0,
+                visibility: wgpu::ShaderStages::VERTEX,
+                ty: wgpu::BindingType::Buffer {
+                    ty: wgpu::BufferBindingType::Uniform,
+                    has_dynamic_offset: false,
+                    min_binding_size: None,
+                },
+                count: None,
+            }],
+        });
+        let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("Arp3D Bind Group"),
+            layout: &bind_group_layout,
+            entries: &[wgpu::BindGroupEntry {
+                binding: 0,
+                resource: uniform_buffer.as_entire_binding(),
+            }],
+        });
+
+        let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: Some("Arp3D Pipeline Layout"),
+            bind_group_layouts: &[&bind_group_layout],
+            push_constant_ranges: &[],
+        });
+
+        let depth_texture = create_depth_texture(device, config);
+        let depth_view = depth_texture.create_view(&wgpu::TextureViewDescriptor::default());
+
+        let pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+            label: Some("Arp3D Render Pipeline"),
+            layout: Some(&pipeline_layout),
+            vertex: wgpu::VertexState {
+                module: &shader,
+                entry_point: Some("vs_main"),
+                buffers: &[Vertex::desc()],
+                compilation_options: Default::default(),
+            },
+            fragment: Some(wgpu::FragmentState {
+                module: &shader,
+                entry_point: Some("fs_main"),
+                targets: &[Some(wgpu::ColorTargetState {
+                    format: config.format,
+                    blend: Some(wgpu::BlendState::REPLACE),
+                    write_mask: wgpu::ColorWrites::ALL,
+                })],
+                compilation_options: Default::default(),
+            }),
+            primitive: wgpu::PrimitiveState {
+                topology: wgpu::PrimitiveTopology::TriangleList,
+                strip_index_format: None,
+                front_face: wgpu::FrontFace::Ccw,
+                cull_mode: Some(wgpu::Face::Back),
+                polygon_mode: wgpu::PolygonMode::Fill,
+                unclipped_depth: false,
+                conservative: false,
+            },
+            depth_stencil: Some(wgpu::DepthStencilState {
+                format: wgpu::TextureFormat::Depth24Plus,
+                depth_write_enabled: true,
+                depth_compare: wgpu::CompareFunction::Less,
+                stencil: wgpu::StencilState::default(),
+                bias: wgpu::DepthBiasState::default(),
+            }),
+            multisample: wgpu::MultisampleState::default(),
+            multiview: None,
+            cache: None,
+        });
+
+        Self {
+            pipeline,
+            vertex_buffer,
+            index_buffer,
+            index_count,
+            _uniform_buffer: uniform_buffer,
+            bind_group,
+            depth_view,
+        }
+    }
+
+    pub fn render(&self, encoder: &mut wgpu::CommandEncoder, target_view: &wgpu::TextureView) {
+        let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            label: Some("Arp3D Render Pass"),
+            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                view: target_view,
+                resolve_target: None,
+                ops: wgpu::Operations {
+                    load: wgpu::LoadOp::Clear(wgpu::Color {
+                        r: 0.08,
+                        g: 0.09,
+                        b: 0.12,
+                        a: 1.0,
+                    }),
+                    store: wgpu::StoreOp::Store,
+                },
+                depth_slice: None,
+            })],
+            depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                view: &self.depth_view,
+                depth_ops: Some(wgpu::Operations {
+                    load: wgpu::LoadOp::Clear(1.0),
+                    store: wgpu::StoreOp::Store,
+                }),
+                stencil_ops: None,
+            }),
+            timestamp_writes: None,
+            occlusion_query_set: None,
+        });
+        render_pass.set_pipeline(&self.pipeline);
+        render_pass.set_bind_group(0, &self.bind_group, &[]);
+        render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
+        render_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
+        if self.index_count > 0 {
+            render_pass.draw_indexed(0..self.index_count, 0, 0..1);
+        }
+    }
+}
+
+pub async fn render_scene_on_surface(
+    instance: &wgpu::Instance,
+    surface: &wgpu::Surface<'_>,
+    client_width: u32,
+    client_height: u32,
+    scene: &Scene3d,
+) -> anyhow::Result<(u32, u32)> {
+    let adapter = instance
+        .request_adapter(&wgpu::RequestAdapterOptions {
+            power_preference: wgpu::PowerPreference::default(),
+            compatible_surface: Some(surface),
+            force_fallback_adapter: false,
+        })
+        .await?;
+
+    let (device, queue) = adapter
+        .request_device(&wgpu::DeviceDescriptor {
+            label: Some("Arp3D Device"),
+            required_features: wgpu::Features::empty(),
+            required_limits: wgpu::Limits::downlevel_webgl2_defaults(),
+            memory_hints: Default::default(),
+            trace: Default::default(),
+        })
+        .await?;
+
+    let max_texture_size = device.limits().max_texture_dimension_2d;
+    let width = client_width.min(max_texture_size).max(1);
+    let height = client_height.min(max_texture_size).max(1);
+
+    let surface_caps = surface.get_capabilities(&adapter);
+    let surface_format = surface_caps
+        .formats
+        .iter()
+        .copied()
+        .find(|f| f.is_srgb())
+        .unwrap_or(surface_caps.formats[0]);
+
+    let config = wgpu::SurfaceConfiguration {
+        usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+        format: surface_format,
+        width,
+        height,
+        present_mode: wgpu::PresentMode::AutoVsync,
+        alpha_mode: surface_caps.alpha_modes[0],
+        view_formats: vec![],
+        desired_maximum_frame_latency: 2,
+    };
+    surface.configure(&device, &config);
+
+    let renderer = SceneRenderer::new(&device, &config, scene);
+    let output = match surface.get_current_texture() {
+        Ok(output) => output,
+        Err(wgpu::SurfaceError::Lost | wgpu::SurfaceError::Outdated) => {
+            surface.configure(&device, &config);
+            surface.get_current_texture()?
+        }
+        Err(err) => return Err(anyhow::anyhow!("surface error: {err:?}")),
+    };
+
+    let view = output
+        .texture
+        .create_view(&wgpu::TextureViewDescriptor::default());
+    let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+        label: Some("Arp3D Render Encoder"),
+    });
+
+    renderer.render(&mut encoder, &view);
+    queue.submit(std::iter::once(encoder.finish()));
+    output.present();
+
+    Ok((width, height))
+}
+
+fn build_scene_mesh(scene: &Scene3d) -> (Vec<Vertex>, Vec<u32>, Option<SceneBounds>) {
+    let mut vertices = Vec::with_capacity((scene.terrain.len() + scene.creatures.len()) * 24);
+    let mut indices = Vec::with_capacity((scene.terrain.len() + scene.creatures.len()) * 36);
+    let mut bounds: Option<SceneBounds> = None;
+
+    for tile in &scene.terrain {
+        let min = Vec3::new(tile.x, tile.y, tile.z);
+        let max = min + Vec3::ONE;
+        append_cube(
+            &mut vertices,
+            &mut indices,
+            min,
+            max,
+            [0.36, 0.73, 0.31],
+            [0.62, 0.48, 0.30],
+            [0.50, 0.38, 0.24],
+            [0.22, 0.18, 0.14],
+        );
+        bounds = merge_bounds(bounds, min, max);
+    }
+
+    for creature in &scene.creatures {
+        let (model_min, model_max) = append_creature_model(&mut vertices, &mut indices, *creature);
+        bounds = merge_bounds(bounds, model_min, model_max);
+    }
+
+    (vertices, indices, bounds)
+}
+
+fn merge_bounds(existing: Option<SceneBounds>, min: Vec3, max: Vec3) -> Option<SceneBounds> {
+    Some(match existing {
+        Some(current) => SceneBounds {
+            min: current.min.min(min),
+            max: current.max.max(max),
+        },
+        None => SceneBounds { min, max },
+    })
+}
+
+fn append_cube(
+    vertices: &mut Vec<Vertex>,
+    indices: &mut Vec<u32>,
+    min: Vec3,
+    max: Vec3,
+    top: [f32; 3],
+    side_light: [f32; 3],
+    side_dark: [f32; 3],
+    bottom: [f32; 3],
+) {
+    let x0 = min.x;
+    let y0 = min.y;
+    let z0 = min.z;
+    let x1 = max.x;
+    let y1 = max.y;
+    let z1 = max.z;
+
+    push_quad(
+        vertices,
+        indices,
+        Vec3::new(x0, y1, z0),
+        Vec3::new(x1, y1, z0),
+        Vec3::new(x1, y1, z1),
+        Vec3::new(x0, y1, z1),
+        top,
+    );
+    push_quad(
+        vertices,
+        indices,
+        Vec3::new(x0, y0, z0),
+        Vec3::new(x1, y0, z0),
+        Vec3::new(x1, y0, z1),
+        Vec3::new(x0, y0, z1),
+        bottom,
+    );
+    push_quad(
+        vertices,
+        indices,
+        Vec3::new(x1, y0, z0),
+        Vec3::new(x1, y0, z1),
+        Vec3::new(x1, y1, z1),
+        Vec3::new(x1, y1, z0),
+        side_light,
+    );
+    push_quad(
+        vertices,
+        indices,
+        Vec3::new(x0, y0, z0),
+        Vec3::new(x0, y0, z1),
+        Vec3::new(x0, y1, z1),
+        Vec3::new(x0, y1, z0),
+        side_dark,
+    );
+    push_quad(
+        vertices,
+        indices,
+        Vec3::new(x0, y0, z1),
+        Vec3::new(x0, y1, z1),
+        Vec3::new(x1, y1, z1),
+        Vec3::new(x1, y0, z1),
+        side_light,
+    );
+    push_quad(
+        vertices,
+        indices,
+        Vec3::new(x0, y0, z0),
+        Vec3::new(x0, y1, z0),
+        Vec3::new(x1, y1, z0),
+        Vec3::new(x1, y0, z0),
+        side_dark,
+    );
+}
+
+fn push_quad(
+    vertices: &mut Vec<Vertex>,
+    indices: &mut Vec<u32>,
+    p0: Vec3,
+    p1: Vec3,
+    p2: Vec3,
+    p3: Vec3,
+    color: [f32; 3],
+) {
+    let base = vertices.len() as u32;
+    vertices.push(Vertex {
+        position: p0.to_array(),
+        color,
+    });
+    vertices.push(Vertex {
+        position: p1.to_array(),
+        color,
+    });
+    vertices.push(Vertex {
+        position: p2.to_array(),
+        color,
+    });
+    vertices.push(Vertex {
+        position: p3.to_array(),
+        color,
+    });
+
+    indices.extend_from_slice(&[base, base + 3, base + 1, base + 1, base + 3, base + 2]);
+}
+
+fn append_creature_model(
+    vertices: &mut Vec<Vertex>,
+    indices: &mut Vec<u32>,
+    creature: crate::Creature3d,
+) -> (Vec3, Vec3) {
+    let footprint_x = creature.size_x.max(0.55);
+    let footprint_z = creature.size_z.max(0.55);
+    let height = creature.size_y.max(1.3);
+
+    let center_x = creature.x + footprint_x * 0.5;
+    let center_z = creature.z + footprint_z * 0.5;
+    let base_y = creature.y;
+
+    let leg_height = height * 0.42;
+    let torso_height = height * 0.36;
+    let head_height = height * 0.22;
+    let arm_height = torso_height * 0.88;
+
+    let leg_width = (footprint_x * 0.22).clamp(0.14, 0.28);
+    let leg_depth = (footprint_z * 0.22).clamp(0.14, 0.28);
+    let leg_gap = leg_width * 0.40;
+
+    let torso_width = (footprint_x * 0.52).clamp(0.24, 0.44);
+    let torso_depth = (footprint_z * 0.34).clamp(0.18, 0.32);
+
+    let arm_width = (leg_width * 0.90).clamp(0.12, 0.22);
+    let arm_depth = (leg_depth * 0.90).clamp(0.12, 0.22);
+    let arm_offset = torso_width * 0.5 + arm_width * 0.5 + 0.02;
+
+    let head_width = (torso_width * 0.95).clamp(0.22, 0.40);
+    let head_depth = (torso_depth * 0.95).clamp(0.18, 0.30);
+
+    let mut bounds_min = Vec3::splat(f32::INFINITY);
+    let mut bounds_max = Vec3::splat(f32::NEG_INFINITY);
+
+    let mut push_part = |min: Vec3,
+                         max: Vec3,
+                         top: [f32; 3],
+                         side_light: [f32; 3],
+                         side_dark: [f32; 3],
+                         bottom: [f32; 3]| {
+        append_cube(vertices, indices, min, max, top, side_light, side_dark, bottom);
+        bounds_min = bounds_min.min(min);
+        bounds_max = bounds_max.max(max);
+    };
+
+    // Legs
+    let leg_left_center_x = center_x - (leg_width * 0.5 + leg_gap * 0.5);
+    let leg_right_center_x = center_x + (leg_width * 0.5 + leg_gap * 0.5);
+    for leg_center_x in [leg_left_center_x, leg_right_center_x] {
+        push_part(
+            Vec3::new(
+                leg_center_x - leg_width * 0.5,
+                base_y,
+                center_z - leg_depth * 0.5,
+            ),
+            Vec3::new(
+                leg_center_x + leg_width * 0.5,
+                base_y + leg_height,
+                center_z + leg_depth * 0.5,
+            ),
+            [0.22, 0.33, 0.80],
+            [0.27, 0.38, 0.85],
+            [0.18, 0.27, 0.70],
+            [0.12, 0.18, 0.45],
+        );
+    }
+
+    let torso_min_y = base_y + leg_height;
+    let torso_max_y = torso_min_y + torso_height;
+    push_part(
+        Vec3::new(
+            center_x - torso_width * 0.5,
+            torso_min_y,
+            center_z - torso_depth * 0.5,
+        ),
+        Vec3::new(
+            center_x + torso_width * 0.5,
+            torso_max_y,
+            center_z + torso_depth * 0.5,
+        ),
+        [0.18, 0.58, 0.82],
+        [0.22, 0.64, 0.88],
+        [0.14, 0.46, 0.68],
+        [0.10, 0.32, 0.48],
+    );
+
+    let arm_min_y = torso_min_y + torso_height * 0.08;
+    let arm_max_y = arm_min_y + arm_height;
+    for arm_center_x in [center_x - arm_offset, center_x + arm_offset] {
+        push_part(
+            Vec3::new(
+                arm_center_x - arm_width * 0.5,
+                arm_min_y,
+                center_z - arm_depth * 0.5,
+            ),
+            Vec3::new(
+                arm_center_x + arm_width * 0.5,
+                arm_max_y,
+                center_z + arm_depth * 0.5,
+            ),
+            [0.85, 0.67, 0.54],
+            [0.90, 0.72, 0.58],
+            [0.76, 0.57, 0.45],
+            [0.62, 0.47, 0.38],
+        );
+    }
+
+    let head_min_y = torso_max_y;
+    let head_max_y = head_min_y + head_height;
+    push_part(
+        Vec3::new(
+            center_x - head_width * 0.5,
+            head_min_y,
+            center_z - head_depth * 0.5,
+        ),
+        Vec3::new(
+            center_x + head_width * 0.5,
+            head_max_y,
+            center_z + head_depth * 0.5,
+        ),
+        [0.91, 0.74, 0.60],
+        [0.96, 0.78, 0.64],
+        [0.81, 0.63, 0.50],
+        [0.66, 0.51, 0.40],
+    );
+
+    (bounds_min, bounds_max)
+}
+
+fn scene_mvp(width: u32, height: u32, bounds: Option<SceneBounds>) -> Mat4 {
+    let vfov = std::f32::consts::FRAC_PI_4;
+    let aspect = width.max(1) as f32 / height.max(1) as f32;
+
+    if let Some(bounds) = bounds {
+        let center = (bounds.min + bounds.max) * 0.5;
+        let extent = bounds.max - bounds.min;
+        let radius = (extent.length() * 0.5).max(1.0);
+
+        let hfov = 2.0 * ((vfov * 0.5).tan() * aspect).atan();
+        let limiting_fov = vfov.min(hfov).max(0.25);
+        let distance = (radius / (limiting_fov * 0.5).tan()) * 1.35;
+
+        let eye_dir = Vec3::new(1.0, 1.25, 1.0).normalize();
+        let eye = center + eye_dir * distance;
+        let view = Mat4::look_at_rh(eye, center, Vec3::Y);
+        let near = (distance - radius * 2.2).max(0.1);
+        let far = distance + radius * 3.0 + 50.0;
+        let proj = Mat4::perspective_rh(vfov, aspect, near, far);
+        proj * view
+    } else {
+        let view = Mat4::look_at_rh(Vec3::new(2.2, 2.2, 2.2), Vec3::ZERO, Vec3::Y);
+        let proj = Mat4::perspective_rh(vfov, aspect, 0.1, 100.0);
+        proj * view
+    }
+}
+
+fn create_depth_texture(
+    device: &wgpu::Device,
+    config: &wgpu::SurfaceConfiguration,
+) -> wgpu::Texture {
+    device.create_texture(&wgpu::TextureDescriptor {
+        label: Some("Arp3D Depth Texture"),
+        size: wgpu::Extent3d {
+            width: config.width,
+            height: config.height,
+            depth_or_array_layers: 1,
+        },
+        mip_level_count: 1,
+        sample_count: 1,
+        dimension: wgpu::TextureDimension::D2,
+        format: wgpu::TextureFormat::Depth24Plus,
+        usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+        view_formats: &[],
+    })
+}
+
+const SHADER_SOURCE: &str = r#"
+struct Uniforms {
+    mvp: mat4x4<f32>,
+}
+
+@group(0) @binding(0)
+var<uniform> uniforms: Uniforms;
+
+struct VertexInput {
+    @location(0) position: vec3<f32>,
+    @location(1) color: vec3<f32>,
+}
+
+struct VertexOutput {
+    @builtin(position) clip_position: vec4<f32>,
+    @location(0) color: vec3<f32>,
+}
+
+@vertex
+fn vs_main(in: VertexInput) -> VertexOutput {
+    var out: VertexOutput;
+    out.clip_position = uniforms.mvp * vec4<f32>(in.position, 1.0);
+    out.color = in.color;
+    return out;
+}
+
+@fragment
+fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
+    return vec4<f32>(in.color, 1.0);
+}
+"#;

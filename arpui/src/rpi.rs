@@ -16,7 +16,7 @@ use arptypes::{
     Game, GameLog, SerializedGame, SerializedPlayerGame,
     multitenant::{self, GameID, GameIndex, RPIGameRequest, Role},
 };
-use crate::{GAME_SOURCE, GameSource};
+use crate::{GAME_LOGS, GAME_SOURCE, GameSource};
 
 pub static AUTH_TOKEN: GlobalSignal<String> = Signal::global(String::new);
 
@@ -80,7 +80,6 @@ pub fn Connector(
     role: Role,
     game_id: GameID,
     player_id: Option<arptypes::PlayerID>,
-    game_logs_signal: Signal<VecDeque<(GameIndex, GameLog)>>,
     children: Element,
 ) -> Element {
     // let connection_count = use_signal(|| 0);
@@ -105,7 +104,6 @@ pub fn Connector(
                     websocket_rx,
                     receiver_response_handlers,
                     player_id.clone(),
-                    game_logs_signal,
                 )
                 .await;
                 match result {
@@ -144,7 +142,6 @@ async fn ws_receiver(
     mut websocket_rx: futures::stream::SplitStream<WebSocket>,
     receiver_response_handlers: Rc<RefCell<ResponseHandlers>>,
     player_id: Option<arptypes::PlayerID>,
-    game_logs_signal: Signal<VecDeque<(GameIndex, GameLog)>>,
 ) -> anyhow::Result<()> {
     while let Some(message) = websocket_rx.try_next().await? {
         match message {
@@ -171,7 +168,7 @@ async fn ws_receiver(
                         warn!(?id, ?json, "Got result for unexpected ID");
                     }
                 } else {
-                    handle_unsolicited(json, player_id.clone(), game_logs_signal)?;
+                    handle_unsolicited(json, player_id.clone())?;
                 }
             }
             Message::Binary(vecu8) => info!(?vecu8, "WS Binary Message"),
@@ -183,7 +180,6 @@ async fn ws_receiver(
 fn handle_unsolicited(
     json: serde_json::Value,
     player_id: Option<arptypes::PlayerID>,
-    mut game_logs_signal: Signal<VecDeque<(GameIndex, GameLog)>>,
 ) -> anyhow::Result<()> {
     if json.get("t") == Some(&serde_json::Value::String("refresh_game".to_string())) {
         let game_json = json
@@ -196,7 +192,7 @@ fn handle_unsolicited(
         let mut logs: VecDeque<(GameIndex, GameLog)> = serde_json::from_value(logs_json.clone())?;
         let game = Game::from_serialized_game(game);
         *GAME_SOURCE.write() = GameSource::GM(game);
-        game_logs_signal.write().append(&mut logs);
+        GAME_LOGS.write().append(&mut logs);
     } else if json.get("t")
         == Some(&serde_json::Value::String(
             "refresh_player_game".to_string(),
@@ -212,7 +208,7 @@ fn handle_unsolicited(
         let mut logs: VecDeque<(GameIndex, GameLog)> = serde_json::from_value(logs_json.clone())?;
         let player_id = player_id.unwrap_or(arptypes::PlayerID(String::new()));
         *GAME_SOURCE.write() = GameSource::Player { player_id, game };
-        game_logs_signal.write().append(&mut logs);
+        GAME_LOGS.write().append(&mut logs);
     } else {
         warn!(?json, "Unknown unsolicited message");
     }

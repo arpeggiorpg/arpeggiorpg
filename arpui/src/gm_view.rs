@@ -1,25 +1,23 @@
-use std::collections::VecDeque;
-
 use arptypes::{
     Folder, FolderItemID, GMCommand, Game, GameLog, ModuleSource, SceneID, SerializedGame,
-    multitenant::{GameAndMetadata, GameID, GameIndex, InvitationID, RPIGameRequest, Role},
+    multitenant::{GameAndMetadata, GameID, InvitationID, RPIGameRequest, Role},
 };
 use dioxus::prelude::*;
 use foldertree::FolderPath;
 use tracing::{error, info};
 
 use crate::{
-    GAME_SOURCE, GameSource,
+    GAME_LOGS, GAME_NAME, GAME_SOURCE, GameSource,
+    chat::GMChat,
     components::{
         button::{Button, ButtonVariant},
         split_pane::{SplitDirection, SplitPane},
+        tabs::{TabContent, TabList, TabTrigger, Tabs},
     },
-    grid::SceneGrid,
-    player_view::GAME_NAME,
+    gfx::dioxus::GMWgpuScenePrototype,
+    grid::{CreatureMenuAction, SceneGrid},
     rpi::{Connector, send_request, use_ws},
 };
-pub static GM_GAME_LOGS: GlobalSignal<VecDeque<(GameIndex, GameLog)>> =
-    Signal::global(|| VecDeque::new());
 
 #[derive(Clone, Copy)]
 struct GMGameContext(Memo<Game>);
@@ -29,6 +27,12 @@ fn use_gm_game() -> Game {
     game()
 }
 
+#[derive(Clone, Copy, PartialEq)]
+enum GMSceneViewMode {
+    TwoD,
+    ThreeD,
+}
+
 #[component]
 pub fn GMGamePage(id: GameID) -> Element {
     rsx! {
@@ -36,7 +40,6 @@ pub fn GMGamePage(id: GameID) -> Element {
             role: Role::GM,
             game_id: id,
             player_id: None,
-            game_logs_signal: GM_GAME_LOGS.resolve(),
 
             GameLoader { game_id: id }
         }
@@ -51,7 +54,7 @@ fn GameLoader(game_id: GameID) -> Element {
         let response = send_request::<GameAndMetadata>(RPIGameRequest::GMGetGame, ws).await?;
         let game = Game::from_serialized_game(response.game);
         *GAME_SOURCE.write() = GameSource::GM(game.clone());
-        *GM_GAME_LOGS.write() = response.logs;
+        *GAME_LOGS.write() = response.logs;
         *GAME_NAME.write() = response.metadata.name.clone();
         Ok(game)
     });
@@ -90,72 +93,107 @@ fn GMGameProvider(children: Element) -> Element {
 fn Shell(game_id: GameID) -> Element {
     let game = use_gm_game();
     let mut selected_scene_id = use_signal(|| game.active_scene);
-    let num_scenes = game.scenes.len();
-    let num_creatures = game.creatures.len();
-    let num_classes = game.classes.len();
+    let mut scene_view_mode = use_signal(|| GMSceneViewMode::ThreeD);
     let shown_scene_id = selected_scene_id().or(game.active_scene);
     let shown_scene = shown_scene_id.and_then(|sid| game.scenes.get(&sid).cloned());
-    let shown_scene_name = shown_scene
-        .as_ref()
-        .map(|s| s.name.clone())
-        .unwrap_or_else(|| "None".to_string());
-    let active_scene_name = game
-        .active_scene
-        .and_then(|sid| game.scenes.get(&sid))
-        .map(|s| s.name.clone())
-        .unwrap_or_else(|| "None".to_string());
+    let gm_creature_actions: Option<Callback<arptypes::CreatureID, Vec<CreatureMenuAction>>> =
+        None;
 
     rsx! {
         div {
-            class: "flex h-full w-full",
+            class: "flex h-full min-h-0 w-full overflow-hidden",
             div {
-                class: "grow min-w-0",
-                SceneGrid {
-                    scene: shown_scene,
-                    get_creature_actions: None,
+                class: "grow min-h-0 min-w-0 relative",
+                match scene_view_mode() {
+                    GMSceneViewMode::TwoD => rsx! {
+                        SceneGrid {
+                            scene: shown_scene.clone(),
+                            get_creature_actions: gm_creature_actions,
+                        }
+                    },
+                    GMSceneViewMode::ThreeD => rsx! {
+                        if let Some(scene) = shown_scene.clone() {
+                            GMWgpuScenePrototype {
+                                key: "{scene.id}",
+                                scene: scene,
+                            }
+                        } else {
+                            div {
+                                class: "w-full h-full flex items-center justify-center text-gray-500",
+                                "Select a scene."
+                            }
+                        }
+                    }
+                }
+                div {
+                    class: "absolute top-3 left-3 z-20 inline-flex items-center gap-1 rounded-md border border-gray-300 bg-white/90 p-1 shadow-sm backdrop-blur-sm",
+                    button {
+                        r#type: "button",
+                        class: if scene_view_mode() == GMSceneViewMode::TwoD {
+                            "px-3 py-1 text-sm rounded bg-blue-600 text-white"
+                        } else {
+                            "px-3 py-1 text-sm rounded text-gray-700 hover:bg-gray-100"
+                        },
+                        onclick: move |_| scene_view_mode.set(GMSceneViewMode::TwoD),
+                        "2D"
+                    }
+                    button {
+                        r#type: "button",
+                        class: if scene_view_mode() == GMSceneViewMode::ThreeD {
+                            "px-3 py-1 text-sm rounded bg-blue-600 text-white"
+                        } else {
+                            "px-3 py-1 text-sm rounded text-gray-700 hover:bg-gray-100"
+                        },
+                        onclick: move |_| scene_view_mode.set(GMSceneViewMode::ThreeD),
+                        "3D"
+                    }
                 }
             }
             div {
-                class: "w-[30rem] border-l border-gray-200 bg-white",
+                class: "w-[30rem] h-full min-h-0 overflow-hidden border-l border-gray-200 bg-white flex flex-col",
+                style: "min-height: min(800px, 100%);",
                 SplitPane {
                     direction: SplitDirection::Vertical,
-                    initial_size: 65.0,
+                    initial_size: 70.0,
+                    min_size: 35.0,
+                    max_size: 90.0,
                     first: rsx! {
-                        div {
-                            class: "h-full overflow-y-auto p-4",
-                            CampaignTreeCard {
-                                selected_scene_id: shown_scene_id,
-                                on_select_scene: move |scene_id| selected_scene_id.set(Some(scene_id)),
+                        Tabs {
+                            class: "h-full min-h-0 flex flex-col overflow-hidden".to_string(),
+                            default_value: "campaign".to_string(),
+                            TabList {
+                                TabTrigger { value: "campaign".to_string(), index: 0usize, "Campaign" }
+                                TabTrigger { value: "invitations".to_string(), index: 1usize, "Invitations" }
+                            }
+                            TabContent {
+                                class: "h-full min-h-0 overflow-hidden".to_string(),
+                                index: 0usize,
+                                value: "campaign".to_string(),
+                                div {
+                                    class: "h-full min-h-0 overflow-y-auto p-4",
+                                    CampaignTreeCard {
+                                        selected_scene_id: shown_scene_id,
+                                        on_select_scene: move |scene_id| selected_scene_id.set(Some(scene_id)),
+                                    }
+                                }
+                            }
+                            TabContent {
+                                class: "h-full min-h-0 overflow-hidden".to_string(),
+                                index: 1usize,
+                                value: "invitations".to_string(),
+                                div {
+                                    class: "h-full min-h-0 overflow-y-auto p-4",
+                                    Invitations { game_id }
+                                }
                             }
                         }
                     },
                     second: rsx! {
                         div {
-                            class: "h-full overflow-y-auto p-4 space-y-4",
-                            div {
-                                class: "bg-white rounded-lg shadow-md p-4",
-                                h2 {
-                                    class: "text-lg font-semibold text-gray-800 mb-3",
-                                    "Game Overview"
-                                }
-                                div {
-                                    class: "space-y-2 text-sm text-gray-700",
-                                    p { "Showing Scene: {shown_scene_name}" }
-                                    p { "Active Scene: {active_scene_name}" }
-                                    p { "Scenes: {num_scenes}" }
-                                    p { "Creatures: {num_creatures}" }
-                                    p { "Classes: {num_classes}" }
-                                    if game.current_combat.is_some() {
-                                        p {
-                                            class: "font-medium text-blue-700",
-                                            "Combat is active"
-                                        }
-                                    }
-                                }
-                            }
-                            Invitations { game_id }
+                            class: "h-full min-h-0 p-4",
+                            GMChat {}
                         }
-                    }
+                    },
                 }
             }
         }

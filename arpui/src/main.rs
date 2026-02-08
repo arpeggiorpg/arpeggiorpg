@@ -1,8 +1,10 @@
 #![allow(non_snake_case)]
 
+use std::collections::VecDeque;
+
 use arptypes::{
-    Game, PlayerID, SerializedPlayerGame,
-    multitenant::{self, GameID, InvitationID, Role},
+    Game, GameLog, PlayerID, SerializedPlayerGame,
+    multitenant::{self, GameID, GameIndex, InvitationID, Role},
 };
 use dioxus::prelude::*;
 use js_sys::encode_uri_component;
@@ -10,12 +12,13 @@ use tracing::{error, info};
 
 mod chat;
 mod components;
+mod gfx;
 mod gm_view;
 mod grid;
 mod player_view;
 mod rpi;
 use gm_view::GMGamePage;
-use player_view::{AcceptInvitationPage, GAME_NAME, PlayerGamePage};
+use player_view::{AcceptInvitationPage, PlayerGamePage};
 use rpi::{AUTH_TOKEN, auth_token, list_games};
 use wasm_cookies::CookieOptions;
 
@@ -29,6 +32,9 @@ const GOOGLE_CLIENT_ID: &str =
     "328154234071-c7una5er0n385sdgvih81ngbkgp1l7nj.apps.googleusercontent.com";
 
 pub static GAME_SOURCE: GlobalSignal<GameSource> = Signal::global(GameSource::default);
+pub static GAME_LOGS: GlobalSignal<VecDeque<(GameIndex, GameLog)>> =
+    Signal::global(|| VecDeque::new());
+pub static GAME_NAME: GlobalSignal<String> = Signal::global(|| String::new());
 
 #[derive(Clone, PartialEq)]
 pub enum GameSource {
@@ -107,7 +113,7 @@ fn AuthRequiredLayout() -> Element {
     rsx! {
       if !has_auth_token {
         div {
-          class: "flex h-full items-center justify-center",
+          class: "flex h-screen items-center justify-center",
           div {
             class: "flex flex-col items-center gap-4",
             h1 {
@@ -130,7 +136,7 @@ fn AuthRequiredLayout() -> Element {
         }
       } else {
         div {
-          class: "flex h-full flex-col",
+          class: "flex h-screen min-h-0 flex-col overflow-hidden",
           div {
             class: "flex items-center justify-between px-4 py-2 border-b border-gray-200 bg-white",
             h1 {
@@ -158,7 +164,7 @@ fn AuthRequiredLayout() -> Element {
             }
           }
           div {
-            class: "flex-1 overflow-y-auto",
+            class: "flex-1 min-h-0 overflow-y-auto",
             Outlet::<Route> {}
           }
         }

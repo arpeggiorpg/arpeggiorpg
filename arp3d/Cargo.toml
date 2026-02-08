@@ -1,0 +1,10 @@
+[package]
+name = "arp3d"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+wgpu = { version = "26.0.1", features = ["webgl"] }
+glam = "0.30"
+bytemuck = { version = "1.21", features = ["derive"] }
+anyhow = "1.0"

@@ -1,6 +1,6 @@
 [workspace]
 members = ["foldertree", "indexed", "nonempty", "arpeggio", "worker", "arptypes"]
-exclude = ["arpui"]
+exclude = ["arpui", "arp3d"]
 resolver = "2"
 
 [workspace.lints.clippy]
