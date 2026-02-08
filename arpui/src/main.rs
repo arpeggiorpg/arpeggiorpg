@@ -108,7 +108,7 @@ fn AuthRequiredLayout() -> Element {
     rsx! {
       if !has_auth_token {
         div {
-          class: "flex h-full items-center justify-center",
+          class: "flex h-screen items-center justify-center",
           div {
             class: "flex flex-col items-center gap-4",
             h1 {
@@ -131,7 +131,7 @@ fn AuthRequiredLayout() -> Element {
         }
       } else {
         div {
-          class: "flex h-full flex-col",
+          class: "flex h-screen min-h-0 flex-col overflow-hidden",
           div {
             class: "flex items-center justify-between px-4 py-2 border-b border-gray-200 bg-white",
             h1 {
@@ -159,7 +159,7 @@ fn AuthRequiredLayout() -> Element {
             }
           }
           div {
-            class: "flex-1 overflow-y-auto",
+            class: "flex-1 min-h-0 overflow-y-auto",
             Outlet::<Route> {}
           }
         }

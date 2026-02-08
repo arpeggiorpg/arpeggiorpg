@@ -12,7 +12,7 @@ use crate::{
     GAME_SOURCE, GameSource,
     components::{
         button::{Button, ButtonVariant},
-        split_pane::{SplitDirection, SplitPane},
+        tabs::{TabContent, TabList, TabTrigger, Tabs},
     },
     gfx::dioxus::GMWgpuScenePrototype,
     player_view::GAME_NAME,
@@ -90,26 +90,14 @@ fn GMGameProvider(children: Element) -> Element {
 fn Shell(game_id: GameID) -> Element {
     let game = use_gm_game();
     let mut selected_scene_id = use_signal(|| game.active_scene);
-    let num_scenes = game.scenes.len();
-    let num_creatures = game.creatures.len();
-    let num_classes = game.classes.len();
     let shown_scene_id = selected_scene_id().or(game.active_scene);
     let shown_scene = shown_scene_id.and_then(|sid| game.scenes.get(&sid).cloned());
-    let shown_scene_name = shown_scene
-        .as_ref()
-        .map(|s| s.name.clone())
-        .unwrap_or_else(|| "None".to_string());
-    let active_scene_name = game
-        .active_scene
-        .and_then(|sid| game.scenes.get(&sid))
-        .map(|s| s.name.clone())
-        .unwrap_or_else(|| "None".to_string());
 
     rsx! {
         div {
-            class: "flex h-full w-full",
+            class: "flex h-full min-h-0 w-full overflow-hidden",
             div {
-                class: "grow min-w-0",
+                class: "grow min-h-0 min-w-0",
                 if let Some(scene) = shown_scene {
                     GMWgpuScenePrototype {
                         key: "{scene.id}",
@@ -123,43 +111,33 @@ fn Shell(game_id: GameID) -> Element {
                 }
             }
             div {
-                class: "w-[30rem] border-l border-gray-200 bg-white",
-                SplitPane {
-                    direction: SplitDirection::Vertical,
-                    initial_size: 65.0,
-                    first: rsx! {
+                class: "w-[30rem] h-full min-h-0 overflow-hidden border-l border-gray-200 bg-white flex flex-col",
+                style: "min-height: min(800px, 100%);",
+                Tabs {
+                    class: "h-full min-h-0 flex flex-col overflow-hidden".to_string(),
+                    default_value: "campaign".to_string(),
+                    TabList {
+                        TabTrigger { value: "campaign".to_string(), index: 0usize, "Campaign" }
+                        TabTrigger { value: "invitations".to_string(), index: 1usize, "Invitations" }
+                    }
+                    TabContent {
+                        class: "h-full min-h-0 overflow-hidden".to_string(),
+                        index: 0usize,
+                        value: "campaign".to_string(),
                         div {
-                            class: "h-full overflow-y-auto p-4",
+                            class: "h-full min-h-0 overflow-y-auto p-4",
                             CampaignTreeCard {
                                 selected_scene_id: shown_scene_id,
                                 on_select_scene: move |scene_id| selected_scene_id.set(Some(scene_id)),
                             }
                         }
-                    },
-                    second: rsx! {
+                    }
+                    TabContent {
+                        class: "h-full min-h-0 overflow-hidden".to_string(),
+                        index: 1usize,
+                        value: "invitations".to_string(),
                         div {
-                            class: "h-full overflow-y-auto p-4 space-y-4",
-                            div {
-                                class: "bg-white rounded-lg shadow-md p-4",
-                                h2 {
-                                    class: "text-lg font-semibold text-gray-800 mb-3",
-                                    "Game Overview"
-                                }
-                                div {
-                                    class: "space-y-2 text-sm text-gray-700",
-                                    p { "Showing Scene: {shown_scene_name}" }
-                                    p { "Active Scene: {active_scene_name}" }
-                                    p { "Scenes: {num_scenes}" }
-                                    p { "Creatures: {num_creatures}" }
-                                    p { "Classes: {num_classes}" }
-                                    if game.current_combat.is_some() {
-                                        p {
-                                            class: "font-medium text-blue-700",
-                                            "Combat is active"
-                                        }
-                                    }
-                                }
-                            }
+                            class: "h-full min-h-0 overflow-y-auto p-4",
                             Invitations { game_id }
                         }
                     }
