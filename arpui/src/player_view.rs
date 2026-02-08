@@ -11,6 +11,7 @@ use foldertree::FolderPath;
 use tracing::{error, info};
 
 use crate::{
+    GAME_SOURCE, GameSource,
     PLAYER_SPEC, PlayerSpec, Route,
     chat::PlayerChat,
     components::{
@@ -20,14 +21,20 @@ use crate::{
         split_pane::{SplitDirection, SplitPane},
         tabs::{TabContent, TabList, TabTrigger, Tabs},
     },
-    grid::{CreatureMenuAction, GridGameSource, SceneGrid},
+    grid::{CreatureMenuAction, SceneGrid},
     rpi::{self, Connector, InvitationCheck, send_request, use_ws},
 };
 
-pub static GAME: GlobalSignal<SerializedPlayerGame> = Signal::global(|| Default::default());
 pub static GAME_LOGS: GlobalSignal<VecDeque<(GameIndex, GameLog)>> =
     Signal::global(|| VecDeque::new());
 pub static GAME_NAME: GlobalSignal<String> = Signal::global(|| String::new());
+
+fn player_game() -> SerializedPlayerGame {
+    match GAME_SOURCE() {
+        GameSource::Player(game) => game,
+        GameSource::GM(_) => Default::default(),
+    }
+}
 
 #[component]
 pub fn PlayerGamePage(id: GameID, player_id: PlayerID) -> Element {
@@ -39,8 +46,6 @@ pub fn PlayerGamePage(id: GameID, player_id: PlayerID) -> Element {
       Connector {
         role: Role::Player,
         game_id: id,
-        game_signal: None,
-        player_game_signal: Some(GAME.resolve()),
         game_logs_signal: GAME_LOGS.resolve(),
 
         GameLoader { player_id }
@@ -55,7 +60,7 @@ fn GameLoader(player_id: PlayerID) -> Element {
         info!("fetching game state for player view");
         let response =
             send_request::<PlayerGameAndMetadata>(RPIGameRequest::PlayerGetGame, ws).await?;
-        *GAME.write() = response.game.clone();
+        *GAME_SOURCE.write() = GameSource::Player(response.game.clone());
         *GAME_LOGS.write() = response.logs;
         *GAME_NAME.write() = response.metadata.name.clone();
         Ok(response.game)
@@ -100,7 +105,7 @@ fn Shell(player_id: PlayerID, scene_id: Option<SceneID>) -> Element {
     let chat = rsx! {
         PlayerChat { player_id: player_id.clone() }
     };
-    let game = GAME();
+    let game = player_game();
 
     let get_creature_actions = move |creature_id| {
         if let Some(player) = game.players.get(&player_id) {
@@ -118,7 +123,6 @@ fn Shell(player_id: PlayerID, scene_id: Option<SceneID>) -> Element {
           class: "player-view-shell__main grow",
             SceneGrid {
                 scene: game.active_scene,
-                game_source: GridGameSource::Player(GAME.resolve()),
                 get_creature_actions: get_creature_actions,
             }
         }
@@ -136,7 +140,7 @@ fn Shell(player_id: PlayerID, scene_id: Option<SceneID>) -> Element {
 
 #[component]
 fn Creatures(player_id: PlayerID) -> Element {
-    let game = GAME.read();
+    let game = player_game();
 
     if let Some(player) = game.players.get(&player_id) {
         if player.creatures.is_empty() {
@@ -189,7 +193,7 @@ fn Notes(player_id: PlayerID) -> Element {
     let mut draft_content = use_signal(|| String::new());
     let ws = use_ws();
 
-    let game = GAME.read();
+    let game = player_game();
     let existing_note = game.notes.get("Scratch").cloned();
 
     // Initialize draft content from existing note on first load
@@ -305,7 +309,7 @@ fn CollapsibleInventory(creature: SerializedCreature) -> Element {
 
 #[component]
 fn CreatureInventory(creature: SerializedCreature) -> Element {
-    let game = GAME.read();
+    let game = player_game();
 
     // Get items from creature's inventory
     let mut inventory_items: Vec<(Item, u64)> = creature
@@ -519,7 +523,7 @@ fn GiveItemModal(
     });
 
     // Get other creatures in the scene that are visible to the player
-    let game = GAME.read();
+    let game = player_game();
     let available_recipients: Vec<SerializedCreature> = {
         // Find which player owns this creature
 

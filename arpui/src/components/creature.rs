@@ -1,11 +1,11 @@
 use arptypes::{
-    AbilityID, Action, AppliedCondition, ClassID, Condition, CreatureEffect, CreatureTarget, Dice,
-    Duration, SceneEffect, SceneTarget, SerializedCreature, Volume,
+    Ability, AbilityID, Action, AppliedCondition, Class, ClassID, Condition, CreatureEffect,
+    CreatureTarget, Dice, Duration, SceneEffect, SceneTarget, SerializedCreature, Volume,
 };
 use dioxus::prelude::*;
 
 use crate::components::tooltip::{Tooltip, TooltipDirection};
-use crate::player_view::GAME;
+use crate::{GAME_SOURCE, GameSource};
 
 #[component]
 pub fn CreatureCard(creature: SerializedCreature) -> Element {
@@ -64,8 +64,7 @@ pub fn CreatureCard(creature: SerializedCreature) -> Element {
 #[component]
 pub fn CreatureIcon(creature: SerializedCreature, size: Option<u32>) -> Element {
     let size = size.unwrap_or(50);
-    let game = GAME.read();
-    let class_color = game.classes.get(&creature.class).map(|c| c.color.clone());
+    let class_color = class_by_id(&creature.class).map(|c| c.color.clone());
 
     if !creature.icon_url.is_empty() {
         rsx! {
@@ -100,8 +99,7 @@ pub fn SquareImageIcon(url: String, size: Option<u32>) -> Element {
 
 #[component]
 pub fn ClassIcon(class_id: ClassID) -> Element {
-    let game = GAME.read();
-    let class = game.classes.get(&class_id);
+    let class = class_by_id(&class_id);
 
     if let Some(class) = class {
         let emoji = class.emoji.as_deref().unwrap_or("🧑‍🎓");
@@ -234,8 +232,7 @@ fn append_activate_ability_details(
     indent: usize,
     lines: &mut Vec<(usize, String)>,
 ) {
-    let game = GAME.read();
-    if let Some(ability) = game.abilities.get(ability_id) {
+    if let Some(ability) = ability_by_id(ability_id) {
         lines.push((indent, format!("Activates ability: {}", ability.name)));
         lines.push((indent + 1, format!("Energy cost: {}", ability.cost.0)));
         lines.push((
@@ -255,6 +252,20 @@ fn append_activate_ability_details(
                 ability_id
             ),
         ));
+    }
+}
+
+fn class_by_id(class_id: &ClassID) -> Option<Class> {
+    match GAME_SOURCE() {
+        GameSource::Player(game) => game.classes.get(class_id).cloned(),
+        GameSource::GM(game) => game.classes.get(class_id).cloned(),
+    }
+}
+
+fn ability_by_id(ability_id: &AbilityID) -> Option<Ability> {
+    match GAME_SOURCE() {
+        GameSource::Player(game) => game.abilities.get(ability_id).cloned(),
+        GameSource::GM(game) => game.abilities.get(ability_id).cloned(),
     }
 }
 

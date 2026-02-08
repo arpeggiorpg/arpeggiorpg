@@ -5,7 +5,8 @@ use dioxus::prelude::*;
 use tracing::warn;
 
 use crate::{
-    player_view::{GAME, GAME_LOGS},
+    GAME_SOURCE, GameSource,
+    player_view::GAME_LOGS,
     rpi::{send_request, use_ws},
 };
 
@@ -116,12 +117,19 @@ fn render_chat_log(log: &GameLog) -> Option<Element> {
 }
 
 fn render_creature_log(creature_id: &CreatureID, log: &CreatureLog) -> Option<Element> {
-    let game = GAME.read();
-    let creature_name = game
-        .creatures
-        .get(creature_id)
-        .map(|c| c.name.clone())
-        .unwrap_or_else(|| creature_id.to_string());
+    let game_source = GAME_SOURCE();
+    let creature_name = match &game_source {
+        GameSource::Player(game) => game
+            .creatures
+            .get(creature_id)
+            .map(|c| c.name.clone())
+            .unwrap_or_else(|| creature_id.to_string()),
+        GameSource::GM(game) => game
+            .creatures
+            .get(creature_id)
+            .map(|c| c.name.clone())
+            .unwrap_or_else(|| creature_id.to_string()),
+    };
 
     let log_message = match log {
         CreatureLog::Damage { hp, rolls } => {

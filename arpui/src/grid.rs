@@ -3,9 +3,9 @@ mod svg_pan_zoom;
 use dioxus::prelude::*;
 
 use crate::{
+    GAME_SOURCE, GameSource,
     components::creature::ClassIcon,
     grid::svg_pan_zoom::SVGPanZoom,
-    player_view::GAME,
     rpi::{send_request, use_ws},
 };
 use arptypes::{multitenant::RPIGameRequest, *};
@@ -16,56 +16,49 @@ const CORNER_RADIUS: f64 = 5.0;
 pub static MOVEMENT_OPTIONS: GlobalSignal<Option<(CreatureID, Vec<Point3>)>> =
     Signal::global(|| None);
 
-#[derive(Clone, Copy, PartialEq)]
-pub enum GridGameSource {
-    Player(Signal<SerializedPlayerGame>),
-    GM(Signal<Game>),
+fn source_creature(game_source: &GameSource, creature_id: CreatureID) -> Option<Creature> {
+    match game_source {
+        GameSource::Player(game) => game
+            .creatures
+            .get(&creature_id)
+            .cloned()
+            .map(Creature::from_serialized_creature),
+        GameSource::GM(game) => game.creatures.get(&creature_id).cloned(),
+    }
 }
 
-impl GridGameSource {
-    fn creature(&self, creature_id: CreatureID) -> Option<Creature> {
-        match self {
-            GridGameSource::Player(game_signal) => {
-                let game = game_signal();
-                let creature = game.creatures.get(&creature_id)?;
-                Some(Creature::from_serialized_creature(creature.clone()))
-            }
-            GridGameSource::GM(game_signal) => {
-                let game = game_signal();
-                let creature = game.creatures.get(&creature_id)?;
-                Some(creature.clone())
-            }
-        }
-    }
-
-    fn class_color(&self, class_id: ClassID) -> String {
-        let classes = match self {
-            GridGameSource::Player(game_signal) => game_signal().classes,
-            GridGameSource::GM(game_signal) => game_signal().classes,
-        };
-        classes
+fn source_class_color(game_source: &GameSource, class_id: ClassID) -> String {
+    match game_source {
+        GameSource::Player(game) => game
+            .classes
             .get(&class_id)
             .map(|c| c.color.clone())
-            .unwrap_or_else(|| "gray".to_string())
+            .unwrap_or_else(|| "gray".to_string()),
+        GameSource::GM(game) => game
+            .classes
+            .get(&class_id)
+            .map(|c| c.color.clone())
+            .unwrap_or_else(|| "gray".to_string()),
     }
 }
 
 #[component]
 pub fn SceneGrid(
     scene: Option<Scene>,
-    game_source: GridGameSource,
     get_creature_actions: Option<Callback<CreatureID, Vec<CreatureMenuAction>>>,
 ) -> Element {
+    let game_source = GAME_SOURCE();
     let mut selected_creature_id = use_signal(|| None::<CreatureID>);
     let mut menu_position = use_signal(|| None::<(f64, f64)>);
+    let can_interact_with_creatures = get_creature_actions.is_some();
 
     let Some(scene) = scene else {
         return rsx! {
             div {
                 class: "w-full h-full flex items-center justify-center text-gray-500",
                 match game_source {
-                    GridGameSource::GM(_) => "Select a scene.",
-                    GridGameSource::Player(_) => "Ask your GM to put you in a scene.",
+                    GameSource::GM(_) => "Select a scene.",
+                    GameSource::Player(_) => "Ask your GM to put you in a scene.",
 
                 }
             }
@@ -92,19 +85,21 @@ pub fn SceneGrid(
                 }
 
                 // Movement options (walkable tiles)
-                if let Some((creature_id, options)) = MOVEMENT_OPTIONS() {
-                    MovementOptions {
-                        options: options,
-                        on_tile_click: move |destination| async move {
-                            *MOVEMENT_OPTIONS.write() = None;
-                            let ws = use_ws();
-                            let request = RPIGameRequest::PlayerCommand {
-                                command: PlayerCommand::PathCreature {
-                                    creature_id,
-                                    destination,
-                                },
-                            };
-                            let _ = send_request::<()>(request, ws).await;
+                if can_interact_with_creatures {
+                    if let Some((creature_id, options)) = MOVEMENT_OPTIONS() {
+                        MovementOptions {
+                            options: options,
+                            on_tile_click: move |destination| async move {
+                                *MOVEMENT_OPTIONS.write() = None;
+                                let ws = use_ws();
+                                let request = RPIGameRequest::PlayerCommand {
+                                    command: PlayerCommand::PathCreature {
+                                        creature_id,
+                                        destination,
+                                    },
+                                };
+                                let _ = send_request::<()>(request, ws).await;
+                            }
                         }
                     }
                 }
@@ -113,6 +108,7 @@ pub fn SceneGrid(
                 Creatures {
                     scene: scene.clone(),
                     game_source,
+                    can_interact_with_creatures,
                     selected_creature_id: selected_creature_id(),
                     on_creature_click: move |(creature_id, x, y)| {
                         selected_creature_id.set(Some(creature_id));
@@ -210,7 +206,8 @@ fn TerrainTile(point: Point3, color: String) -> Element {
 #[component]
 fn Creatures(
     scene: Scene,
-    game_source: GridGameSource,
+    game_source: GameSource,
+    can_interact_with_creatures: bool,
     selected_creature_id: Option<CreatureID>,
     on_creature_click: EventHandler<(CreatureID, f64, f64)>,
 ) -> Element {
@@ -220,11 +217,12 @@ fn Creatures(
             for (creature_id, (position, visibility)) in &scene.creatures {
                 GridCreature {
                     key: "creature-{creature_id}",
-                    game_source,
+                    game_source: game_source.clone(),
                     creature_id: *creature_id,
                     position: *position,
                     visibility: *visibility,
                     selected: selected_creature_id == Some(*creature_id),
+                    can_interact_with_creatures,
                     on_click: on_creature_click
                 }
             }
@@ -234,18 +232,20 @@ fn Creatures(
 
 #[component]
 fn GridCreature(
-    game_source: GridGameSource,
+    game_source: GameSource,
     creature_id: CreatureID,
     position: Point3,
     visibility: Visibility,
     selected: bool,
+    can_interact_with_creatures: bool,
     on_click: EventHandler<(CreatureID, f64, f64)>,
 ) -> Element {
-    let Some(creature) = game_source.creature(creature_id) else {
+    let _ = selected;
+    let Some(creature) = source_creature(&game_source, creature_id) else {
         return rsx! { g {} }; // Empty group if creature not found
     };
 
-    let class_color = game_source.class_color(creature.class);
+    let class_color = source_class_color(&game_source, creature.class);
 
     let x = position.x_cm();
     let y = position.y_cm();
@@ -260,6 +260,9 @@ fn GridCreature(
     };
 
     let handle_click = move |evt: Event<MouseData>| {
+        if !can_interact_with_creatures {
+            return;
+        }
         evt.stop_propagation();
         let page_x = evt.page_coordinates().x;
         let page_y = evt.page_coordinates().y;
@@ -271,7 +274,11 @@ fn GridCreature(
     rsx! {
         g {
             opacity: opacity,
-            style: "cursor: pointer",
+            style: if can_interact_with_creatures {
+                "cursor: pointer"
+            } else {
+                "cursor: default"
+            },
             onclick: handle_click,
 
             if !creature.icon_url.is_empty() {
@@ -356,8 +363,17 @@ fn CreatureMenu(
         on_close.call(());
     };
 
-    let game = GAME();
-    let Some(creature) = game.creatures.get(&creature_id) else {
+    let game_source = GAME_SOURCE();
+    let Some((creature_name, creature_class)) = (match &game_source {
+        GameSource::Player(game) => game
+            .creatures
+            .get(&creature_id)
+            .map(|creature| (creature.name.clone(), creature.class)),
+        GameSource::GM(game) => game
+            .creatures
+            .get(&creature_id)
+            .map(|creature| (creature.name.clone(), creature.class)),
+    }) else {
         return rsx! {};
     };
     rsx! {
@@ -373,9 +389,9 @@ fn CreatureMenu(
             role: "menu",
 
             div {
-                ClassIcon { class_id: creature.class }
+                ClassIcon { class_id: creature_class }
                 span { class: "font-bold",
-                    "{creature.name}"
+                    "{creature_name}"
                 }
             }
 

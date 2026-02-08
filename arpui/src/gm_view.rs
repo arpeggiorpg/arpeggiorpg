@@ -9,19 +9,25 @@ use foldertree::FolderPath;
 use tracing::{error, info};
 
 use crate::{
+    GAME_SOURCE, GameSource,
     PLAYER_SPEC, PlayerSpec,
     components::{
         button::{Button, ButtonVariant},
         split_pane::{SplitDirection, SplitPane},
     },
-    grid::{GridGameSource, SceneGrid},
+    grid::SceneGrid,
     player_view::GAME_NAME,
     rpi::{Connector, send_request, use_ws},
 };
-
-pub static GM_GAME: GlobalSignal<Game> = Signal::global(|| Default::default());
 pub static GM_GAME_LOGS: GlobalSignal<VecDeque<(GameIndex, GameLog)>> =
     Signal::global(|| VecDeque::new());
+
+fn gm_game() -> Game {
+    match GAME_SOURCE() {
+        GameSource::GM(game) => game,
+        GameSource::Player(_) => Default::default(),
+    }
+}
 
 #[component]
 pub fn GMGamePage(id: GameID) -> Element {
@@ -30,8 +36,6 @@ pub fn GMGamePage(id: GameID) -> Element {
         Connector {
             role: Role::GM,
             game_id: id,
-            game_signal: Some(GM_GAME.resolve()),
-            player_game_signal: None,
             game_logs_signal: GM_GAME_LOGS.resolve(),
 
             GameLoader { game_id: id }
@@ -46,7 +50,7 @@ fn GameLoader(game_id: GameID) -> Element {
         info!("fetching game state for GM view");
         let response = send_request::<GameAndMetadata>(RPIGameRequest::GMGetGame, ws).await?;
         let game = Game::from_serialized_game(response.game);
-        *GM_GAME.write() = game.clone();
+        *GAME_SOURCE.write() = GameSource::GM(game.clone());
         *GM_GAME_LOGS.write() = response.logs;
         *GAME_NAME.write() = response.metadata.name.clone();
         Ok(game)
@@ -70,7 +74,7 @@ fn GameLoader(game_id: GameID) -> Element {
 
 #[component]
 fn Shell(game_id: GameID) -> Element {
-    let game = GM_GAME();
+    let game = gm_game();
     let mut selected_scene_id = use_signal(|| game.active_scene);
     let num_scenes = game.scenes.len();
     let num_creatures = game.creatures.len();
@@ -94,7 +98,6 @@ fn Shell(game_id: GameID) -> Element {
                 class: "grow min-w-0",
                 SceneGrid {
                     scene: shown_scene,
-                    game_source: GridGameSource::GM(GM_GAME.resolve()),
                     get_creature_actions: None,
                 }
             }
@@ -182,7 +185,7 @@ fn CampaignFolder(
     selected_scene_id: Option<SceneID>,
     on_select_scene: EventHandler<SceneID>,
 ) -> Element {
-    let game = GM_GAME();
+    let game = gm_game();
     let mut is_expanded = use_signal(move || start_open);
     let mut show_menu = use_signal(|| false);
     let mut show_import_modal = use_signal(|| false);
@@ -668,7 +671,7 @@ fn DeleteFolderModal(path: FolderPath, on_close: EventHandler<()>) -> Element {
 #[component]
 fn MoveFolderModal(path: FolderPath, on_close: EventHandler<()>) -> Element {
     let ws = use_ws();
-    let game = GM_GAME();
+    let game = gm_game();
     let mut search_term = use_signal(String::new);
     let mut selected_destination = use_signal(|| None::<FolderPath>);
 
