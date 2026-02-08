@@ -1,22 +1,21 @@
 use anyhow::Context;
 use arptypes::Scene;
+use arp3d::{Creature3d, Scene3d, TerrainTile3d};
 use dioxus::prelude::*;
 use tracing::error;
 use wasm_bindgen::JsCast;
-
-use crate::gfx::wgpu::TerrainRenderer;
 
 #[component]
 pub fn GMWgpuScenePrototype(scene: Scene) -> Element {
     let canvas_id = format!("gm-wgpu-canvas-{}", scene.id);
     let canvas_id_for_render = canvas_id.clone();
-    let terrain = scene.terrain.clone();
+    let scene3d = to_scene3d(&scene);
 
     let _startup = use_resource(move || {
         let canvas_id = canvas_id_for_render.clone();
-        let terrain = terrain.clone();
+        let scene3d = scene3d.clone();
         async move {
-            if let Err(err) = render_scene_once(canvas_id, terrain).await {
+            if let Err(err) = render_scene_once(canvas_id, scene3d).await {
                 error!(?err, "Failed to render GM wgpu scene prototype");
             }
         }
@@ -31,7 +30,7 @@ pub fn GMWgpuScenePrototype(scene: Scene) -> Element {
     }
 }
 
-async fn render_scene_once(canvas_id: String, terrain: Vec<arptypes::Point3>) -> anyhow::Result<()> {
+async fn render_scene_once(canvas_id: String, scene3d: Scene3d) -> anyhow::Result<()> {
     let window = web_sys::window().context("window missing")?;
     let document = window.document().context("document missing")?;
     let canvas = document
@@ -90,7 +89,7 @@ async fn render_scene_once(canvas_id: String, terrain: Vec<arptypes::Point3>) ->
     };
     surface.configure(&device, &config);
 
-    let renderer = TerrainRenderer::new(&device, &config, &terrain);
+    let renderer = arp3d::wgpu::SceneRenderer::new(&device, &config, &scene3d);
     let output = match surface.get_current_texture() {
         Ok(output) => output,
         Err(wgpu::SurfaceError::Lost | wgpu::SurfaceError::Outdated) => {
@@ -111,4 +110,35 @@ async fn render_scene_once(canvas_id: String, terrain: Vec<arptypes::Point3>) ->
     queue.submit(std::iter::once(encoder.finish()));
     output.present();
     Ok(())
+}
+
+fn to_scene3d(scene: &Scene) -> Scene3d {
+    let terrain = scene
+        .terrain
+        .iter()
+        .map(|point| TerrainTile3d {
+            x: cm_to_world(point.x_cm()),
+            y: cm_to_world(point.z_cm()),
+            z: cm_to_world(point.y_cm()),
+        })
+        .collect();
+
+    let creatures = scene
+        .creatures
+        .iter()
+        .map(|(_id, (position, _visibility))| Creature3d {
+            x: cm_to_world(position.x_cm()),
+            y: cm_to_world(position.z_cm()),
+            z: cm_to_world(position.y_cm()),
+            size_x: 1.0,
+            size_y: 1.0,
+            size_z: 1.0,
+        })
+        .collect();
+
+    Scene3d { terrain, creatures }
+}
+
+fn cm_to_world(cm: i64) -> f32 {
+    cm as f32 / 100.0
 }

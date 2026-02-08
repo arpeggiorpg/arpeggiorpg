@@ -29,9 +29,8 @@ wasm-cookies = "0.2.1"
 js-sys = "0.3.69"
 dioxus-primitives = { git = "https://github.com/DioxusLabs/components", version = "0.0.1", default-features = false }
 dioxus-logger = "0.7.1"
+arp3d = { path = "../arp3d", version = "*" }
 wgpu = { version = "26.0.1", features = ["webgl"] }
-glam = "0.30"
-bytemuck = { version = "1.21", features = ["derive"] }
 
 [dependencies.web-sys]
 version = "0.3.69"

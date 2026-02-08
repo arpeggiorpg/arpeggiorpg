@@ -1,7 +1,8 @@
-use arptypes::Point3;
 use bytemuck::{Pod, Zeroable};
 use glam::{Mat4, Vec3};
 use wgpu::util::DeviceExt;
+
+use crate::Scene3d;
 
 #[repr(C)]
 #[derive(Copy, Clone, Pod, Zeroable)]
@@ -30,12 +31,12 @@ struct Uniforms {
 }
 
 #[derive(Clone, Copy)]
-struct TerrainBounds {
+struct SceneBounds {
     min: Vec3,
     max: Vec3,
 }
 
-pub struct TerrainRenderer {
+pub struct SceneRenderer {
     pipeline: wgpu::RenderPipeline,
     vertex_buffer: wgpu::Buffer,
     index_buffer: wgpu::Buffer,
@@ -45,18 +46,14 @@ pub struct TerrainRenderer {
     depth_view: wgpu::TextureView,
 }
 
-impl TerrainRenderer {
-    pub fn new(
-        device: &wgpu::Device,
-        config: &wgpu::SurfaceConfiguration,
-        terrain: &[Point3],
-    ) -> Self {
+impl SceneRenderer {
+    pub fn new(device: &wgpu::Device, config: &wgpu::SurfaceConfiguration, scene: &Scene3d) -> Self {
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("GM Terrain Shader"),
+            label: Some("Arp3D Scene Shader"),
             source: wgpu::ShaderSource::Wgsl(SHADER_SOURCE.into()),
         });
 
-        let (mut vertices, mut indices, bounds) = build_terrain_mesh(terrain);
+        let (mut vertices, mut indices, bounds) = build_scene_mesh(scene);
         if vertices.is_empty() {
             vertices.push(Vertex {
                 position: [0.0, 0.0, 0.0],
@@ -67,30 +64,34 @@ impl TerrainRenderer {
             indices.push(0);
         }
 
-        let index_count = (indices.len() as u32).saturating_sub(if terrain.is_empty() { 1 } else { 0 });
+        let index_count = if scene.terrain.is_empty() && scene.creatures.is_empty() {
+            0
+        } else {
+            indices.len() as u32
+        };
 
         let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("GM Terrain Vertex Buffer"),
+            label: Some("Arp3D Vertex Buffer"),
             contents: bytemuck::cast_slice(&vertices),
             usage: wgpu::BufferUsages::VERTEX,
         });
         let index_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("GM Terrain Index Buffer"),
+            label: Some("Arp3D Index Buffer"),
             contents: bytemuck::cast_slice(&indices),
             usage: wgpu::BufferUsages::INDEX,
         });
 
         let uniforms = Uniforms {
-            mvp: terrain_mvp(config.width, config.height, bounds).to_cols_array_2d(),
+            mvp: scene_mvp(config.width, config.height, bounds).to_cols_array_2d(),
         };
         let uniform_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("GM Terrain Uniform Buffer"),
+            label: Some("Arp3D Uniform Buffer"),
             contents: bytemuck::cast_slice(&[uniforms]),
             usage: wgpu::BufferUsages::UNIFORM,
         });
 
         let bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("GM Terrain Bind Group Layout"),
+            label: Some("Arp3D Bind Group Layout"),
             entries: &[wgpu::BindGroupLayoutEntry {
                 binding: 0,
                 visibility: wgpu::ShaderStages::VERTEX,
@@ -103,7 +104,7 @@ impl TerrainRenderer {
             }],
         });
         let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("GM Terrain Bind Group"),
+            label: Some("Arp3D Bind Group"),
             layout: &bind_group_layout,
             entries: &[wgpu::BindGroupEntry {
                 binding: 0,
@@ -112,7 +113,7 @@ impl TerrainRenderer {
         });
 
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("GM Terrain Pipeline Layout"),
+            label: Some("Arp3D Pipeline Layout"),
             bind_group_layouts: &[&bind_group_layout],
             push_constant_ranges: &[],
         });
@@ -121,7 +122,7 @@ impl TerrainRenderer {
         let depth_view = depth_texture.create_view(&wgpu::TextureViewDescriptor::default());
 
         let pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-            label: Some("GM Terrain Render Pipeline"),
+            label: Some("Arp3D Render Pipeline"),
             layout: Some(&pipeline_layout),
             vertex: wgpu::VertexState {
                 module: &shader,
@@ -173,7 +174,7 @@ impl TerrainRenderer {
 
     pub fn render(&self, encoder: &mut wgpu::CommandEncoder, target_view: &wgpu::TextureView) {
         let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-            label: Some("GM Terrain Render Pass"),
+            label: Some("Arp3D Render Pass"),
             color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                 view: target_view,
                 resolve_target: None,
@@ -209,100 +210,132 @@ impl TerrainRenderer {
     }
 }
 
-fn build_terrain_mesh(terrain: &[Point3]) -> (Vec<Vertex>, Vec<u32>, Option<TerrainBounds>) {
-    let mut vertices = Vec::with_capacity(terrain.len() * 24);
-    let mut indices = Vec::with_capacity(terrain.len() * 36);
-    let mut bounds: Option<TerrainBounds> = None;
+fn build_scene_mesh(scene: &Scene3d) -> (Vec<Vertex>, Vec<u32>, Option<SceneBounds>) {
+    let mut vertices = Vec::with_capacity((scene.terrain.len() + scene.creatures.len()) * 24);
+    let mut indices = Vec::with_capacity((scene.terrain.len() + scene.creatures.len()) * 36);
+    let mut bounds: Option<SceneBounds> = None;
 
-    for point in terrain {
-        let x0 = cm_to_tile_units(point.x_cm());
-        let y0 = cm_to_tile_units(point.z_cm());
-        let z0 = cm_to_tile_units(point.y_cm());
+    for tile in &scene.terrain {
+        let min = Vec3::new(tile.x, tile.y, tile.z);
+        let max = min + Vec3::ONE;
+        append_cube(
+            &mut vertices,
+            &mut indices,
+            min,
+            max,
+            [0.36, 0.73, 0.31],
+            [0.62, 0.48, 0.30],
+            [0.50, 0.38, 0.24],
+            [0.22, 0.18, 0.14],
+        );
+        bounds = merge_bounds(bounds, min, max);
+    }
 
-        let x1 = x0 + 1.0;
-        let y1 = y0 + 1.0;
-        let z1 = z0 + 1.0;
-
-        let height_tint = (y0 * 0.06).clamp(-0.18, 0.18);
-        let top_color = [
-            (0.36 + height_tint).clamp(0.0, 1.0),
-            (0.73 + height_tint).clamp(0.0, 1.0),
-            (0.31 + height_tint).clamp(0.0, 1.0),
-        ];
-        let side_light = [0.62, 0.48, 0.30];
-        let side_dark = [0.50, 0.38, 0.24];
-        let bottom = [0.22, 0.18, 0.14];
-
-        push_quad(
+    for creature in &scene.creatures {
+        let min = Vec3::new(creature.x, creature.y, creature.z);
+        let size = Vec3::new(
+            creature.size_x.max(0.1),
+            creature.size_y.max(0.1),
+            creature.size_z.max(0.1),
+        );
+        let max = min + size;
+        append_cube(
             &mut vertices,
             &mut indices,
-            Vec3::new(x0, y1, z0),
-            Vec3::new(x1, y1, z0),
-            Vec3::new(x1, y1, z1),
-            Vec3::new(x0, y1, z1),
-            top_color,
+            min,
+            max,
+            [0.80, 0.20, 0.20],
+            [0.70, 0.25, 0.25],
+            [0.60, 0.16, 0.16],
+            [0.38, 0.11, 0.11],
         );
-        push_quad(
-            &mut vertices,
-            &mut indices,
-            Vec3::new(x0, y0, z0),
-            Vec3::new(x1, y0, z0),
-            Vec3::new(x1, y0, z1),
-            Vec3::new(x0, y0, z1),
-            bottom,
-        );
-        push_quad(
-            &mut vertices,
-            &mut indices,
-            Vec3::new(x1, y0, z0),
-            Vec3::new(x1, y0, z1),
-            Vec3::new(x1, y1, z1),
-            Vec3::new(x1, y1, z0),
-            side_light,
-        );
-        push_quad(
-            &mut vertices,
-            &mut indices,
-            Vec3::new(x0, y0, z0),
-            Vec3::new(x0, y0, z1),
-            Vec3::new(x0, y1, z1),
-            Vec3::new(x0, y1, z0),
-            side_dark,
-        );
-        push_quad(
-            &mut vertices,
-            &mut indices,
-            Vec3::new(x0, y0, z1),
-            Vec3::new(x0, y1, z1),
-            Vec3::new(x1, y1, z1),
-            Vec3::new(x1, y0, z1),
-            side_light,
-        );
-        push_quad(
-            &mut vertices,
-            &mut indices,
-            Vec3::new(x0, y0, z0),
-            Vec3::new(x0, y1, z0),
-            Vec3::new(x1, y1, z0),
-            Vec3::new(x1, y0, z0),
-            side_dark,
-        );
-
-        let tile_min = Vec3::new(x0, y0, z0);
-        let tile_max = Vec3::new(x1, y1, z1);
-        bounds = Some(match bounds {
-            Some(existing) => TerrainBounds {
-                min: existing.min.min(tile_min),
-                max: existing.max.max(tile_max),
-            },
-            None => TerrainBounds {
-                min: tile_min,
-                max: tile_max,
-            },
-        });
+        bounds = merge_bounds(bounds, min, max);
     }
 
     (vertices, indices, bounds)
+}
+
+fn merge_bounds(existing: Option<SceneBounds>, min: Vec3, max: Vec3) -> Option<SceneBounds> {
+    Some(match existing {
+        Some(current) => SceneBounds {
+            min: current.min.min(min),
+            max: current.max.max(max),
+        },
+        None => SceneBounds { min, max },
+    })
+}
+
+fn append_cube(
+    vertices: &mut Vec<Vertex>,
+    indices: &mut Vec<u32>,
+    min: Vec3,
+    max: Vec3,
+    top: [f32; 3],
+    side_light: [f32; 3],
+    side_dark: [f32; 3],
+    bottom: [f32; 3],
+) {
+    let x0 = min.x;
+    let y0 = min.y;
+    let z0 = min.z;
+    let x1 = max.x;
+    let y1 = max.y;
+    let z1 = max.z;
+
+    push_quad(
+        vertices,
+        indices,
+        Vec3::new(x0, y1, z0),
+        Vec3::new(x1, y1, z0),
+        Vec3::new(x1, y1, z1),
+        Vec3::new(x0, y1, z1),
+        top,
+    );
+    push_quad(
+        vertices,
+        indices,
+        Vec3::new(x0, y0, z0),
+        Vec3::new(x1, y0, z0),
+        Vec3::new(x1, y0, z1),
+        Vec3::new(x0, y0, z1),
+        bottom,
+    );
+    push_quad(
+        vertices,
+        indices,
+        Vec3::new(x1, y0, z0),
+        Vec3::new(x1, y0, z1),
+        Vec3::new(x1, y1, z1),
+        Vec3::new(x1, y1, z0),
+        side_light,
+    );
+    push_quad(
+        vertices,
+        indices,
+        Vec3::new(x0, y0, z0),
+        Vec3::new(x0, y0, z1),
+        Vec3::new(x0, y1, z1),
+        Vec3::new(x0, y1, z0),
+        side_dark,
+    );
+    push_quad(
+        vertices,
+        indices,
+        Vec3::new(x0, y0, z1),
+        Vec3::new(x0, y1, z1),
+        Vec3::new(x1, y1, z1),
+        Vec3::new(x1, y0, z1),
+        side_light,
+    );
+    push_quad(
+        vertices,
+        indices,
+        Vec3::new(x0, y0, z0),
+        Vec3::new(x0, y1, z0),
+        Vec3::new(x1, y1, z0),
+        Vec3::new(x1, y0, z0),
+        side_dark,
+    );
 }
 
 fn push_quad(
@@ -335,7 +368,7 @@ fn push_quad(
     indices.extend_from_slice(&[base, base + 3, base + 1, base + 1, base + 3, base + 2]);
 }
 
-fn terrain_mvp(width: u32, height: u32, bounds: Option<TerrainBounds>) -> Mat4 {
+fn scene_mvp(width: u32, height: u32, bounds: Option<SceneBounds>) -> Mat4 {
     let vfov = std::f32::consts::FRAC_PI_4;
     let aspect = width.max(1) as f32 / height.max(1) as f32;
 
@@ -362,16 +395,12 @@ fn terrain_mvp(width: u32, height: u32, bounds: Option<TerrainBounds>) -> Mat4 {
     }
 }
 
-fn cm_to_tile_units(cm: i64) -> f32 {
-    cm as f32 / 100.0
-}
-
 fn create_depth_texture(
     device: &wgpu::Device,
     config: &wgpu::SurfaceConfiguration,
 ) -> wgpu::Texture {
     device.create_texture(&wgpu::TextureDescriptor {
-        label: Some("GM Terrain Depth Texture"),
+        label: Some("Arp3D Depth Texture"),
         size: wgpu::Extent3d {
             width: config.width,
             height: config.height,

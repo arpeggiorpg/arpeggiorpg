@@ -57,6 +57,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "arp3d"
+version = "0.1.0"
+dependencies = [
+ "bytemuck",
+ "glam",
+ "wgpu",
+]
+
+[[package]]
 name = "arptypes"
 version = "0.1.0"
 dependencies = [
@@ -81,8 +90,8 @@ name = "arpui"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "arp3d",
  "arptypes",
- "bytemuck",
  "dioxus",
  "dioxus-logger",
  "dioxus-primitives",
@@ -90,7 +99,6 @@ dependencies = [
  "futures",
  "futures-util",
  "getrandom 0.2.14",
- "glam",
  "js-sys",
  "reqwest",
  "reqwest-websocket",
