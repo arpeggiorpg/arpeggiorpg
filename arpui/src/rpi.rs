@@ -258,7 +258,7 @@ pub async fn send_request<T: serde::de::DeserializeOwned>(
     Ok(serde_json::from_value(response)?)
 }
 
-async fn rpi_get<T: serde::de::DeserializeOwned>(path: &str) -> Result<T, anyhow::Error> {
+pub(crate) async fn rpi_get<T: serde::de::DeserializeOwned>(path: &str) -> Result<T, anyhow::Error> {
     let rpi_url = rpi_url();
     let url = format!("{rpi_url}/{path}");
     let client = reqwest::Client::new();

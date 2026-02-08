@@ -12,11 +12,13 @@ use tracing::{error, info};
 
 mod chat;
 mod components;
+mod admin_view;
 mod gfx;
 mod gm_view;
 mod grid;
 mod player_view;
 mod rpi;
+use admin_view::AdminPage;
 use gm_view::GMGamePage;
 use player_view::{AcceptInvitationPage, PlayerGamePage};
 use rpi::{AUTH_TOKEN, auth_token, list_games};
@@ -64,6 +66,8 @@ enum Route {
   #[layout(AuthRequiredLayout)]
     #[route("/")]
     GameListPage,
+    #[route("/admin")]
+    AdminPage,
     #[route("/gm/:id")]
     GMGamePage { id: GameID },
     #[route("/player/:id/:player_id")]
@@ -152,6 +156,10 @@ fn AuthRequiredLayout() -> Element {
               Link { to: Route::GameListPage {},
                 class: "text-sm text-gray-600 hover:text-gray-800",
                 "Game List"
+              }
+              Link { to: Route::AdminPage {},
+                class: "text-sm text-gray-600 hover:text-gray-800",
+                "Admin"
               }
               Button {
                 variant: ButtonVariant::Ghost,
