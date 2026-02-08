@@ -12,7 +12,7 @@ use tracing::{error, info};
 
 use crate::{
     GAME_SOURCE, GameSource,
-    PLAYER_SPEC, PlayerSpec, Route,
+    Route,
     chat::PlayerChat,
     components::{
         button::{Button, ButtonVariant},
@@ -31,21 +31,18 @@ pub static GAME_NAME: GlobalSignal<String> = Signal::global(|| String::new());
 
 fn player_game() -> SerializedPlayerGame {
     match GAME_SOURCE() {
-        GameSource::Player(game) => game,
+        GameSource::Player { game, .. } => game,
         GameSource::GM(_) => Default::default(),
     }
 }
 
 #[component]
 pub fn PlayerGamePage(id: GameID, player_id: PlayerID) -> Element {
-    use_effect({
-        let player_id = player_id.clone();
-        move || *PLAYER_SPEC.write() = Some(PlayerSpec::Player(player_id.clone()))
-    });
     rsx! {
       Connector {
         role: Role::Player,
         game_id: id,
+        player_id: Some(player_id.clone()),
         game_logs_signal: GAME_LOGS.resolve(),
 
         GameLoader { player_id }
@@ -56,14 +53,21 @@ pub fn PlayerGamePage(id: GameID, player_id: PlayerID) -> Element {
 #[component]
 fn GameLoader(player_id: PlayerID) -> Element {
     let ws = use_ws();
-    let future: Resource<anyhow::Result<SerializedPlayerGame>> = use_resource(move || async move {
-        info!("fetching game state for player view");
-        let response =
-            send_request::<PlayerGameAndMetadata>(RPIGameRequest::PlayerGetGame, ws).await?;
-        *GAME_SOURCE.write() = GameSource::Player(response.game.clone());
-        *GAME_LOGS.write() = response.logs;
-        *GAME_NAME.write() = response.metadata.name.clone();
-        Ok(response.game)
+    let player_id_for_load = player_id.clone();
+    let future: Resource<anyhow::Result<SerializedPlayerGame>> = use_resource(move || {
+        let player_id_for_load = player_id_for_load.clone();
+        async move {
+            info!("fetching game state for player view");
+            let response =
+                send_request::<PlayerGameAndMetadata>(RPIGameRequest::PlayerGetGame, ws).await?;
+            *GAME_SOURCE.write() = GameSource::Player {
+                player_id: player_id_for_load.clone(),
+                game: response.game.clone(),
+            };
+            *GAME_LOGS.write() = response.logs;
+            *GAME_NAME.write() = response.metadata.name.clone();
+            Ok(response.game)
+        }
     });
 
     match &*future.read_unchecked() {

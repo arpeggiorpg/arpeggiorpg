@@ -79,53 +79,58 @@ type ResponseHandlers = HashMap<uuid::Uuid, ResponseHandler>;
 pub fn Connector(
     role: Role,
     game_id: GameID,
+    player_id: Option<arptypes::PlayerID>,
     game_logs_signal: Signal<VecDeque<(GameIndex, GameLog)>>,
     children: Element,
 ) -> Element {
     // let connection_count = use_signal(|| 0);
     let mut error = use_signal(|| None);
-    let _coro = use_coroutine(move |mut rx: UnboundedReceiver<UIRequest>| async move {
-        let response_handlers: ResponseHandlers = HashMap::new();
-        let response_handlers = Rc::new(RefCell::new(response_handlers));
-        let websocket = match connect_coroutine(role, game_id).await {
-            Ok(ws) => ws,
-            Err(e) => {
-                error.set(Some(e.to_string()));
-                return;
-            }
-        };
+    let _coro = use_coroutine(move |mut rx: UnboundedReceiver<UIRequest>| {
+        let player_id = player_id.clone();
+        async move {
+            let response_handlers: ResponseHandlers = HashMap::new();
+            let response_handlers = Rc::new(RefCell::new(response_handlers));
+            let websocket = match connect_coroutine(role, game_id).await {
+                Ok(ws) => ws,
+                Err(e) => {
+                    error.set(Some(e.to_string()));
+                    return;
+                }
+            };
 
-        let (mut websocket_tx, websocket_rx) = websocket.split();
-        let receiver_response_handlers = response_handlers.clone();
-        spawn_local(async move {
-            let result = ws_receiver(
-                websocket_rx,
-                receiver_response_handlers,
-                game_logs_signal,
-            )
-            .await;
-            match result {
-                Ok(r) => info!(?r, "ws_receiver completed"),
-                Err(error) => error!(?error, "ws_receiver error"),
-            }
-            info!("Websocket is now dead.");
-        });
-
-        while let Some(ui_req) = rx.next().await {
-            let request_id = uuid::Uuid::new_v4();
-            let request = serde_json::json!({
-              "id": request_id.to_string(),
-              "request": &ui_req.game_request
+            let (mut websocket_tx, websocket_rx) = websocket.split();
+            let receiver_response_handlers = response_handlers.clone();
+            spawn_local(async move {
+                let result = ws_receiver(
+                    websocket_rx,
+                    receiver_response_handlers,
+                    player_id.clone(),
+                    game_logs_signal,
+                )
+                .await;
+                match result {
+                    Ok(r) => info!(?r, "ws_receiver completed"),
+                    Err(error) => error!(?error, "ws_receiver error"),
+                }
+                info!("Websocket is now dead.");
             });
-            let cmd_json =
-                serde_json::to_string(&request).expect("must be able to serialize RPIGameRequests");
-            if let Some(callback) = ui_req.callback {
-                response_handlers.borrow_mut().insert(request_id, callback);
+
+            while let Some(ui_req) = rx.next().await {
+                let request_id = uuid::Uuid::new_v4();
+                let request = serde_json::json!({
+                  "id": request_id.to_string(),
+                  "request": &ui_req.game_request
+                });
+                let cmd_json = serde_json::to_string(&request)
+                    .expect("must be able to serialize RPIGameRequests");
+                if let Some(callback) = ui_req.callback {
+                    response_handlers.borrow_mut().insert(request_id, callback);
+                }
+                websocket_tx
+                    .send(Message::Text(cmd_json))
+                    .await
+                    .expect("Couldn't send command to websocket");
             }
-            websocket_tx
-                .send(Message::Text(cmd_json))
-                .await
-                .expect("Couldn't send command to websocket");
         }
     });
     if let Some(error) = error() {
@@ -138,6 +143,7 @@ pub fn Connector(
 async fn ws_receiver(
     mut websocket_rx: futures::stream::SplitStream<WebSocket>,
     receiver_response_handlers: Rc<RefCell<ResponseHandlers>>,
+    player_id: Option<arptypes::PlayerID>,
     game_logs_signal: Signal<VecDeque<(GameIndex, GameLog)>>,
 ) -> anyhow::Result<()> {
     while let Some(message) = websocket_rx.try_next().await? {
@@ -165,7 +171,7 @@ async fn ws_receiver(
                         warn!(?id, ?json, "Got result for unexpected ID");
                     }
                 } else {
-                    handle_unsolicited(json, game_logs_signal)?;
+                    handle_unsolicited(json, player_id.clone(), game_logs_signal)?;
                 }
             }
             Message::Binary(vecu8) => info!(?vecu8, "WS Binary Message"),
@@ -176,6 +182,7 @@ async fn ws_receiver(
 
 fn handle_unsolicited(
     json: serde_json::Value,
+    player_id: Option<arptypes::PlayerID>,
     mut game_logs_signal: Signal<VecDeque<(GameIndex, GameLog)>>,
 ) -> anyhow::Result<()> {
     if json.get("t") == Some(&serde_json::Value::String("refresh_game".to_string())) {
@@ -203,7 +210,8 @@ fn handle_unsolicited(
             .get("logs")
             .ok_or(anyhow::anyhow!("no logs in refresh_game message"))?;
         let mut logs: VecDeque<(GameIndex, GameLog)> = serde_json::from_value(logs_json.clone())?;
-        *GAME_SOURCE.write() = GameSource::Player(game);
+        let player_id = player_id.unwrap_or(arptypes::PlayerID(String::new()));
+        *GAME_SOURCE.write() = GameSource::Player { player_id, game };
         game_logs_signal.write().append(&mut logs);
     } else {
         warn!(?json, "Unknown unsolicited message");

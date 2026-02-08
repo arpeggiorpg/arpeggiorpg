@@ -10,7 +10,6 @@ use tracing::{error, info};
 
 use crate::{
     GAME_SOURCE, GameSource,
-    PLAYER_SPEC, PlayerSpec,
     components::{
         button::{Button, ButtonVariant},
         split_pane::{SplitDirection, SplitPane},
@@ -25,17 +24,17 @@ pub static GM_GAME_LOGS: GlobalSignal<VecDeque<(GameIndex, GameLog)>> =
 fn gm_game() -> Game {
     match GAME_SOURCE() {
         GameSource::GM(game) => game,
-        GameSource::Player(_) => Default::default(),
+        GameSource::Player { .. } => Default::default(),
     }
 }
 
 #[component]
 pub fn GMGamePage(id: GameID) -> Element {
-    use_effect(move || *PLAYER_SPEC.write() = Some(PlayerSpec::GM));
     rsx! {
         Connector {
             role: Role::GM,
             game_id: id,
+            player_id: None,
             game_logs_signal: GM_GAME_LOGS.resolve(),
 
             GameLoader { game_id: id }

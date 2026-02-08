@@ -257,14 +257,14 @@ fn append_activate_ability_details(
 
 fn class_by_id(class_id: &ClassID) -> Option<Class> {
     match GAME_SOURCE() {
-        GameSource::Player(game) => game.classes.get(class_id).cloned(),
+        GameSource::Player { game, .. } => game.classes.get(class_id).cloned(),
         GameSource::GM(game) => game.classes.get(class_id).cloned(),
     }
 }
 
 fn ability_by_id(ability_id: &AbilityID) -> Option<Ability> {
     match GAME_SOURCE() {
-        GameSource::Player(game) => game.abilities.get(ability_id).cloned(),
+        GameSource::Player { game, .. } => game.abilities.get(ability_id).cloned(),
         GameSource::GM(game) => game.abilities.get(ability_id).cloned(),
     }
 }

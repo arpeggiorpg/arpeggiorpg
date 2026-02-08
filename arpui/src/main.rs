@@ -28,25 +28,24 @@ use crate::{
 const GOOGLE_CLIENT_ID: &str =
     "328154234071-c7una5er0n385sdgvih81ngbkgp1l7nj.apps.googleusercontent.com";
 
-pub static PLAYER_SPEC: GlobalSignal<Option<PlayerSpec>> = Signal::global(|| None);
 pub static GAME_SOURCE: GlobalSignal<GameSource> = Signal::global(GameSource::default);
 
 #[derive(Clone, PartialEq)]
 pub enum GameSource {
     GM(Game),
-    Player(SerializedPlayerGame),
+    Player {
+        player_id: PlayerID,
+        game: SerializedPlayerGame,
+    },
 }
 
 impl Default for GameSource {
     fn default() -> Self {
-        GameSource::Player(Default::default())
+        GameSource::Player {
+            player_id: PlayerID(String::new()),
+            game: Default::default(),
+        }
     }
-}
-
-#[derive(Clone, PartialEq)]
-pub enum PlayerSpec {
-    GM,
-    Player(PlayerID),
 }
 
 #[derive(Clone, Routable, Debug)]

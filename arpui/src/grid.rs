@@ -18,7 +18,7 @@ pub static MOVEMENT_OPTIONS: GlobalSignal<Option<(CreatureID, Vec<Point3>)>> =
 
 fn source_creature(game_source: &GameSource, creature_id: CreatureID) -> Option<Creature> {
     match game_source {
-        GameSource::Player(game) => game
+        GameSource::Player { game, .. } => game
             .creatures
             .get(&creature_id)
             .cloned()
@@ -29,7 +29,7 @@ fn source_creature(game_source: &GameSource, creature_id: CreatureID) -> Option<
 
 fn source_class_color(game_source: &GameSource, class_id: ClassID) -> String {
     match game_source {
-        GameSource::Player(game) => game
+        GameSource::Player { game, .. } => game
             .classes
             .get(&class_id)
             .map(|c| c.color.clone())
@@ -58,7 +58,7 @@ pub fn SceneGrid(
                 class: "w-full h-full flex items-center justify-center text-gray-500",
                 match game_source {
                     GameSource::GM(_) => "Select a scene.",
-                    GameSource::Player(_) => "Ask your GM to put you in a scene.",
+                    GameSource::Player { .. } => "Ask your GM to put you in a scene.",
 
                 }
             }
@@ -365,7 +365,7 @@ fn CreatureMenu(
 
     let game_source = GAME_SOURCE();
     let Some((creature_name, creature_class)) = (match &game_source {
-        GameSource::Player(game) => game
+        GameSource::Player { game, .. } => game
             .creatures
             .get(&creature_id)
             .map(|creature| (creature.name.clone(), creature.class)),

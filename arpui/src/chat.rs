@@ -119,7 +119,7 @@ fn render_chat_log(log: &GameLog) -> Option<Element> {
 fn render_creature_log(creature_id: &CreatureID, log: &CreatureLog) -> Option<Element> {
     let game_source = GAME_SOURCE();
     let creature_name = match &game_source {
-        GameSource::Player(game) => game
+        GameSource::Player { game, .. } => game
             .creatures
             .get(creature_id)
             .map(|c| c.name.clone())
