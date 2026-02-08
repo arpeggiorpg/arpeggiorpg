@@ -113,7 +113,7 @@ fn Shell(game_id: GameID) -> Element {
                 if let Some(scene) = shown_scene {
                     GMWgpuScenePrototype {
                         key: "{scene.id}",
-                        scene_id: scene.id,
+                        scene: scene,
                     }
                 } else {
                     div {

@@ -1,20 +1,22 @@
 use anyhow::Context;
-use arptypes::SceneID;
+use arptypes::Scene;
 use dioxus::prelude::*;
 use tracing::error;
 use wasm_bindgen::JsCast;
 
-use crate::gfx::wgpu::CubeRenderer;
+use crate::gfx::wgpu::TerrainRenderer;
 
 #[component]
-pub fn GMWgpuScenePrototype(scene_id: SceneID) -> Element {
-    let canvas_id = format!("gm-wgpu-canvas-{scene_id}");
+pub fn GMWgpuScenePrototype(scene: Scene) -> Element {
+    let canvas_id = format!("gm-wgpu-canvas-{}", scene.id);
     let canvas_id_for_render = canvas_id.clone();
+    let terrain = scene.terrain.clone();
 
     let _startup = use_resource(move || {
         let canvas_id = canvas_id_for_render.clone();
+        let terrain = terrain.clone();
         async move {
-            if let Err(err) = render_scene_once(canvas_id).await {
+            if let Err(err) = render_scene_once(canvas_id, terrain).await {
                 error!(?err, "Failed to render GM wgpu scene prototype");
             }
         }
@@ -29,7 +31,7 @@ pub fn GMWgpuScenePrototype(scene_id: SceneID) -> Element {
     }
 }
 
-async fn render_scene_once(canvas_id: String) -> anyhow::Result<()> {
+async fn render_scene_once(canvas_id: String, terrain: Vec<arptypes::Point3>) -> anyhow::Result<()> {
     let window = web_sys::window().context("window missing")?;
     let document = window.document().context("document missing")?;
     let canvas = document
@@ -88,7 +90,7 @@ async fn render_scene_once(canvas_id: String) -> anyhow::Result<()> {
     };
     surface.configure(&device, &config);
 
-    let renderer = CubeRenderer::new(&device, &config);
+    let renderer = TerrainRenderer::new(&device, &config, &terrain);
     let output = match surface.get_current_texture() {
         Ok(output) => output,
         Err(wgpu::SurfaceError::Lost | wgpu::SurfaceError::Outdated) => {

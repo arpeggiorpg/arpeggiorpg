@@ -1,3 +1,4 @@
+use arptypes::Point3;
 use bytemuck::{Pod, Zeroable};
 use glam::{Mat4, Vec3};
 use wgpu::util::DeviceExt;
@@ -28,180 +29,68 @@ struct Uniforms {
     mvp: [[f32; 4]; 4],
 }
 
-const VERTICES: [Vertex; 24] = [
-    Vertex {
-        position: [-0.5, 0.5, -0.5],
-        color: [0.95, 0.45, 0.45],
-    },
-    Vertex {
-        position: [0.5, 0.5, -0.5],
-        color: [0.95, 0.45, 0.45],
-    },
-    Vertex {
-        position: [0.5, 0.5, 0.5],
-        color: [0.95, 0.45, 0.45],
-    },
-    Vertex {
-        position: [-0.5, 0.5, 0.5],
-        color: [0.95, 0.45, 0.45],
-    },
-    Vertex {
-        position: [-0.5, -0.5, -0.5],
-        color: [0.25, 0.25, 0.35],
-    },
-    Vertex {
-        position: [0.5, -0.5, -0.5],
-        color: [0.25, 0.25, 0.35],
-    },
-    Vertex {
-        position: [0.5, -0.5, 0.5],
-        color: [0.25, 0.25, 0.35],
-    },
-    Vertex {
-        position: [-0.5, -0.5, 0.5],
-        color: [0.25, 0.25, 0.35],
-    },
-    Vertex {
-        position: [0.5, -0.5, -0.5],
-        color: [0.45, 0.85, 0.55],
-    },
-    Vertex {
-        position: [0.5, -0.5, 0.5],
-        color: [0.45, 0.85, 0.55],
-    },
-    Vertex {
-        position: [0.5, 0.5, 0.5],
-        color: [0.45, 0.85, 0.55],
-    },
-    Vertex {
-        position: [0.5, 0.5, -0.5],
-        color: [0.45, 0.85, 0.55],
-    },
-    Vertex {
-        position: [-0.5, -0.5, -0.5],
-        color: [0.45, 0.65, 0.95],
-    },
-    Vertex {
-        position: [-0.5, -0.5, 0.5],
-        color: [0.45, 0.65, 0.95],
-    },
-    Vertex {
-        position: [-0.5, 0.5, 0.5],
-        color: [0.45, 0.65, 0.95],
-    },
-    Vertex {
-        position: [-0.5, 0.5, -0.5],
-        color: [0.45, 0.65, 0.95],
-    },
-    Vertex {
-        position: [-0.5, -0.5, 0.5],
-        color: [0.95, 0.85, 0.35],
-    },
-    Vertex {
-        position: [-0.5, 0.5, 0.5],
-        color: [0.95, 0.85, 0.35],
-    },
-    Vertex {
-        position: [0.5, 0.5, 0.5],
-        color: [0.95, 0.85, 0.35],
-    },
-    Vertex {
-        position: [0.5, -0.5, 0.5],
-        color: [0.95, 0.85, 0.35],
-    },
-    Vertex {
-        position: [-0.5, -0.5, -0.5],
-        color: [0.75, 0.45, 0.9],
-    },
-    Vertex {
-        position: [-0.5, 0.5, -0.5],
-        color: [0.75, 0.45, 0.9],
-    },
-    Vertex {
-        position: [0.5, 0.5, -0.5],
-        color: [0.75, 0.45, 0.9],
-    },
-    Vertex {
-        position: [0.5, -0.5, -0.5],
-        color: [0.75, 0.45, 0.9],
-    },
-];
-
-const INDICES: [u16; 36] = [
-    0, 3, 1, 1, 3, 2, 4, 5, 7, 5, 6, 7, 8, 11, 9, 9, 11, 10, 12, 13, 15, 13, 14, 15, 16, 19, 17,
-    17, 19, 18, 20, 21, 23, 21, 22, 23,
-];
-
-const SHADER_SOURCE: &str = r#"
-struct Uniforms {
-    mvp: mat4x4<f32>,
+#[derive(Clone, Copy)]
+struct TerrainBounds {
+    min: Vec3,
+    max: Vec3,
 }
 
-@group(0) @binding(0)
-var<uniform> uniforms: Uniforms;
-
-struct VertexInput {
-    @location(0) position: vec3<f32>,
-    @location(1) color: vec3<f32>,
-}
-
-struct VertexOutput {
-    @builtin(position) clip_position: vec4<f32>,
-    @location(0) color: vec3<f32>,
-}
-
-@vertex
-fn vs_main(in: VertexInput) -> VertexOutput {
-    var out: VertexOutput;
-    out.clip_position = uniforms.mvp * vec4<f32>(in.position, 1.0);
-    out.color = in.color;
-    return out;
-}
-
-@fragment
-fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
-    return vec4<f32>(in.color, 1.0);
-}
-"#;
-
-pub struct CubeRenderer {
+pub struct TerrainRenderer {
     pipeline: wgpu::RenderPipeline,
     vertex_buffer: wgpu::Buffer,
     index_buffer: wgpu::Buffer,
     index_count: u32,
+    _uniform_buffer: wgpu::Buffer,
     bind_group: wgpu::BindGroup,
     depth_view: wgpu::TextureView,
 }
 
-impl CubeRenderer {
-    pub fn new(device: &wgpu::Device, config: &wgpu::SurfaceConfiguration) -> Self {
+impl TerrainRenderer {
+    pub fn new(
+        device: &wgpu::Device,
+        config: &wgpu::SurfaceConfiguration,
+        terrain: &[Point3],
+    ) -> Self {
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("GM Prototype Shader"),
+            label: Some("GM Terrain Shader"),
             source: wgpu::ShaderSource::Wgsl(SHADER_SOURCE.into()),
         });
 
+        let (mut vertices, mut indices, bounds) = build_terrain_mesh(terrain);
+        if vertices.is_empty() {
+            vertices.push(Vertex {
+                position: [0.0, 0.0, 0.0],
+                color: [0.0, 0.0, 0.0],
+            });
+        }
+        if indices.is_empty() {
+            indices.push(0);
+        }
+
+        let index_count = (indices.len() as u32).saturating_sub(if terrain.is_empty() { 1 } else { 0 });
+
         let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("GM Prototype Vertex Buffer"),
-            contents: bytemuck::cast_slice(&VERTICES),
+            label: Some("GM Terrain Vertex Buffer"),
+            contents: bytemuck::cast_slice(&vertices),
             usage: wgpu::BufferUsages::VERTEX,
         });
         let index_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("GM Prototype Index Buffer"),
-            contents: bytemuck::cast_slice(&INDICES),
+            label: Some("GM Terrain Index Buffer"),
+            contents: bytemuck::cast_slice(&indices),
             usage: wgpu::BufferUsages::INDEX,
         });
 
         let uniforms = Uniforms {
-            mvp: cube_mvp(config.width, config.height).to_cols_array_2d(),
+            mvp: terrain_mvp(config.width, config.height, bounds).to_cols_array_2d(),
         };
         let uniform_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("GM Prototype Uniform Buffer"),
+            label: Some("GM Terrain Uniform Buffer"),
             contents: bytemuck::cast_slice(&[uniforms]),
             usage: wgpu::BufferUsages::UNIFORM,
         });
 
         let bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("GM Prototype Bind Group Layout"),
+            label: Some("GM Terrain Bind Group Layout"),
             entries: &[wgpu::BindGroupLayoutEntry {
                 binding: 0,
                 visibility: wgpu::ShaderStages::VERTEX,
@@ -214,7 +103,7 @@ impl CubeRenderer {
             }],
         });
         let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("GM Prototype Bind Group"),
+            label: Some("GM Terrain Bind Group"),
             layout: &bind_group_layout,
             entries: &[wgpu::BindGroupEntry {
                 binding: 0,
@@ -223,7 +112,7 @@ impl CubeRenderer {
         });
 
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("GM Prototype Pipeline Layout"),
+            label: Some("GM Terrain Pipeline Layout"),
             bind_group_layouts: &[&bind_group_layout],
             push_constant_ranges: &[],
         });
@@ -232,7 +121,7 @@ impl CubeRenderer {
         let depth_view = depth_texture.create_view(&wgpu::TextureViewDescriptor::default());
 
         let pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-            label: Some("GM Prototype Render Pipeline"),
+            label: Some("GM Terrain Render Pipeline"),
             layout: Some(&pipeline_layout),
             vertex: wgpu::VertexState {
                 module: &shader,
@@ -275,7 +164,8 @@ impl CubeRenderer {
             pipeline,
             vertex_buffer,
             index_buffer,
-            index_count: INDICES.len() as u32,
+            index_count,
+            _uniform_buffer: uniform_buffer,
             bind_group,
             depth_view,
         }
@@ -283,7 +173,7 @@ impl CubeRenderer {
 
     pub fn render(&self, encoder: &mut wgpu::CommandEncoder, target_view: &wgpu::TextureView) {
         let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-            label: Some("GM Prototype Render Pass"),
+            label: Some("GM Terrain Render Pass"),
             color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                 view: target_view,
                 resolve_target: None,
@@ -312,17 +202,168 @@ impl CubeRenderer {
         render_pass.set_pipeline(&self.pipeline);
         render_pass.set_bind_group(0, &self.bind_group, &[]);
         render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
-        render_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint16);
-        render_pass.draw_indexed(0..self.index_count, 0, 0..1);
+        render_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
+        if self.index_count > 0 {
+            render_pass.draw_indexed(0..self.index_count, 0, 0..1);
+        }
     }
 }
 
-fn cube_mvp(width: u32, height: u32) -> Mat4 {
-    let model = Mat4::from_rotation_y(0.65) * Mat4::from_rotation_x(-0.35);
-    let view = Mat4::look_at_rh(Vec3::new(1.9, 1.8, 2.2), Vec3::ZERO, Vec3::Y);
-    let aspect = width as f32 / height.max(1) as f32;
-    let proj = Mat4::perspective_rh(std::f32::consts::FRAC_PI_4, aspect, 0.1, 100.0);
-    proj * view * model
+fn build_terrain_mesh(terrain: &[Point3]) -> (Vec<Vertex>, Vec<u32>, Option<TerrainBounds>) {
+    let mut vertices = Vec::with_capacity(terrain.len() * 24);
+    let mut indices = Vec::with_capacity(terrain.len() * 36);
+    let mut bounds: Option<TerrainBounds> = None;
+
+    for point in terrain {
+        let x0 = cm_to_tile_units(point.x_cm());
+        let y0 = cm_to_tile_units(point.z_cm());
+        let z0 = cm_to_tile_units(point.y_cm());
+
+        let x1 = x0 + 1.0;
+        let y1 = y0 + 1.0;
+        let z1 = z0 + 1.0;
+
+        let height_tint = (y0 * 0.06).clamp(-0.18, 0.18);
+        let top_color = [
+            (0.36 + height_tint).clamp(0.0, 1.0),
+            (0.73 + height_tint).clamp(0.0, 1.0),
+            (0.31 + height_tint).clamp(0.0, 1.0),
+        ];
+        let side_light = [0.62, 0.48, 0.30];
+        let side_dark = [0.50, 0.38, 0.24];
+        let bottom = [0.22, 0.18, 0.14];
+
+        push_quad(
+            &mut vertices,
+            &mut indices,
+            Vec3::new(x0, y1, z0),
+            Vec3::new(x1, y1, z0),
+            Vec3::new(x1, y1, z1),
+            Vec3::new(x0, y1, z1),
+            top_color,
+        );
+        push_quad(
+            &mut vertices,
+            &mut indices,
+            Vec3::new(x0, y0, z0),
+            Vec3::new(x1, y0, z0),
+            Vec3::new(x1, y0, z1),
+            Vec3::new(x0, y0, z1),
+            bottom,
+        );
+        push_quad(
+            &mut vertices,
+            &mut indices,
+            Vec3::new(x1, y0, z0),
+            Vec3::new(x1, y0, z1),
+            Vec3::new(x1, y1, z1),
+            Vec3::new(x1, y1, z0),
+            side_light,
+        );
+        push_quad(
+            &mut vertices,
+            &mut indices,
+            Vec3::new(x0, y0, z0),
+            Vec3::new(x0, y0, z1),
+            Vec3::new(x0, y1, z1),
+            Vec3::new(x0, y1, z0),
+            side_dark,
+        );
+        push_quad(
+            &mut vertices,
+            &mut indices,
+            Vec3::new(x0, y0, z1),
+            Vec3::new(x0, y1, z1),
+            Vec3::new(x1, y1, z1),
+            Vec3::new(x1, y0, z1),
+            side_light,
+        );
+        push_quad(
+            &mut vertices,
+            &mut indices,
+            Vec3::new(x0, y0, z0),
+            Vec3::new(x0, y1, z0),
+            Vec3::new(x1, y1, z0),
+            Vec3::new(x1, y0, z0),
+            side_dark,
+        );
+
+        let tile_min = Vec3::new(x0, y0, z0);
+        let tile_max = Vec3::new(x1, y1, z1);
+        bounds = Some(match bounds {
+            Some(existing) => TerrainBounds {
+                min: existing.min.min(tile_min),
+                max: existing.max.max(tile_max),
+            },
+            None => TerrainBounds {
+                min: tile_min,
+                max: tile_max,
+            },
+        });
+    }
+
+    (vertices, indices, bounds)
+}
+
+fn push_quad(
+    vertices: &mut Vec<Vertex>,
+    indices: &mut Vec<u32>,
+    p0: Vec3,
+    p1: Vec3,
+    p2: Vec3,
+    p3: Vec3,
+    color: [f32; 3],
+) {
+    let base = vertices.len() as u32;
+    vertices.push(Vertex {
+        position: p0.to_array(),
+        color,
+    });
+    vertices.push(Vertex {
+        position: p1.to_array(),
+        color,
+    });
+    vertices.push(Vertex {
+        position: p2.to_array(),
+        color,
+    });
+    vertices.push(Vertex {
+        position: p3.to_array(),
+        color,
+    });
+
+    indices.extend_from_slice(&[base, base + 3, base + 1, base + 1, base + 3, base + 2]);
+}
+
+fn terrain_mvp(width: u32, height: u32, bounds: Option<TerrainBounds>) -> Mat4 {
+    let vfov = std::f32::consts::FRAC_PI_4;
+    let aspect = width.max(1) as f32 / height.max(1) as f32;
+
+    if let Some(bounds) = bounds {
+        let center = (bounds.min + bounds.max) * 0.5;
+        let extent = bounds.max - bounds.min;
+        let radius = (extent.length() * 0.5).max(1.0);
+
+        let hfov = 2.0 * ((vfov * 0.5).tan() * aspect).atan();
+        let limiting_fov = vfov.min(hfov).max(0.25);
+        let distance = (radius / (limiting_fov * 0.5).tan()) * 1.35;
+
+        let eye_dir = Vec3::new(1.0, 1.25, 1.0).normalize();
+        let eye = center + eye_dir * distance;
+        let view = Mat4::look_at_rh(eye, center, Vec3::Y);
+        let near = (distance - radius * 2.2).max(0.1);
+        let far = distance + radius * 3.0 + 50.0;
+        let proj = Mat4::perspective_rh(vfov, aspect, near, far);
+        proj * view
+    } else {
+        let view = Mat4::look_at_rh(Vec3::new(2.2, 2.2, 2.2), Vec3::ZERO, Vec3::Y);
+        let proj = Mat4::perspective_rh(vfov, aspect, 0.1, 100.0);
+        proj * view
+    }
+}
+
+fn cm_to_tile_units(cm: i64) -> f32 {
+    cm as f32 / 100.0
 }
 
 fn create_depth_texture(
@@ -330,7 +371,7 @@ fn create_depth_texture(
     config: &wgpu::SurfaceConfiguration,
 ) -> wgpu::Texture {
     device.create_texture(&wgpu::TextureDescriptor {
-        label: Some("GM Prototype Depth Texture"),
+        label: Some("GM Terrain Depth Texture"),
         size: wgpu::Extent3d {
             width: config.width,
             height: config.height,
@@ -344,3 +385,35 @@ fn create_depth_texture(
         view_formats: &[],
     })
 }
+
+const SHADER_SOURCE: &str = r#"
+struct Uniforms {
+    mvp: mat4x4<f32>,
+}
+
+@group(0) @binding(0)
+var<uniform> uniforms: Uniforms;
+
+struct VertexInput {
+    @location(0) position: vec3<f32>,
+    @location(1) color: vec3<f32>,
+}
+
+struct VertexOutput {
+    @builtin(position) clip_position: vec4<f32>,
+    @location(0) color: vec3<f32>,
+}
+
+@vertex
+fn vs_main(in: VertexInput) -> VertexOutput {
+    var out: VertexOutput;
+    out.clip_position = uniforms.mvp * vec4<f32>(in.position, 1.0);
+    out.color = in.color;
+    return out;
+}
+
+@fragment
+fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
+    return vec4<f32>(in.color, 1.0);
+}
+"#;
