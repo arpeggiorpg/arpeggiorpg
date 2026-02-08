@@ -1,5 +1,7 @@
 use anyhow::Context;
-use arptypes::{CreatureID, GMCommand, GameLog, Point3, Scene, multitenant::RPIGameRequest};
+use arptypes::{
+    CreatureID, GMCommand, GameLog, Point3, Scene, SceneID, multitenant::RPIGameRequest,
+};
 use arp3d::{Creature3d, Scene3d, TerrainTile3d};
 use dioxus::prelude::*;
 use tracing::error;
@@ -36,6 +38,13 @@ struct MovementModeState {
 struct SceneCreatureRef {
     id: CreatureID,
     name: String,
+}
+
+enum ClickResolution {
+    KeepState,
+    CloseMenu,
+    OpenMenu(CreatureMenuState),
+    QueueTeleport(RPIGameRequest),
 }
 
 #[component]
@@ -91,41 +100,22 @@ pub fn GMWgpuScenePrototype(scene: Scene) -> Element {
                     let mut maybe_request: Option<RPIGameRequest> = None;
 
                     if let Some(canvas) = find_canvas() {
-                        if let Some(mode) = mode {
-                            if let Some(tile_idx) =
-                                pick_terrain_for_pointer(&scene3d_for_click, &canvas, client_x, client_y)
-                            {
-                                if let Some(tile) = scene3d_for_click.terrain.get(tile_idx).copied() {
-                                    let destination = terrain_tile_to_point(tile);
-                                    movement_mode.set(None);
-                                    creature_menu.set(None);
-                                    maybe_request = Some(RPIGameRequest::GMCommand {
-                                        command: Box::new(GMCommand::SetCreaturePos {
-                                            scene_id,
-                                            creature_id: mode.creature_id,
-                                            pos: destination,
-                                        }),
-                                    });
-                                }
-                            }
-                        } else {
-                            let picked =
-                                pick_object_for_pointer(&scene3d_for_click, &canvas, client_x, client_y);
-                            if let Some(HoveredSceneObject::Creature(creature_index)) = picked {
-                                if let Some(creature_ref) =
-                                    scene_creatures_for_click.get(creature_index).cloned()
-                                {
-                                    creature_menu.set(Some(CreatureMenuState {
-                                        creature_id: creature_ref.id,
-                                        creature_name: creature_ref.name,
-                                        client_x,
-                                        client_y,
-                                    }));
-                                } else {
-                                    creature_menu.set(None);
-                                }
-                            } else {
+                        match resolve_canvas_click(
+                            &scene3d_for_click,
+                            &scene_creatures_for_click,
+                            &canvas,
+                            client_x,
+                            client_y,
+                            mode,
+                            scene_id,
+                        ) {
+                            ClickResolution::KeepState => {}
+                            ClickResolution::CloseMenu => creature_menu.set(None),
+                            ClickResolution::OpenMenu(menu) => creature_menu.set(Some(menu)),
+                            ClickResolution::QueueTeleport(request) => {
+                                movement_mode.set(None);
                                 creature_menu.set(None);
+                                maybe_request = Some(request);
                             }
                         }
                     } else {
@@ -154,48 +144,75 @@ pub fn GMWgpuScenePrototype(scene: Scene) -> Element {
             }
 
             if let Some(mode) = movement_mode() {
-                div {
-                    class: "absolute top-3 left-1/2 z-40 -translate-x-1/2 rounded-lg border border-blue-200 bg-blue-50/95 px-3 py-2 shadow-sm backdrop-blur-sm flex items-center gap-3",
-                    onclick: move |evt: Event<MouseData>| evt.stop_propagation(),
-                    span {
-                        class: "text-sm text-blue-900",
-                        "Pick a destination to move {mode.creature_name}"
-                    }
-                    button {
-                        r#type: "button",
-                        class: "rounded border border-blue-300 bg-white px-2 py-1 text-xs font-medium text-blue-800 hover:bg-blue-100",
-                        onclick: move |_| movement_mode.set(None),
-                        "Cancel"
-                    }
+                MovementModeOverlay {
+                    mode,
+                    on_cancel: move |_| movement_mode.set(None),
                 }
             }
 
             if let Some(menu) = creature_menu() {
-                div {
-                    class: "fixed inset-0 z-40",
-                    onclick: move |_| creature_menu.set(None),
-                }
-                div {
-                    class: "fixed z-50 min-w-44 rounded-md border border-gray-200 bg-white/95 p-2 shadow-lg backdrop-blur-sm",
-                    style: "left: {menu.client_x}px; top: {menu.client_y}px; transform: translate(8px, 8px);",
-                    onclick: move |evt: Event<MouseData>| evt.stop_propagation(),
-                    div {
-                        class: "px-2 py-1 text-xs font-semibold uppercase tracking-wide text-gray-500",
-                        "{menu.creature_name}"
-                    }
-                    button {
-                        r#type: "button",
-                        class: "w-full rounded px-2 py-1.5 text-left text-sm text-gray-800 hover:bg-gray-100",
-                        onclick: move |_| {
-                            movement_mode.set(Some(MovementModeState {
-                                creature_id: menu.creature_id,
-                                creature_name: menu.creature_name.clone(),
-                            }));
-                            creature_menu.set(None);
-                        },
-                        "Teleport Creature"
+                CreatureMenuOverlay {
+                    menu,
+                    on_close: move |_| creature_menu.set(None),
+                    on_teleport: move |mode| {
+                        movement_mode.set(Some(mode));
+                        creature_menu.set(None);
                     }
                 }
+            }
+        }
+    }
+}
+
+#[component]
+fn MovementModeOverlay(mode: MovementModeState, on_cancel: EventHandler<()>) -> Element {
+    rsx! {
+        div {
+            class: "absolute top-3 left-1/2 z-40 -translate-x-1/2 rounded-lg border border-blue-200 bg-blue-50/95 px-3 py-2 shadow-sm backdrop-blur-sm flex items-center gap-3",
+            onclick: move |evt: Event<MouseData>| evt.stop_propagation(),
+            span {
+                class: "text-sm text-blue-900",
+                "Pick a destination to move {mode.creature_name}"
+            }
+            button {
+                r#type: "button",
+                class: "rounded border border-blue-300 bg-white px-2 py-1 text-xs font-medium text-blue-800 hover:bg-blue-100",
+                onclick: move |_| on_cancel.call(()),
+                "Cancel"
+            }
+        }
+    }
+}
+
+#[component]
+fn CreatureMenuOverlay(
+    menu: CreatureMenuState,
+    on_close: EventHandler<()>,
+    on_teleport: EventHandler<MovementModeState>,
+) -> Element {
+    rsx! {
+        div {
+            class: "fixed inset-0 z-40",
+            onclick: move |_| on_close.call(()),
+        }
+        div {
+            class: "fixed z-50 min-w-44 rounded-md border border-gray-200 bg-white/95 p-2 shadow-lg backdrop-blur-sm",
+            style: "left: {menu.client_x}px; top: {menu.client_y}px; transform: translate(8px, 8px);",
+            onclick: move |evt: Event<MouseData>| evt.stop_propagation(),
+            div {
+                class: "px-2 py-1 text-xs font-semibold uppercase tracking-wide text-gray-500",
+                "{menu.creature_name}"
+            }
+            button {
+                r#type: "button",
+                class: "w-full rounded px-2 py-1.5 text-left text-sm text-gray-800 hover:bg-gray-100",
+                onclick: move |_| {
+                    on_teleport.call(MovementModeState {
+                        creature_id: menu.creature_id,
+                        creature_name: menu.creature_name.clone(),
+                    });
+                },
+                "Teleport Creature"
             }
         }
     }
@@ -324,6 +341,49 @@ fn pick_terrain_for_pointer(
     let client_width = canvas.client_width().max(1) as u32;
     let client_height = canvas.client_height().max(1) as u32;
     arp3d::wgpu::pick_terrain_tile(scene3d, client_width, client_height, x, y)
+}
+
+fn resolve_canvas_click(
+    scene3d: &Scene3d,
+    scene_creatures: &[SceneCreatureRef],
+    canvas: &web_sys::HtmlCanvasElement,
+    client_x: f32,
+    client_y: f32,
+    mode: Option<MovementModeState>,
+    scene_id: SceneID,
+) -> ClickResolution {
+    if let Some(mode) = mode {
+        let Some(tile_idx) = pick_terrain_for_pointer(scene3d, canvas, client_x, client_y) else {
+            return ClickResolution::KeepState;
+        };
+        let Some(tile) = scene3d.terrain.get(tile_idx).copied() else {
+            return ClickResolution::KeepState;
+        };
+        let destination = terrain_tile_to_point(tile);
+        return ClickResolution::QueueTeleport(RPIGameRequest::GMCommand {
+            command: Box::new(GMCommand::SetCreaturePos {
+                scene_id,
+                creature_id: mode.creature_id,
+                pos: destination,
+            }),
+        });
+    }
+
+    let Some(HoveredSceneObject::Creature(creature_index)) =
+        pick_object_for_pointer(scene3d, canvas, client_x, client_y)
+    else {
+        return ClickResolution::CloseMenu;
+    };
+    let Some(creature_ref) = scene_creatures.get(creature_index).cloned() else {
+        return ClickResolution::CloseMenu;
+    };
+
+    ClickResolution::OpenMenu(CreatureMenuState {
+        creature_id: creature_ref.id,
+        creature_name: creature_ref.name,
+        client_x,
+        client_y,
+    })
 }
 
 fn terrain_tile_to_point(tile: TerrainTile3d) -> Point3 {
