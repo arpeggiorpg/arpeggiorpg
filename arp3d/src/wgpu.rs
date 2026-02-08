@@ -1,5 +1,5 @@
 use bytemuck::{Pod, Zeroable};
-use glam::{Mat4, Vec3};
+use glam::{Mat4, Vec3, Vec4};
 use wgpu::util::DeviceExt;
 
 use crate::Scene3d;
@@ -47,13 +47,18 @@ pub struct SceneRenderer {
 }
 
 impl SceneRenderer {
-    pub fn new(device: &wgpu::Device, config: &wgpu::SurfaceConfiguration, scene: &Scene3d) -> Self {
+    pub fn new(
+        device: &wgpu::Device,
+        config: &wgpu::SurfaceConfiguration,
+        scene: &Scene3d,
+        highlighted_terrain: Option<usize>,
+    ) -> Self {
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("Arp3D Scene Shader"),
             source: wgpu::ShaderSource::Wgsl(SHADER_SOURCE.into()),
         });
 
-        let (mut vertices, mut indices, bounds) = build_scene_mesh(scene);
+        let (mut vertices, mut indices, bounds) = build_scene_mesh(scene, highlighted_terrain);
         if vertices.is_empty() {
             vertices.push(Vertex {
                 position: [0.0, 0.0, 0.0],
@@ -216,6 +221,7 @@ pub async fn render_scene_on_surface(
     client_width: u32,
     client_height: u32,
     scene: &Scene3d,
+    highlighted_terrain: Option<usize>,
 ) -> anyhow::Result<(u32, u32)> {
     let adapter = instance
         .request_adapter(&wgpu::RequestAdapterOptions {
@@ -259,7 +265,7 @@ pub async fn render_scene_on_surface(
     };
     surface.configure(&device, &config);
 
-    let renderer = SceneRenderer::new(&device, &config, scene);
+    let renderer = SceneRenderer::new(&device, &config, scene, highlighted_terrain);
     let output = match surface.get_current_texture() {
         Ok(output) => output,
         Err(wgpu::SurfaceError::Lost | wgpu::SurfaceError::Outdated) => {
@@ -283,33 +289,119 @@ pub async fn render_scene_on_surface(
     Ok((width, height))
 }
 
-fn build_scene_mesh(scene: &Scene3d) -> (Vec<Vertex>, Vec<u32>, Option<SceneBounds>) {
+pub fn pick_terrain_tile(
+    scene: &Scene3d,
+    viewport_width: u32,
+    viewport_height: u32,
+    cursor_x: f32,
+    cursor_y: f32,
+) -> Option<usize> {
+    if scene.terrain.is_empty() || viewport_width == 0 || viewport_height == 0 {
+        return None;
+    }
+    if cursor_x < 0.0
+        || cursor_y < 0.0
+        || cursor_x > viewport_width as f32
+        || cursor_y > viewport_height as f32
+    {
+        return None;
+    }
+
+    let bounds = scene_bounds_for_camera(scene)?;
+    let view_proj = scene_mvp(viewport_width, viewport_height, Some(bounds));
+    let inv_view_proj = view_proj.inverse();
+
+    let ndc_x = (cursor_x / viewport_width as f32) * 2.0 - 1.0;
+    let ndc_y = 1.0 - (cursor_y / viewport_height as f32) * 2.0;
+
+    let near4 = inv_view_proj * Vec4::new(ndc_x, ndc_y, 0.0, 1.0);
+    let far4 = inv_view_proj * Vec4::new(ndc_x, ndc_y, 1.0, 1.0);
+    if near4.w.abs() < 1e-6 || far4.w.abs() < 1e-6 {
+        return None;
+    }
+
+    let near = near4.truncate() / near4.w;
+    let far = far4.truncate() / far4.w;
+    let ray = far - near;
+    if ray.length_squared() <= f32::EPSILON {
+        return None;
+    }
+    let ray_dir = ray.normalize();
+
+    let mut best: Option<(f32, usize)> = None;
+    const EPS: f32 = 1e-4;
+    for (idx, tile) in scene.terrain.iter().enumerate() {
+        if ray_dir.y.abs() < EPS {
+            continue;
+        }
+        let top_y = tile.y + 1.0;
+        let t = (top_y - near.y) / ray_dir.y;
+        if t <= 0.0 {
+            continue;
+        }
+        let hit = near + ray_dir * t;
+        if hit.x >= tile.x - EPS
+            && hit.x <= tile.x + 1.0 + EPS
+            && hit.z >= tile.z - EPS
+            && hit.z <= tile.z + 1.0 + EPS
+        {
+            match best {
+                Some((best_t, _)) if t >= best_t => {}
+                _ => best = Some((t, idx)),
+            }
+        }
+    }
+
+    best.map(|(_, idx)| idx)
+}
+
+fn build_scene_mesh(
+    scene: &Scene3d,
+    highlighted_terrain: Option<usize>,
+) -> (Vec<Vertex>, Vec<u32>, Option<SceneBounds>) {
     let mut vertices = Vec::with_capacity((scene.terrain.len() + scene.creatures.len()) * 24);
     let mut indices = Vec::with_capacity((scene.terrain.len() + scene.creatures.len()) * 36);
-    let mut bounds: Option<SceneBounds> = None;
 
-    for tile in &scene.terrain {
+    for (idx, tile) in scene.terrain.iter().enumerate() {
         let min = Vec3::new(tile.x, tile.y, tile.z);
         let max = min + Vec3::ONE;
+        let top = if Some(idx) == highlighted_terrain {
+            [0.92, 0.90, 0.44]
+        } else {
+            [0.36, 0.73, 0.31]
+        };
         append_cube(
             &mut vertices,
             &mut indices,
             min,
             max,
-            [0.36, 0.73, 0.31],
+            top,
             [0.62, 0.48, 0.30],
             [0.50, 0.38, 0.24],
             [0.22, 0.18, 0.14],
         );
-        bounds = merge_bounds(bounds, min, max);
     }
 
     for creature in &scene.creatures {
-        let (model_min, model_max) = append_creature_model(&mut vertices, &mut indices, *creature);
-        bounds = merge_bounds(bounds, model_min, model_max);
+        let _ = append_creature_model(&mut vertices, &mut indices, *creature);
     }
 
+    let bounds = scene_bounds_for_camera(scene);
     (vertices, indices, bounds)
+}
+
+fn scene_bounds_for_camera(scene: &Scene3d) -> Option<SceneBounds> {
+    let mut bounds: Option<SceneBounds> = None;
+    for tile in &scene.terrain {
+        let min = Vec3::new(tile.x, tile.y, tile.z);
+        let max = min + Vec3::ONE;
+        bounds = merge_bounds(bounds, min, max);
+    }
+    for creature in &scene.creatures {
+        let (min, max) = creature_model_bounds(*creature);
+        bounds = merge_bounds(bounds, min, max);
+    }
+    bounds
 }
 
 fn merge_bounds(existing: Option<SceneBounds>, min: Vec3, max: Vec3) -> Option<SceneBounds> {
@@ -553,6 +645,44 @@ fn append_creature_model(
     );
 
     (bounds_min, bounds_max)
+}
+
+fn creature_model_bounds(creature: crate::Creature3d) -> (Vec3, Vec3) {
+    let footprint_x = creature.size_x.max(0.55);
+    let footprint_z = creature.size_z.max(0.55);
+    let height = creature.size_y.max(1.3);
+
+    let center_x = creature.x + footprint_x * 0.5;
+    let center_z = creature.z + footprint_z * 0.5;
+    let base_y = creature.y;
+
+    let leg_height = height * 0.42;
+    let torso_height = height * 0.36;
+    let head_height = height * 0.22;
+
+    let leg_depth = (footprint_z * 0.22).clamp(0.14, 0.28);
+    let torso_width = (footprint_x * 0.52).clamp(0.24, 0.44);
+    let torso_depth = (footprint_z * 0.34).clamp(0.18, 0.32);
+
+    let leg_width = (footprint_x * 0.22).clamp(0.14, 0.28);
+    let arm_width = (leg_width * 0.90).clamp(0.12, 0.22);
+    let arm_depth = (leg_depth * 0.90).clamp(0.12, 0.22);
+    let arm_offset = torso_width * 0.5 + arm_width * 0.5 + 0.02;
+
+    let head_depth = (torso_depth * 0.95).clamp(0.18, 0.30);
+    let half_depth = (leg_depth.max(torso_depth).max(arm_depth).max(head_depth)) * 0.5;
+
+    let min = Vec3::new(
+        center_x - (arm_offset + arm_width * 0.5),
+        base_y,
+        center_z - half_depth,
+    );
+    let max = Vec3::new(
+        center_x + (arm_offset + arm_width * 0.5),
+        base_y + leg_height + torso_height + head_height,
+        center_z + half_depth,
+    );
+    (min, max)
 }
 
 fn scene_mvp(width: u32, height: u32, bounds: Option<SceneBounds>) -> Mat4 {
