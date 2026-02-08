@@ -1,9 +1,6 @@
-use std::collections::VecDeque;
-
 use arptypes::{
-    GameLog, Item, Note, PlayerCommand, PlayerID, SceneID, SerializedCreature,
-    SerializedPlayerGame,
-    multitenant::{GameID, GameIndex, InvitationID, PlayerGameAndMetadata, RPIGameRequest, Role},
+    Item, Note, PlayerCommand, PlayerID, SceneID, SerializedCreature, SerializedPlayerGame,
+    multitenant::{GameID, InvitationID, PlayerGameAndMetadata, RPIGameRequest, Role},
 };
 use dioxus::prelude::*;
 
@@ -11,7 +8,7 @@ use foldertree::FolderPath;
 use tracing::{error, info};
 
 use crate::{
-    GAME_SOURCE, GameSource,
+    GAME_LOGS, GAME_NAME, GAME_SOURCE, GameSource,
     Route,
     chat::PlayerChat,
     components::{
@@ -24,10 +21,6 @@ use crate::{
     grid::{CreatureMenuAction, SceneGrid},
     rpi::{self, Connector, InvitationCheck, send_request, use_ws},
 };
-
-pub static GAME_LOGS: GlobalSignal<VecDeque<(GameIndex, GameLog)>> =
-    Signal::global(|| VecDeque::new());
-pub static GAME_NAME: GlobalSignal<String> = Signal::global(|| String::new());
 
 #[derive(Clone, Copy)]
 struct PlayerGameContext(Memo<SerializedPlayerGame>);
@@ -44,7 +37,6 @@ pub fn PlayerGamePage(id: GameID, player_id: PlayerID) -> Element {
         role: Role::Player,
         game_id: id,
         player_id: Some(player_id.clone()),
-        game_logs_signal: GAME_LOGS.resolve(),
 
         GameLoader { player_id }
       }

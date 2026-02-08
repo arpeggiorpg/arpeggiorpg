@@ -1,15 +1,13 @@
-use std::collections::VecDeque;
-
 use arptypes::{
     Folder, FolderItemID, GMCommand, Game, GameLog, ModuleSource, SceneID, SerializedGame,
-    multitenant::{GameAndMetadata, GameID, GameIndex, InvitationID, RPIGameRequest, Role},
+    multitenant::{GameAndMetadata, GameID, InvitationID, RPIGameRequest, Role},
 };
 use dioxus::prelude::*;
 use foldertree::FolderPath;
 use tracing::{error, info};
 
 use crate::{
-    GAME_SOURCE, GameSource,
+    GAME_LOGS, GAME_NAME, GAME_SOURCE, GameSource,
     chat::GMChat,
     components::{
         button::{Button, ButtonVariant},
@@ -17,11 +15,8 @@ use crate::{
         tabs::{TabContent, TabList, TabTrigger, Tabs},
     },
     gfx::dioxus::GMWgpuScenePrototype,
-    player_view::GAME_NAME,
     rpi::{Connector, send_request, use_ws},
 };
-pub static GM_GAME_LOGS: GlobalSignal<VecDeque<(GameIndex, GameLog)>> =
-    Signal::global(|| VecDeque::new());
 
 #[derive(Clone, Copy)]
 struct GMGameContext(Memo<Game>);
@@ -38,7 +33,6 @@ pub fn GMGamePage(id: GameID) -> Element {
             role: Role::GM,
             game_id: id,
             player_id: None,
-            game_logs_signal: GM_GAME_LOGS.resolve(),
 
             GameLoader { game_id: id }
         }
@@ -53,7 +47,7 @@ fn GameLoader(game_id: GameID) -> Element {
         let response = send_request::<GameAndMetadata>(RPIGameRequest::GMGetGame, ws).await?;
         let game = Game::from_serialized_game(response.game);
         *GAME_SOURCE.write() = GameSource::GM(game.clone());
-        *GM_GAME_LOGS.write() = response.logs;
+        *GAME_LOGS.write() = response.logs;
         *GAME_NAME.write() = response.metadata.name.clone();
         Ok(game)
     });

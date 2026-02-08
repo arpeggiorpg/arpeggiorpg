@@ -5,9 +5,7 @@ use dioxus::prelude::*;
 use tracing::warn;
 
 use crate::{
-    GAME_SOURCE, GameSource,
-    gm_view::GM_GAME_LOGS,
-    player_view::GAME_LOGS,
+    GAME_LOGS, GAME_SOURCE, GameSource,
     rpi::{UIRequest, send_request, use_ws},
 };
 
@@ -41,10 +39,7 @@ pub fn GMChat() -> Element {
 fn ChatPanel(mode: ChatMode) -> Element {
     let ws = use_ws();
     let mut message = use_signal(|| String::new());
-    let chat_logs = match mode {
-        ChatMode::Player => GAME_LOGS.read(),
-        ChatMode::GM => GM_GAME_LOGS.read(),
-    };
+    let chat_logs = GAME_LOGS.read();
     let send_message_handler = move |_| {
         async move {
             let _ = maybe_send_chat(mode, ws, message).await;
