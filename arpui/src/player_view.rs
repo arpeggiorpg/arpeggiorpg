@@ -29,11 +29,12 @@ pub static GAME_LOGS: GlobalSignal<VecDeque<(GameIndex, GameLog)>> =
     Signal::global(|| VecDeque::new());
 pub static GAME_NAME: GlobalSignal<String> = Signal::global(|| String::new());
 
-fn player_game() -> SerializedPlayerGame {
-    match GAME_SOURCE() {
-        GameSource::Player { game, .. } => game,
-        GameSource::GM(_) => Default::default(),
-    }
+#[derive(Clone, Copy)]
+struct PlayerGameContext(Memo<SerializedPlayerGame>);
+
+fn use_player_game() -> SerializedPlayerGame {
+    let game = use_context::<PlayerGameContext>().0;
+    game()
 }
 
 #[component]
@@ -74,10 +75,12 @@ fn GameLoader(player_id: PlayerID) -> Element {
         Some(Ok(game)) => {
             let scene_id = game.players.get(&player_id).and_then(|p| p.scene);
             rsx! {
-              Shell {
-                player_id: player_id.clone(),
-                scene_id
-              }
+                PlayerGameProvider {
+                    Shell {
+                        player_id: player_id.clone(),
+                        scene_id
+                    }
+                }
             }
         }
         Some(Err(err)) => {
@@ -88,6 +91,18 @@ fn GameLoader(player_id: PlayerID) -> Element {
             rsx! { div { "Loading player view..." } }
         }
     }
+}
+
+#[component]
+fn PlayerGameProvider(children: Element) -> Element {
+    let game = use_memo(move || match GAME_SOURCE() {
+        GameSource::Player { game, .. } => game,
+        GameSource::GM(_) => {
+            panic!("Player game context used while current game source is GM")
+        }
+    });
+    use_context_provider(move || PlayerGameContext(game));
+    children
 }
 
 #[component]
@@ -109,7 +124,7 @@ fn Shell(player_id: PlayerID, scene_id: Option<SceneID>) -> Element {
     let chat = rsx! {
         PlayerChat { player_id: player_id.clone() }
     };
-    let game = player_game();
+    let game = use_player_game();
 
     let get_creature_actions = move |creature_id| {
         if let Some(player) = game.players.get(&player_id) {
@@ -144,7 +159,7 @@ fn Shell(player_id: PlayerID, scene_id: Option<SceneID>) -> Element {
 
 #[component]
 fn Creatures(player_id: PlayerID) -> Element {
-    let game = player_game();
+    let game = use_player_game();
 
     if let Some(player) = game.players.get(&player_id) {
         if player.creatures.is_empty() {
@@ -197,7 +212,7 @@ fn Notes(player_id: PlayerID) -> Element {
     let mut draft_content = use_signal(|| String::new());
     let ws = use_ws();
 
-    let game = player_game();
+    let game = use_player_game();
     let existing_note = game.notes.get("Scratch").cloned();
 
     // Initialize draft content from existing note on first load
@@ -313,7 +328,7 @@ fn CollapsibleInventory(creature: SerializedCreature) -> Element {
 
 #[component]
 fn CreatureInventory(creature: SerializedCreature) -> Element {
-    let game = player_game();
+    let game = use_player_game();
 
     // Get items from creature's inventory
     let mut inventory_items: Vec<(Item, u64)> = creature
@@ -527,7 +542,7 @@ fn GiveItemModal(
     });
 
     // Get other creatures in the scene that are visible to the player
-    let game = player_game();
+    let game = use_player_game();
     let available_recipients: Vec<SerializedCreature> = {
         // Find which player owns this creature
 

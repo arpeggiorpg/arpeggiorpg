@@ -21,11 +21,12 @@ use crate::{
 pub static GM_GAME_LOGS: GlobalSignal<VecDeque<(GameIndex, GameLog)>> =
     Signal::global(|| VecDeque::new());
 
-fn gm_game() -> Game {
-    match GAME_SOURCE() {
-        GameSource::GM(game) => game,
-        GameSource::Player { .. } => Default::default(),
-    }
+#[derive(Clone, Copy)]
+struct GMGameContext(Memo<Game>);
+
+fn use_gm_game() -> Game {
+    let game = use_context::<GMGameContext>().0;
+    game()
 }
 
 #[component]
@@ -58,7 +59,9 @@ fn GameLoader(game_id: GameID) -> Element {
     match &*future.read_unchecked() {
         Some(Ok(_game)) => {
             rsx! {
-                Shell { game_id }
+                GMGameProvider {
+                    Shell { game_id }
+                }
             }
         }
         Some(Err(err)) => {
@@ -72,8 +75,20 @@ fn GameLoader(game_id: GameID) -> Element {
 }
 
 #[component]
+fn GMGameProvider(children: Element) -> Element {
+    let game = use_memo(move || match GAME_SOURCE() {
+        GameSource::GM(game) => game,
+        GameSource::Player { .. } => {
+            panic!("GM game context used while current game source is Player")
+        }
+    });
+    use_context_provider(move || GMGameContext(game));
+    children
+}
+
+#[component]
 fn Shell(game_id: GameID) -> Element {
-    let game = gm_game();
+    let game = use_gm_game();
     let mut selected_scene_id = use_signal(|| game.active_scene);
     let num_scenes = game.scenes.len();
     let num_creatures = game.creatures.len();
@@ -184,7 +199,7 @@ fn CampaignFolder(
     selected_scene_id: Option<SceneID>,
     on_select_scene: EventHandler<SceneID>,
 ) -> Element {
-    let game = gm_game();
+    let game = use_gm_game();
     let mut is_expanded = use_signal(move || start_open);
     let mut show_menu = use_signal(|| false);
     let mut show_import_modal = use_signal(|| false);
@@ -670,7 +685,7 @@ fn DeleteFolderModal(path: FolderPath, on_close: EventHandler<()>) -> Element {
 #[component]
 fn MoveFolderModal(path: FolderPath, on_close: EventHandler<()>) -> Element {
     let ws = use_ws();
-    let game = gm_game();
+    let game = use_gm_game();
     let mut search_term = use_signal(String::new);
     let mut selected_destination = use_signal(|| None::<FolderPath>);
 
