@@ -305,24 +305,8 @@ fn build_scene_mesh(scene: &Scene3d) -> (Vec<Vertex>, Vec<u32>, Option<SceneBoun
     }
 
     for creature in &scene.creatures {
-        let min = Vec3::new(creature.x, creature.y, creature.z);
-        let size = Vec3::new(
-            creature.size_x.max(0.1),
-            creature.size_y.max(0.1),
-            creature.size_z.max(0.1),
-        );
-        let max = min + size;
-        append_cube(
-            &mut vertices,
-            &mut indices,
-            min,
-            max,
-            [0.80, 0.20, 0.20],
-            [0.70, 0.25, 0.25],
-            [0.60, 0.16, 0.16],
-            [0.38, 0.11, 0.11],
-        );
-        bounds = merge_bounds(bounds, min, max);
+        let (model_min, model_max) = append_creature_model(&mut vertices, &mut indices, *creature);
+        bounds = merge_bounds(bounds, model_min, model_max);
     }
 
     (vertices, indices, bounds)
@@ -439,6 +423,136 @@ fn push_quad(
     });
 
     indices.extend_from_slice(&[base, base + 3, base + 1, base + 1, base + 3, base + 2]);
+}
+
+fn append_creature_model(
+    vertices: &mut Vec<Vertex>,
+    indices: &mut Vec<u32>,
+    creature: crate::Creature3d,
+) -> (Vec3, Vec3) {
+    let footprint_x = creature.size_x.max(0.55);
+    let footprint_z = creature.size_z.max(0.55);
+    let height = creature.size_y.max(1.3);
+
+    let center_x = creature.x + footprint_x * 0.5;
+    let center_z = creature.z + footprint_z * 0.5;
+    let base_y = creature.y;
+
+    let leg_height = height * 0.42;
+    let torso_height = height * 0.36;
+    let head_height = height * 0.22;
+    let arm_height = torso_height * 0.88;
+
+    let leg_width = (footprint_x * 0.22).clamp(0.14, 0.28);
+    let leg_depth = (footprint_z * 0.22).clamp(0.14, 0.28);
+    let leg_gap = leg_width * 0.40;
+
+    let torso_width = (footprint_x * 0.52).clamp(0.24, 0.44);
+    let torso_depth = (footprint_z * 0.34).clamp(0.18, 0.32);
+
+    let arm_width = (leg_width * 0.90).clamp(0.12, 0.22);
+    let arm_depth = (leg_depth * 0.90).clamp(0.12, 0.22);
+    let arm_offset = torso_width * 0.5 + arm_width * 0.5 + 0.02;
+
+    let head_width = (torso_width * 0.95).clamp(0.22, 0.40);
+    let head_depth = (torso_depth * 0.95).clamp(0.18, 0.30);
+
+    let mut bounds_min = Vec3::splat(f32::INFINITY);
+    let mut bounds_max = Vec3::splat(f32::NEG_INFINITY);
+
+    let mut push_part = |min: Vec3,
+                         max: Vec3,
+                         top: [f32; 3],
+                         side_light: [f32; 3],
+                         side_dark: [f32; 3],
+                         bottom: [f32; 3]| {
+        append_cube(vertices, indices, min, max, top, side_light, side_dark, bottom);
+        bounds_min = bounds_min.min(min);
+        bounds_max = bounds_max.max(max);
+    };
+
+    // Legs
+    let leg_left_center_x = center_x - (leg_width * 0.5 + leg_gap * 0.5);
+    let leg_right_center_x = center_x + (leg_width * 0.5 + leg_gap * 0.5);
+    for leg_center_x in [leg_left_center_x, leg_right_center_x] {
+        push_part(
+            Vec3::new(
+                leg_center_x - leg_width * 0.5,
+                base_y,
+                center_z - leg_depth * 0.5,
+            ),
+            Vec3::new(
+                leg_center_x + leg_width * 0.5,
+                base_y + leg_height,
+                center_z + leg_depth * 0.5,
+            ),
+            [0.22, 0.33, 0.80],
+            [0.27, 0.38, 0.85],
+            [0.18, 0.27, 0.70],
+            [0.12, 0.18, 0.45],
+        );
+    }
+
+    let torso_min_y = base_y + leg_height;
+    let torso_max_y = torso_min_y + torso_height;
+    push_part(
+        Vec3::new(
+            center_x - torso_width * 0.5,
+            torso_min_y,
+            center_z - torso_depth * 0.5,
+        ),
+        Vec3::new(
+            center_x + torso_width * 0.5,
+            torso_max_y,
+            center_z + torso_depth * 0.5,
+        ),
+        [0.18, 0.58, 0.82],
+        [0.22, 0.64, 0.88],
+        [0.14, 0.46, 0.68],
+        [0.10, 0.32, 0.48],
+    );
+
+    let arm_min_y = torso_min_y + torso_height * 0.08;
+    let arm_max_y = arm_min_y + arm_height;
+    for arm_center_x in [center_x - arm_offset, center_x + arm_offset] {
+        push_part(
+            Vec3::new(
+                arm_center_x - arm_width * 0.5,
+                arm_min_y,
+                center_z - arm_depth * 0.5,
+            ),
+            Vec3::new(
+                arm_center_x + arm_width * 0.5,
+                arm_max_y,
+                center_z + arm_depth * 0.5,
+            ),
+            [0.85, 0.67, 0.54],
+            [0.90, 0.72, 0.58],
+            [0.76, 0.57, 0.45],
+            [0.62, 0.47, 0.38],
+        );
+    }
+
+    let head_min_y = torso_max_y;
+    let head_max_y = head_min_y + head_height;
+    push_part(
+        Vec3::new(
+            center_x - head_width * 0.5,
+            head_min_y,
+            center_z - head_depth * 0.5,
+        ),
+        Vec3::new(
+            center_x + head_width * 0.5,
+            head_max_y,
+            center_z + head_depth * 0.5,
+        ),
+        [0.91, 0.74, 0.60],
+        [0.96, 0.78, 0.64],
+        [0.81, 0.63, 0.50],
+        [0.66, 0.51, 0.40],
+    );
+
+    (bounds_min, bounds_max)
 }
 
 fn scene_mvp(width: u32, height: u32, bounds: Option<SceneBounds>) -> Mat4 {

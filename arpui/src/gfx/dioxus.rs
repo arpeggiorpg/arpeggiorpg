@@ -72,9 +72,9 @@ fn to_scene3d(scene: &Scene) -> Scene3d {
             x: cm_to_world(position.x_cm()),
             y: cm_to_world(position.z_cm()),
             z: cm_to_world(position.y_cm()),
-            size_x: 1.0,
-            size_y: 1.0,
-            size_z: 1.0,
+            size_x: 0.82,
+            size_y: 1.86,
+            size_z: 0.82,
         })
         .collect();
 
