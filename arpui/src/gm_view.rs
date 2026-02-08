@@ -14,7 +14,7 @@ use crate::{
         button::{Button, ButtonVariant},
         split_pane::{SplitDirection, SplitPane},
     },
-    grid::GMSceneGrid,
+    grid::{GridGameSource, SceneGrid},
     player_view::GAME_NAME,
     rpi::{Connector, send_request, use_ws},
 };
@@ -92,8 +92,10 @@ fn Shell(game_id: GameID) -> Element {
             class: "flex h-full w-full",
             div {
                 class: "grow min-w-0",
-                GMSceneGrid {
-                    scene: shown_scene
+                SceneGrid {
+                    scene: shown_scene,
+                    game_source: GridGameSource::GM(GM_GAME.resolve()),
+                    get_creature_actions: None,
                 }
             }
             div {

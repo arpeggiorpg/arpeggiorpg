@@ -20,7 +20,7 @@ use crate::{
         split_pane::{SplitDirection, SplitPane},
         tabs::{TabContent, TabList, TabTrigger, Tabs},
     },
-    grid::{CreatureMenuAction, SceneGrid},
+    grid::{CreatureMenuAction, GridGameSource, SceneGrid},
     rpi::{self, Connector, InvitationCheck, send_request, use_ws},
 };
 
@@ -116,7 +116,11 @@ fn Shell(player_id: PlayerID, scene_id: Option<SceneID>) -> Element {
         class: "player-view-shell flex w-full",
         div {
           class: "player-view-shell__main grow",
-            SceneGrid { scene: game.active_scene, get_creature_actions: get_creature_actions }
+            SceneGrid {
+                scene: game.active_scene,
+                game_source: GridGameSource::Player(GAME.resolve()),
+                get_creature_actions: get_creature_actions,
+            }
         }
         div {
           class: "player-view-shell__sidebar w-96",

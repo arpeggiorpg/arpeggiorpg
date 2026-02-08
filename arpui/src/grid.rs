@@ -4,7 +4,6 @@ use dioxus::prelude::*;
 
 use crate::{
     components::creature::ClassIcon,
-    gm_view::GM_GAME,
     grid::svg_pan_zoom::SVGPanZoom,
     player_view::GAME,
     rpi::{send_request, use_ws},
@@ -17,10 +16,45 @@ const CORNER_RADIUS: f64 = 5.0;
 pub static MOVEMENT_OPTIONS: GlobalSignal<Option<(CreatureID, Vec<Point3>)>> =
     Signal::global(|| None);
 
+#[derive(Clone, Copy, PartialEq)]
+pub enum GridGameSource {
+    Player(Signal<SerializedPlayerGame>),
+    GM(Signal<Game>),
+}
+
+impl GridGameSource {
+    fn creature(&self, creature_id: CreatureID) -> Option<Creature> {
+        match self {
+            GridGameSource::Player(game_signal) => {
+                let game = game_signal();
+                let creature = game.creatures.get(&creature_id)?;
+                Some(Creature::from_serialized_creature(creature.clone()))
+            }
+            GridGameSource::GM(game_signal) => {
+                let game = game_signal();
+                let creature = game.creatures.get(&creature_id)?;
+                Some(creature.clone())
+            }
+        }
+    }
+
+    fn class_color(&self, class_id: ClassID) -> String {
+        let classes = match self {
+            GridGameSource::Player(game_signal) => game_signal().classes,
+            GridGameSource::GM(game_signal) => game_signal().classes,
+        };
+        classes
+            .get(&class_id)
+            .map(|c| c.color.clone())
+            .unwrap_or_else(|| "gray".to_string())
+    }
+}
+
 #[component]
 pub fn SceneGrid(
     scene: Option<Scene>,
-    get_creature_actions: Callback<CreatureID, Vec<CreatureMenuAction>>,
+    game_source: GridGameSource,
+    get_creature_actions: Option<Callback<CreatureID, Vec<CreatureMenuAction>>>,
 ) -> Element {
     let mut selected_creature_id = use_signal(|| None::<CreatureID>);
     let mut menu_position = use_signal(|| None::<(f64, f64)>);
@@ -29,7 +63,11 @@ pub fn SceneGrid(
         return rsx! {
             div {
                 class: "w-full h-full flex items-center justify-center text-gray-500",
-                "Ask your GM to put you in a scene."
+                match game_source {
+                    GridGameSource::GM(_) => "Select a scene.",
+                    GridGameSource::Player(_) => "Ask your GM to put you in a scene.",
+
+                }
             }
         };
     };
@@ -74,6 +112,7 @@ pub fn SceneGrid(
                 // Creatures
                 Creatures {
                     scene: scene.clone(),
+                    game_source,
                     selected_creature_id: selected_creature_id(),
                     on_creature_click: move |(creature_id, x, y)| {
                         selected_creature_id.set(Some(creature_id));
@@ -83,54 +122,20 @@ pub fn SceneGrid(
             }
 
             // Render creature menu outside SVG
-            if let Some(creature_id) = selected_creature_id() {
-                if let Some((x, y)) = menu_position() {
-                    CreatureMenu {
-                        scene_id: scene.id,
-                        creature_id: creature_id,
-                        position: (x, y),
-                        actions: get_creature_actions(creature_id),
-                        on_close: move |_| {
-                            selected_creature_id.set(None);
-                            menu_position.set(None);
-                        },
+            if let Some(get_actions) = get_creature_actions {
+                if let Some(creature_id) = selected_creature_id() {
+                    if let Some((x, y)) = menu_position() {
+                        CreatureMenu {
+                            scene_id: scene.id,
+                            creature_id: creature_id,
+                            position: (x, y),
+                            actions: get_actions.call(creature_id),
+                            on_close: move |_| {
+                                selected_creature_id.set(None);
+                                menu_position.set(None);
+                            },
+                        }
                     }
-                }
-            }
-        }
-    }
-}
-
-#[component]
-pub fn GMSceneGrid(scene: Option<Scene>) -> Element {
-    let Some(scene) = scene else {
-        return rsx! {
-            div {
-                class: "w-full h-full flex items-center justify-center text-gray-500",
-                "Select a scene from the Campaign tree."
-            }
-        };
-    };
-
-    rsx! {
-        div {
-            class: "w-full h-full bg-gray-200 relative",
-            SVGPanZoom {
-                class: "w-full h-full",
-                view_box: "-1000 -1000 2000 2000",
-                preserve_aspect_ratio: "xMidYMid slice",
-
-                if !scene.background_image_url.is_empty() {
-                    BackgroundImage { scene: scene.clone() }
-                }
-
-                Terrain {
-                    terrain: scene.terrain.clone(),
-                    has_background_image: !scene.background_image_url.is_empty()
-                }
-
-                GMCreatures {
-                    scene: scene.clone(),
                 }
             }
         }
@@ -205,6 +210,7 @@ fn TerrainTile(point: Point3, color: String) -> Element {
 #[component]
 fn Creatures(
     scene: Scene,
+    game_source: GridGameSource,
     selected_creature_id: Option<CreatureID>,
     on_creature_click: EventHandler<(CreatureID, f64, f64)>,
 ) -> Element {
@@ -214,6 +220,7 @@ fn Creatures(
             for (creature_id, (position, visibility)) in &scene.creatures {
                 GridCreature {
                     key: "creature-{creature_id}",
+                    game_source,
                     creature_id: *creature_id,
                     position: *position,
                     visibility: *visibility,
@@ -226,38 +233,19 @@ fn Creatures(
 }
 
 #[component]
-fn GMCreatures(scene: Scene) -> Element {
-    rsx! {
-        g {
-            id: "creatures",
-            for (creature_id, (position, visibility)) in &scene.creatures {
-                GMGridCreature {
-                    key: "gm-creature-{creature_id}",
-                    creature_id: *creature_id,
-                    position: *position,
-                    visibility: *visibility,
-                }
-            }
-        }
-    }
-}
-
-#[component]
 fn GridCreature(
+    game_source: GridGameSource,
     creature_id: CreatureID,
     position: Point3,
     visibility: Visibility,
     selected: bool,
     on_click: EventHandler<(CreatureID, f64, f64)>,
 ) -> Element {
-    let game = GAME();
-    let creature = game.creatures.get(&creature_id);
-    let Some(creature) = creature else {
+    let Some(creature) = game_source.creature(creature_id) else {
         return rsx! { g {} }; // Empty group if creature not found
     };
 
-    let class = game.classes.get(&creature.class);
-    let class_color = class.map(|c| c.color.as_str()).unwrap_or("gray");
+    let class_color = game_source.class_color(creature.class);
 
     let x = position.x_cm();
     let y = position.y_cm();
@@ -314,73 +302,6 @@ fn GridCreature(
                 }
             } else {
                 // Render creature as colored rectangle with name
-                rect {
-                    x: x,
-                    y: y,
-                    width: width,
-                    height: height,
-                    rx: CORNER_RADIUS,
-                    ry: CORNER_RADIUS,
-                    fill: class_color,
-                    stroke: "black",
-                    stroke_width: "1"
-                }
-                text {
-                    x: x + (width as i64) / 2,
-                    y: y + 20,
-                    font_size: "50",
-                    text_anchor: "middle",
-                    dominant_baseline: "hanging",
-                    style: "pointer-events: none",
-                    fill: "white",
-                    stroke: "black",
-                    stroke_width: "1",
-                    paint_order: "stroke",
-                    {creature.name.chars().take(4).collect::<String>()}
-                }
-            }
-        }
-    }
-}
-
-#[component]
-fn GMGridCreature(creature_id: CreatureID, position: Point3, visibility: Visibility) -> Element {
-    let game = GM_GAME();
-    let Some(creature) = game.creatures.get(&creature_id) else {
-        return rsx! { g {} };
-    };
-
-    let class = game.classes.get(&creature.class);
-    let class_color = class.map(|c| c.color.as_str()).unwrap_or("gray");
-
-    let x = position.x_cm();
-    let y = position.y_cm();
-    let width = creature.size.x_cm();
-    let height = creature.size.y_cm();
-
-    let opacity = match visibility {
-        Visibility::GMOnly => 0.4,
-        _ => 1.0,
-    };
-
-    rsx! {
-        g {
-            opacity: opacity,
-            if !creature.icon_url.is_empty() {
-                image {
-                    href: creature.icon_url.clone(),
-                    width: width,
-                    height: height,
-                    rx: CORNER_RADIUS,
-                    ry: CORNER_RADIUS,
-                    x: x,
-                    y: y,
-                    stroke: "black",
-                    stroke_width: "1",
-                    fill: "white",
-                    fill_opacity: "1"
-                }
-            } else {
                 rect {
                     x: x,
                     y: y,
