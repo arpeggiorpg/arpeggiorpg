@@ -100,17 +100,29 @@ fn PlayerGameProvider(children: Element) -> Element {
 #[component]
 fn Shell(player_id: PlayerID, scene_id: Option<SceneID>) -> Element {
     let tabs = rsx! {Tabs {
-        class: "player-view-tabs".to_string(),
+        class: "player-view-tabs h-full min-h-0 flex flex-col overflow-hidden".to_string(),
         default_value: "creatures".to_string(),
         TabList {
             TabTrigger { value: "creatures".to_string(), index: 0usize, "Creatures" }
             TabTrigger { value: "notes".to_string(), index: 1usize, "Notes" }
         }
-        TabContent { index: 0usize, value: "creatures".to_string(),
-            Creatures { player_id: player_id.clone() }
+        TabContent {
+            class: "h-full min-h-0 overflow-hidden".to_string(),
+            index: 0usize,
+            value: "creatures".to_string(),
+            div {
+                class: "h-full min-h-0 overflow-y-auto p-4",
+                Creatures { player_id: player_id.clone() }
+            }
         }
-        TabContent { index: 1usize, value: "notes".to_string(),
-            Notes { player_id: player_id.clone() }
+        TabContent {
+            class: "h-full min-h-0 overflow-hidden".to_string(),
+            index: 1usize,
+            value: "notes".to_string(),
+            div {
+                class: "h-full min-h-0 overflow-y-auto p-4",
+                Notes { player_id: player_id.clone() }
+            }
         }
     }};
     let chat = rsx! {
@@ -129,20 +141,29 @@ fn Shell(player_id: PlayerID, scene_id: Option<SceneID>) -> Element {
 
     rsx! {
       div {
-        class: "player-view-shell flex w-full",
+        class: "player-view-shell flex h-full min-h-0 w-full overflow-hidden",
         div {
-          class: "player-view-shell__main grow",
+          class: "player-view-shell__main grow min-h-0 min-w-0",
             SceneGrid {
                 scene: game.active_scene,
                 get_creature_actions: get_creature_actions,
             }
         }
         div {
-          class: "player-view-shell__sidebar w-96",
+          class: "player-view-shell__sidebar w-[30rem] h-full min-h-0 overflow-hidden border-l border-gray-200 bg-white flex flex-col",
+          style: "min-height: min(800px, 100%);",
           SplitPane {
             direction: SplitDirection::Vertical,
+            initial_size: 70.0,
+            min_size: 35.0,
+            max_size: 90.0,
             first: tabs,
-            second: chat
+            second: rsx! {
+                div {
+                    class: "h-full min-h-0 p-4",
+                    {chat}
+                }
+            },
           }
         }
       }
