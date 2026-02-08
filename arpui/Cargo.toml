@@ -7,7 +7,7 @@ edition = "2024"
 [dependencies]
 anyhow = { version = "1.0.75", features = ["backtrace"] }
 arptypes = { path = "../arptypes", version = "*" }
-dioxus = { version = "0.7.0", features = ["web", "router"] }
+dioxus = { version = "0.7.3", features = ["web", "router"] }
 foldertree = { path = "../foldertree", version = "*" }
 futures = "0.3.30"
 futures-util = { version = "*" }
