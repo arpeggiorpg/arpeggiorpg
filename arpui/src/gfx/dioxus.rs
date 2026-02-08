@@ -5,6 +5,12 @@ use dioxus::prelude::*;
 use tracing::error;
 use wasm_bindgen::JsCast;
 
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum HoveredSceneObject {
+    Terrain(usize),
+    Creature(usize),
+}
+
 #[component]
 pub fn GMWgpuScenePrototype(scene: Scene) -> Element {
     let canvas_id = format!("gm-wgpu-canvas-{}", scene.id);
@@ -12,14 +18,14 @@ pub fn GMWgpuScenePrototype(scene: Scene) -> Element {
     let canvas_id_for_events = canvas_id.clone();
     let scene3d = to_scene3d(&scene);
     let scene3d_for_events = scene3d.clone();
-    let mut hovered_tile = use_signal(|| None::<usize>);
+    let mut hovered_object = use_signal(|| None::<HoveredSceneObject>);
 
     let _startup = use_resource(move || {
         let canvas_id = canvas_id_for_render.clone();
         let scene3d = scene3d.clone();
-        let hovered_tile = hovered_tile();
+        let hovered_object = hovered_object();
         async move {
-            if let Err(err) = render_scene_once(canvas_id, scene3d, hovered_tile).await {
+            if let Err(err) = render_scene_once(canvas_id, scene3d, hovered_object).await {
                 error!(?err, "Failed to render GM wgpu scene prototype");
             }
         }
@@ -51,20 +57,24 @@ pub fn GMWgpuScenePrototype(scene: Scene) -> Element {
                 let y = client_y - rect.top() as f32;
                 let client_width = canvas.client_width().max(1) as u32;
                 let client_height = canvas.client_height().max(1) as u32;
-                let new_hovered = arp3d::wgpu::pick_terrain_tile(
+                let new_hovered = arp3d::wgpu::pick_scene_object(
                     &scene3d_for_events,
                     client_width,
                     client_height,
                     x,
                     y,
-                );
-                if hovered_tile() != new_hovered {
-                    hovered_tile.set(new_hovered);
+                )
+                .map(|picked| match picked {
+                    arp3d::wgpu::PickedObject::Terrain(idx) => HoveredSceneObject::Terrain(idx),
+                    arp3d::wgpu::PickedObject::Creature(idx) => HoveredSceneObject::Creature(idx),
+                });
+                if hovered_object() != new_hovered {
+                    hovered_object.set(new_hovered);
                 }
             },
             onmouseleave: move |_| {
-                if hovered_tile().is_some() {
-                    hovered_tile.set(None);
+                if hovered_object().is_some() {
+                    hovered_object.set(None);
                 }
             },
         }
@@ -74,7 +84,7 @@ pub fn GMWgpuScenePrototype(scene: Scene) -> Element {
 async fn render_scene_once(
     canvas_id: String,
     scene3d: Scene3d,
-    hovered_tile: Option<usize>,
+    hovered_object: Option<HoveredSceneObject>,
 ) -> anyhow::Result<()> {
     let window = web_sys::window().context("window missing")?;
     let document = window.document().context("document missing")?;
@@ -91,6 +101,11 @@ async fn render_scene_once(
     let surface = instance.create_surface(wgpu::SurfaceTarget::Canvas(canvas.clone()))?;
     let client_width = canvas.client_width() as u32;
     let client_height = canvas.client_height() as u32;
+    let (hovered_tile, hovered_creature) = match hovered_object {
+        Some(HoveredSceneObject::Terrain(idx)) => (Some(idx), None),
+        Some(HoveredSceneObject::Creature(idx)) => (None, Some(idx)),
+        None => (None, None),
+    };
     let (width, height) = arp3d::wgpu::render_scene_on_surface(
         &instance,
         &surface,
@@ -98,6 +113,7 @@ async fn render_scene_once(
         client_height,
         &scene3d,
         hovered_tile,
+        hovered_creature,
     )
     .await?;
     canvas.set_width(width);
