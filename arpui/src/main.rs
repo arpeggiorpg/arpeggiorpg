@@ -59,9 +59,10 @@ impl Default for GameSource {
 #[derive(Clone, Routable, Debug)]
 #[rustfmt::skip]
 pub(crate) enum Route {
-  #[route("/auth-success?:id_token")]
+  #[route("/auth-success?:id_token&:return_to")]
   AuthSuccessPage {
-    id_token: String
+    id_token: String,
+    return_to: Option<String>
   },
   #[layout(AuthRequiredLayout)]
     #[route("/")]
@@ -106,10 +107,22 @@ fn AuthRequiredLayout() -> Element {
         let encoded_redirect = encode_uri_component(&redirect_uri)
             .as_string()
             .unwrap_or_else(|| redirect_uri.clone());
+        let return_to = web_sys::window()
+            .and_then(|window| {
+                let location = window.location();
+                let pathname = location.pathname().ok()?;
+                let search = location.search().ok().unwrap_or_default();
+                let hash = location.hash().ok().unwrap_or_default();
+                Some(format!("{pathname}{search}{hash}"))
+            })
+            .unwrap_or_else(|| "/".to_string());
+        let encoded_state = encode_uri_component(&return_to)
+            .as_string()
+            .unwrap_or(return_to);
 
         format!(
-            "https://accounts.google.com/o/oauth2/v2/auth?client_id={}&redirect_uri={}&response_type=code&scope=openid%20email%20profile&prompt=consent",
-            GOOGLE_CLIENT_ID, encoded_redirect,
+            "https://accounts.google.com/o/oauth2/v2/auth?client_id={}&redirect_uri={}&response_type=code&scope=openid%20email%20profile&prompt=consent&state={}",
+            GOOGLE_CLIENT_ID, encoded_redirect, encoded_state,
         )
     };
 
@@ -189,11 +202,19 @@ fn set_auth_token_cookie(id_token: String) {
 }
 
 #[component]
-fn AuthSuccessPage(id_token: String) -> Element {
+fn AuthSuccessPage(id_token: String, return_to: Option<String>) -> Element {
     let navigator = navigator();
     use_effect(move || {
         info!(id_token, "OAuth redirect returned id_token");
         set_auth_token_cookie(id_token.clone());
+        if let Some(return_to) = return_to.clone()
+            && return_to.starts_with('/')
+            && !return_to.starts_with("/auth-success")
+            && let Ok(target) = return_to.parse::<NavigationTarget<Route>>()
+        {
+            navigator.push(target);
+            return;
+        }
         navigator.push(Route::GameListPage);
     });
 

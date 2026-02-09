@@ -86,31 +86,12 @@ let action = use_action({
 });
 ```
 
-## Code Block Formatting Requirements
-
-**CRITICAL**: When showing code examples, always use this exact format:
-```
-```path/to/file.rs#L123-456
-(code content here)
-```
-```
-
-Never use language specifiers like `rust` or `javascript`. The Markdown parser only understands path-based syntax.
-
 ## Compilation Guidelines
 
 ### Always Use WASM Target
 ```bash
 cargo check --target wasm32-unknown-unknown
 cargo build --target wasm32-unknown-unknown
-```
-
-### Handle Incremental Compilation Issues
-If you encounter "scalar size mismatch" or ICE errors:
-```bash
-cargo clean
-# or for specific package:
-cd arpui && cargo clean
 ```
 
 ## Testing Patterns

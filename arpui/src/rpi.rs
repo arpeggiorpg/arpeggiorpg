@@ -8,9 +8,11 @@ use anyhow::format_err;
 use dioxus::prelude::*;
 use futures::channel::oneshot::{self, Sender};
 use futures_util::{SinkExt, TryStreamExt, stream::StreamExt};
+use reqwest::StatusCode;
 use reqwest_websocket::{Message, RequestBuilderExt, WebSocket};
 use tracing::info;
 use wasm_bindgen_futures::spawn_local;
+use wasm_cookies::CookieOptions;
 
 use arptypes::{
     Game, GameLog, SerializedGame, SerializedPlayerGame,
@@ -258,6 +260,27 @@ pub async fn send_request<T: serde::de::DeserializeOwned>(
     Ok(serde_json::from_value(response)?)
 }
 
+fn logout_for_auth_failure() {
+    *AUTH_TOKEN.write() = String::new();
+    let options: CookieOptions = Default::default();
+    wasm_cookies::set("arpeggio-token", "", &options.with_path("/"));
+}
+
+async fn ensure_authorized_response(
+    response: reqwest::Response,
+    context: &str,
+) -> Result<reqwest::Response, anyhow::Error> {
+    let status = response.status();
+    if status == StatusCode::UNAUTHORIZED || status == StatusCode::FORBIDDEN {
+        let body = response.text().await.unwrap_or_default();
+        logout_for_auth_failure();
+        return Err(anyhow::anyhow!(
+            "{context} failed with {status}: {body}"
+        ));
+    }
+    Ok(response)
+}
+
 pub(crate) async fn rpi_get<T: serde::de::DeserializeOwned>(path: &str) -> Result<T, anyhow::Error> {
     let rpi_url = rpi_url();
     let url = format!("{rpi_url}/{path}");
@@ -267,6 +290,7 @@ pub(crate) async fn rpi_get<T: serde::de::DeserializeOwned>(path: &str) -> Resul
         .header("x-arpeggio-auth", AUTH_TOKEN())
         .send()
         .await?;
+    let response = ensure_authorized_response(response, "GET request").await?;
     response.json().await.map_err(|e| e.into())
 }
 
@@ -283,5 +307,6 @@ async fn rpi_post<B: serde::Serialize, T: serde::de::DeserializeOwned>(
         .json(body)
         .send()
         .await?;
+    let response = ensure_authorized_response(response, "POST request").await?;
     response.json().await.map_err(|e| e.into())
 }

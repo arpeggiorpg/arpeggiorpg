@@ -459,6 +459,13 @@ async fn oauth_redirect(req: Request, env: Env) -> Result<Response> {
         let mut pairs = frontend_url.query_pairs_mut();
         pairs.clear();
         pairs.append_pair("id_token", &id_token);
+        if let Some(return_to) = state {
+            // Accept only app-relative paths and reject protocol-relative URLs
+            // like "//evil.example", which could otherwise create an open redirect.
+            if return_to.starts_with('/') && !return_to.starts_with("//") {
+                pairs.append_pair("return_to", &return_to);
+            }
+        }
     }
     info!(event = "oauth-redirect", redirect = frontend_url.as_str());
 
