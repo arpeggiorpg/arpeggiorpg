@@ -1,4 +1,10 @@
-pub mod wgpu;
+pub mod camera;
+pub mod mesh;
+pub mod picking;
+mod renderer;
+
+pub use renderer::{SceneRenderer, render_scene_on_surface};
+pub use picking::{pick_creature, pick_scene_object, pick_terrain_tile};
 
 #[derive(Clone, Debug, PartialEq, Default)]
 pub struct Scene3d {
@@ -22,4 +28,10 @@ pub struct Creature3d {
     pub size_y: f32,
     pub size_z: f32,
     pub controlled: bool,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum PickedObject {
+    Terrain(usize),
+    Creature(usize),
 }

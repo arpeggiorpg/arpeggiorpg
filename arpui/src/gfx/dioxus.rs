@@ -1,5 +1,5 @@
 use anyhow::Context;
-use arp3d::{Creature3d, Scene3d, TerrainTile3d};
+use arp3d::{Creature3d, PickedObject, Scene3d, TerrainTile3d};
 use arptypes::{
     CreatureID, GameLog, Point3, Scene, SceneID, multitenant::RPIGameRequest,
 };
@@ -375,7 +375,7 @@ async fn render_scene_once(
         None => (None, None),
     };
     let movement_option_tile_indices = movement_option_tile_indices(&scene3d, &movement_options);
-    let (width, height) = arp3d::wgpu::render_scene_on_surface(
+    let (width, height) = arp3d::render_scene_on_surface(
         &instance,
         &surface,
         client_width,
@@ -468,10 +468,10 @@ fn pick_object_for_pointer(
     let client_width = canvas.client_width().max(1) as u32;
     let client_height = canvas.client_height().max(1) as u32;
 
-    arp3d::wgpu::pick_scene_object(scene3d, client_width, client_height, x, y).map(|picked| {
+    arp3d::pick_scene_object(scene3d, client_width, client_height, x, y).map(|picked| {
         match picked {
-            arp3d::wgpu::PickedObject::Terrain(idx) => HoveredSceneObject::Terrain(idx),
-            arp3d::wgpu::PickedObject::Creature(idx) => HoveredSceneObject::Creature(idx),
+            PickedObject::Terrain(idx) => HoveredSceneObject::Terrain(idx),
+            PickedObject::Creature(idx) => HoveredSceneObject::Creature(idx),
         }
     })
 }
@@ -487,7 +487,7 @@ fn pick_terrain_for_pointer(
     let y = client_y - rect.top() as f32;
     let client_width = canvas.client_width().max(1) as u32;
     let client_height = canvas.client_height().max(1) as u32;
-    arp3d::wgpu::pick_terrain_tile(scene3d, client_width, client_height, x, y)
+    arp3d::pick_terrain_tile(scene3d, client_width, client_height, x, y)
 }
 
 fn resolve_canvas_click(
