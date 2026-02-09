@@ -160,7 +160,7 @@ fn Shell(player_id: PlayerID) -> Element {
                         Scene3dView {
                             key: "{scene.id}",
                             scene: scene,
-                            allow_gm_teleport: false,
+                            get_creature_actions: get_creature_actions,
                         }
                     } else {
                         div {

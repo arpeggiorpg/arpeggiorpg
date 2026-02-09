@@ -413,16 +413,57 @@ fn CreatureMenu(
 #[derive(Clone, PartialEq)]
 pub enum CreatureMenuAction {
     PlayerWalk,
+    GMWalk,
+    Teleport,
 }
 
 impl CreatureMenuAction {
-    fn name(&self) -> &'static str {
+    pub(crate) fn name(&self) -> &'static str {
         match self {
             CreatureMenuAction::PlayerWalk => "walk",
+            CreatureMenuAction::GMWalk => "walk",
+            CreatureMenuAction::Teleport => "teleport",
         }
     }
 
-    async fn act(&self, scene_id: SceneID, creature_id: CreatureID) -> anyhow::Result<()> {
+    pub(crate) fn requires_movement_options(&self) -> bool {
+        match self {
+            CreatureMenuAction::PlayerWalk | CreatureMenuAction::GMWalk => true,
+            CreatureMenuAction::Teleport => false,
+        }
+    }
+
+    pub(crate) fn destination_request(
+        &self,
+        scene_id: SceneID,
+        creature_id: CreatureID,
+        destination: Point3,
+    ) -> RPIGameRequest {
+        match self {
+            CreatureMenuAction::PlayerWalk => RPIGameRequest::PlayerCommand {
+                command: PlayerCommand::PathCreature {
+                    creature_id,
+                    destination,
+                },
+            },
+            CreatureMenuAction::GMWalk => RPIGameRequest::GMCommand {
+                command: Box::new(GMCommand::PathCreature {
+                    scene_id,
+                    creature_id,
+                    destination,
+                }),
+            },
+            CreatureMenuAction::Teleport => RPIGameRequest::GMCommand {
+                command: Box::new(GMCommand::SetCreaturePos {
+                    scene_id,
+                    creature_id,
+                    pos: destination,
+                }),
+            },
+        }
+    }
+
+    pub(crate) async fn act(&self, scene_id: SceneID, creature_id: CreatureID) -> anyhow::Result<()> {
         match self {
             CreatureMenuAction::PlayerWalk => {
                 // Request movement options from server
@@ -433,6 +474,12 @@ impl CreatureMenuAction {
                 };
                 let options = send_request::<Vec<Point3>>(request, ws).await?;
                 *MOVEMENT_OPTIONS.write() = Some((creature_id, options));
+            }
+            CreatureMenuAction::GMWalk => {
+                return Err(anyhow::anyhow!("GM walk is only supported in the 3D scene view."));
+            }
+            CreatureMenuAction::Teleport => {
+                return Err(anyhow::anyhow!("Teleport is only supported in the 3D scene view."));
             }
         }
         Ok(())

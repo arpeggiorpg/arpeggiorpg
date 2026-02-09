@@ -59,14 +59,19 @@ impl SceneRenderer {
         scene: &Scene3d,
         highlighted_terrain: Option<usize>,
         highlighted_creature: Option<usize>,
+        movement_option_tiles: &[usize],
     ) -> Self {
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("Arp3D Scene Shader"),
             source: wgpu::ShaderSource::Wgsl(SHADER_SOURCE.into()),
         });
 
-        let (mut vertices, mut indices, bounds) =
-            build_scene_mesh(scene, highlighted_terrain, highlighted_creature);
+        let (mut vertices, mut indices, bounds) = build_scene_mesh(
+            scene,
+            highlighted_terrain,
+            highlighted_creature,
+            movement_option_tiles,
+        );
         if vertices.is_empty() {
             vertices.push(Vertex {
                 position: [0.0, 0.0, 0.0],
@@ -231,6 +236,7 @@ pub async fn render_scene_on_surface(
     scene: &Scene3d,
     highlighted_terrain: Option<usize>,
     highlighted_creature: Option<usize>,
+    movement_option_tiles: &[usize],
 ) -> anyhow::Result<(u32, u32)> {
     let adapter = instance
         .request_adapter(&wgpu::RequestAdapterOptions {
@@ -280,6 +286,7 @@ pub async fn render_scene_on_surface(
         scene,
         highlighted_terrain,
         highlighted_creature,
+        movement_option_tiles,
     );
     let output = match surface.get_current_texture() {
         Ok(output) => output,
@@ -364,15 +371,20 @@ fn build_scene_mesh(
     scene: &Scene3d,
     highlighted_terrain: Option<usize>,
     highlighted_creature: Option<usize>,
+    movement_option_tiles: &[usize],
 ) -> (Vec<Vertex>, Vec<u32>, Option<SceneBounds>) {
     let mut vertices = Vec::with_capacity((scene.terrain.len() + scene.creatures.len()) * 24);
     let mut indices = Vec::with_capacity((scene.terrain.len() + scene.creatures.len()) * 36);
+    let movement_option_tiles: std::collections::HashSet<usize> =
+        movement_option_tiles.iter().copied().collect();
 
     for (idx, tile) in scene.terrain.iter().enumerate() {
         let min = Vec3::new(tile.x, tile.y, tile.z);
         let max = min + Vec3::ONE;
         let top = if Some(idx) == highlighted_terrain {
             [0.92, 0.90, 0.44]
+        } else if movement_option_tiles.contains(&idx) {
+            [0.34, 0.90, 0.94]
         } else {
             [0.36, 0.73, 0.31]
         };

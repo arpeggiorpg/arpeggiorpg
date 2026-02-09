@@ -99,6 +99,9 @@ fn Shell(game_id: GameID) -> Element {
     let shown_scene_id = selected_scene_id().or(game.active_scene);
     let shown_scene = shown_scene_id.and_then(|sid| game.scenes.get(&sid).cloned());
     let gm_creature_actions: Option<Callback<arptypes::CreatureID, Vec<CreatureMenuAction>>> = None;
+    let gm_creature_actions_3d = move |_creature_id| {
+        vec![CreatureMenuAction::GMWalk, CreatureMenuAction::Teleport]
+    };
 
     rsx! {
         div {
@@ -117,7 +120,7 @@ fn Shell(game_id: GameID) -> Element {
                             Scene3dView {
                                 key: "{scene.id}",
                                 scene: scene,
-                                allow_gm_teleport: true,
+                                get_creature_actions: gm_creature_actions_3d,
                             }
                         } else {
                             div {
