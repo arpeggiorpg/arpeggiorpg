@@ -176,6 +176,11 @@ if !scene.creatures.contains_key(&creature_id) {
 - ❌ `onclick: move |_| { on_thing() }`
 - ✅ `onclick: move |_| action.call()`
 
+### 4. Unused Variables & Props
+- ❌ `let _ = some_value` as a general way to silence unused warnings.
+- ✅ Prefer renaming intentionally-unused bindings to `_some_value`.
+- ✅ If a prop/parameter is now unused, prefer removing it and updating call sites.
+
 ## File Organization
 
 ### Adding New Components

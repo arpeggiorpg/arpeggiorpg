@@ -1,8 +1,8 @@
 use anyhow::Context;
+use arp3d::{Creature3d, Scene3d, TerrainTile3d};
 use arptypes::{
     CreatureID, GMCommand, GameLog, Point3, Scene, SceneID, multitenant::RPIGameRequest,
 };
-use arp3d::{Creature3d, Scene3d, TerrainTile3d};
 use dioxus::prelude::*;
 use tracing::error;
 use wasm_bindgen::JsCast;
@@ -48,7 +48,7 @@ enum ClickResolution {
 }
 
 #[component]
-pub fn GMWgpuScenePrototype(scene: Scene) -> Element {
+pub fn Scene3dView(scene: Scene, #[props(default = false)] allow_gm_teleport: bool) -> Element {
     let game_source = GAME_SOURCE();
     let (scene3d, scene_creatures) = to_scene3d(&scene, &game_source);
     let scene3d_for_events = scene3d.clone();
@@ -64,7 +64,7 @@ pub fn GMWgpuScenePrototype(scene: Scene) -> Element {
         let hovered_object = hovered_object();
         async move {
             if let Err(err) = render_scene_once(scene3d, hovered_object).await {
-                error!(?err, "Failed to render GM wgpu scene prototype");
+                error!(?err, "Failed to render wgpu scene prototype");
             }
         }
     });
@@ -99,27 +99,29 @@ pub fn GMWgpuScenePrototype(scene: Scene) -> Element {
                     let scene_creatures_for_click = scene_creatures_for_click.clone();
                     let mut maybe_request: Option<RPIGameRequest> = None;
 
-                    if let Some(canvas) = find_canvas() {
-                        match resolve_canvas_click(
-                            &scene3d_for_click,
-                            &scene_creatures_for_click,
-                            &canvas,
-                            client_x,
-                            client_y,
-                            mode,
-                            scene_id,
-                        ) {
-                            ClickResolution::KeepState => {}
-                            ClickResolution::CloseMenu => creature_menu.set(None),
-                            ClickResolution::OpenMenu(menu) => creature_menu.set(Some(menu)),
-                            ClickResolution::QueueTeleport(request) => {
-                                movement_mode.set(None);
-                                creature_menu.set(None);
-                                maybe_request = Some(request);
+                    if allow_gm_teleport {
+                        if let Some(canvas) = find_canvas() {
+                            match resolve_canvas_click(
+                                &scene3d_for_click,
+                                &scene_creatures_for_click,
+                                &canvas,
+                                client_x,
+                                client_y,
+                                mode,
+                                scene_id,
+                            ) {
+                                ClickResolution::KeepState => {}
+                                ClickResolution::CloseMenu => creature_menu.set(None),
+                                ClickResolution::OpenMenu(menu) => creature_menu.set(Some(menu)),
+                                ClickResolution::QueueTeleport(request) => {
+                                    movement_mode.set(None);
+                                    creature_menu.set(None);
+                                    maybe_request = Some(request);
+                                }
                             }
+                        } else {
+                            creature_menu.set(None);
                         }
-                    } else {
-                        creature_menu.set(None);
                     }
 
                     async move {
@@ -143,20 +145,24 @@ pub fn GMWgpuScenePrototype(scene: Scene) -> Element {
                 },
             }
 
-            if let Some(mode) = movement_mode() {
-                MovementModeOverlay {
-                    mode,
-                    on_cancel: move |_| movement_mode.set(None),
+            if allow_gm_teleport {
+                if let Some(mode) = movement_mode() {
+                    MovementModeOverlay {
+                        mode,
+                        on_cancel: move |_| movement_mode.set(None),
+                    }
                 }
             }
 
-            if let Some(menu) = creature_menu() {
-                CreatureMenuOverlay {
-                    menu,
-                    on_close: move |_| creature_menu.set(None),
-                    on_teleport: move |mode| {
-                        movement_mode.set(Some(mode));
-                        creature_menu.set(None);
+            if allow_gm_teleport {
+                if let Some(menu) = creature_menu() {
+                    CreatureMenuOverlay {
+                        menu,
+                        on_close: move |_| creature_menu.set(None),
+                        on_teleport: move |mode| {
+                            movement_mode.set(Some(mode));
+                            creature_menu.set(None);
+                        }
                     }
                 }
             }
@@ -387,7 +393,11 @@ fn resolve_canvas_click(
 }
 
 fn terrain_tile_to_point(tile: TerrainTile3d) -> Point3 {
-    Point3::new(world_to_cm(tile.x), world_to_cm(tile.z), world_to_cm(tile.y))
+    Point3::new(
+        world_to_cm(tile.x),
+        world_to_cm(tile.z),
+        world_to_cm(tile.y),
+    )
 }
 
 fn world_to_cm(world: f32) -> i64 {

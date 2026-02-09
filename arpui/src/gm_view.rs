@@ -14,7 +14,7 @@ use crate::{
         split_pane::{SplitDirection, SplitPane},
         tabs::{TabContent, TabList, TabTrigger, Tabs},
     },
-    gfx::dioxus::GMWgpuScenePrototype,
+    gfx::dioxus::Scene3dView,
     grid::{CreatureMenuAction, SceneGrid},
     rpi::{Connector, send_request, use_ws},
 };
@@ -96,8 +96,7 @@ fn Shell(game_id: GameID) -> Element {
     let mut scene_view_mode = use_signal(|| GMSceneViewMode::ThreeD);
     let shown_scene_id = selected_scene_id().or(game.active_scene);
     let shown_scene = shown_scene_id.and_then(|sid| game.scenes.get(&sid).cloned());
-    let gm_creature_actions: Option<Callback<arptypes::CreatureID, Vec<CreatureMenuAction>>> =
-        None;
+    let gm_creature_actions: Option<Callback<arptypes::CreatureID, Vec<CreatureMenuAction>>> = None;
 
     rsx! {
         div {
@@ -113,9 +112,10 @@ fn Shell(game_id: GameID) -> Element {
                     },
                     GMSceneViewMode::ThreeD => rsx! {
                         if let Some(scene) = shown_scene.clone() {
-                            GMWgpuScenePrototype {
+                            Scene3dView {
                                 key: "{scene.id}",
                                 scene: scene,
+                                allow_gm_teleport: true,
                             }
                         } else {
                             div {
@@ -163,7 +163,8 @@ fn Shell(game_id: GameID) -> Element {
                             default_value: "campaign".to_string(),
                             TabList {
                                 TabTrigger { value: "campaign".to_string(), index: 0usize, "Campaign" }
-                                TabTrigger { value: "invitations".to_string(), index: 1usize, "Invitations" }
+                                TabTrigger { value: "players".to_string(), index: 1usize, "Players" }
+                                TabTrigger { value: "invitations".to_string(), index: 2usize, "Invitations" }
                             }
                             TabContent {
                                 class: "h-full min-h-0 overflow-hidden".to_string(),
@@ -180,6 +181,17 @@ fn Shell(game_id: GameID) -> Element {
                             TabContent {
                                 class: "h-full min-h-0 overflow-hidden".to_string(),
                                 index: 1usize,
+                                value: "players".to_string(),
+                                div {
+                                    class: "h-full min-h-0 overflow-y-auto p-4",
+                                    PlayersTab {
+                                        current_scene_id: shown_scene_id,
+                                    }
+                                }
+                            }
+                            TabContent {
+                                class: "h-full min-h-0 overflow-hidden".to_string(),
+                                index: 2usize,
                                 value: "invitations".to_string(),
                                 div {
                                     class: "h-full min-h-0 overflow-y-auto p-4",
@@ -1044,6 +1056,158 @@ fn collect_all_folder_paths(game: &Game) -> Vec<FolderPath> {
         .walk_paths(&FolderPath::root())
         .cloned()
         .collect()
+}
+
+#[component]
+fn PlayersTab(current_scene_id: Option<SceneID>) -> Element {
+    let game = use_gm_game();
+    let ws = use_ws();
+    let current_scene_name = current_scene_id
+        .and_then(|sid| game.scenes.get(&sid))
+        .map(|s| s.name.clone());
+
+    let mut set_scene_action = use_action(move |(player_id, scene_id): (arptypes::PlayerID, Option<SceneID>)| {
+        let ws = ws;
+        async move {
+            let result = send_request::<Result<Vec<GameLog>, String>>(
+                RPIGameRequest::GMCommand {
+                    command: Box::new(GMCommand::SetPlayerScene { player_id, scene_id }),
+                },
+                ws,
+            )
+            .await?;
+            if let Err(msg) = result {
+                return Err(anyhow::anyhow!(msg));
+            }
+            Ok::<(), anyhow::Error>(())
+        }
+    });
+
+    let mut players: Vec<_> = game.players.iter().cloned().collect();
+    players.sort_by(|a, b| a.player_id.to_string().cmp(&b.player_id.to_string()));
+
+    rsx! {
+        div {
+            class: "bg-white rounded-lg shadow-md p-4",
+            div {
+                class: "mb-3",
+                h2 {
+                    class: "text-lg font-semibold text-gray-800",
+                    "Players"
+                }
+                p {
+                    class: "text-sm text-gray-600",
+                    if let Some(scene_name) = current_scene_name.clone() {
+                        "Current scene target: {scene_name}"
+                    } else {
+                        "Select a scene to enable \"Move to current scene\"."
+                    }
+                }
+            }
+
+            if let Some(Err(err)) = set_scene_action.value() {
+                p {
+                    class: "mb-3 text-sm text-red-600",
+                    "Failed to update player scene: {err}"
+                }
+            }
+
+            if players.is_empty() {
+                p {
+                    class: "text-sm text-gray-500 italic",
+                    "No registered players yet."
+                }
+            } else {
+                div {
+                    class: "space-y-2",
+                    for player in players {
+                        {
+                            let mut creature_names: Vec<String> = player
+                                .creatures
+                                .iter()
+                                .map(|cid| {
+                                    game.creatures
+                                        .get(cid)
+                                        .map(|c| c.name.clone())
+                                        .unwrap_or_else(|| cid.to_string())
+                                })
+                                .collect();
+                            creature_names.sort();
+
+                            let scene_name = player
+                                .scene
+                                .and_then(|sid| game.scenes.get(&sid))
+                                .map(|s| s.name.clone())
+                                .unwrap_or_else(|| "No scene".to_string());
+
+                            let player_id = player.player_id.clone();
+                            let player_scene = player.scene;
+                            let player_id_for_remove = player_id.clone();
+                            let player_id_for_move = player_id.clone();
+
+                            rsx! {
+                                div {
+                                    key: "{player_id}",
+                                    class: "rounded border border-gray-200 bg-gray-50 p-3",
+                                    div {
+                                        class: "flex items-center justify-between gap-3",
+                                        div {
+                                            class: "min-w-0",
+                                            p {
+                                                class: "text-sm font-semibold text-gray-800",
+                                                "{player_id}"
+                                            }
+                                            p {
+                                                class: "text-xs text-gray-600",
+                                                "Scene: {scene_name}"
+                                            }
+                                            p {
+                                                class: "text-xs text-gray-500 mt-1",
+                                                if creature_names.is_empty() {
+                                                    "Creatures: none"
+                                                } else {
+                                                    "Creatures: {creature_names.join(\", \")}"
+                                                }
+                                            }
+                                        }
+                                        div {
+                                            class: "flex shrink-0 items-center gap-2",
+                                            if player_scene.is_some() {
+                                                Button {
+                                                    variant: ButtonVariant::Outline,
+                                                    disabled: set_scene_action.pending(),
+                                                    onclick: move |_| set_scene_action.call((player_id_for_remove.clone(), None)),
+                                                    "Remove from scene"
+                                                }
+                                            }
+
+                                            if let Some(target_scene_id) = current_scene_id {
+                                                if player_scene != Some(target_scene_id) {
+                                                    Button {
+                                                        variant: ButtonVariant::Primary,
+                                                        disabled: set_scene_action.pending(),
+                                                        onclick: move |_| {
+                                                            set_scene_action.call((player_id_for_move.clone(), Some(target_scene_id)))
+                                                        },
+                                                        "Move to current scene"
+                                                    }
+                                                } else {
+                                                    span {
+                                                        class: "text-xs font-medium text-green-700",
+                                                        "In current scene"
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
 
 #[component]
