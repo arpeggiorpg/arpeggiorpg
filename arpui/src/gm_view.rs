@@ -8,7 +8,7 @@ use std::{collections::HashSet, rc::Rc};
 use tracing::{error, info};
 
 use crate::{
-    GAME_LOGS, GAME_NAME, GAME_SOURCE, GameSource,
+    GAME_LOGS, GAME_NAME, GAME_SOURCE, GameSource, Route,
     chat::GMChat,
     components::{
         button::{Button, ButtonVariant},
@@ -36,20 +36,33 @@ enum GMSceneViewMode {
 }
 
 #[component]
-pub fn GMGamePage(id: GameID) -> Element {
+pub fn GMGamePage(id: GameID, #[props(default)] scene_path: Option<Vec<String>>) -> Element {
     rsx! {
         Connector {
             role: Role::GM,
             game_id: id,
             player_id: None,
 
-            GameLoader { game_id: id }
+            GameLoader {
+                game_id: id,
+                initial_scene_path: scene_path,
+            }
         }
     }
 }
 
 #[component]
-fn GameLoader(game_id: GameID) -> Element {
+pub fn GMGameScenePage(id: GameID, scene_path: Vec<String>) -> Element {
+    rsx! {
+        GMGamePage {
+            id,
+            scene_path: Some(scene_path),
+        }
+    }
+}
+
+#[component]
+fn GameLoader(game_id: GameID, initial_scene_path: Option<Vec<String>>) -> Element {
     let ws = use_ws();
     let future: Resource<anyhow::Result<Game>> = use_resource(move || async move {
         info!("fetching game state for GM view");
@@ -65,7 +78,10 @@ fn GameLoader(game_id: GameID) -> Element {
         Some(Ok(_game)) => {
             rsx! {
                 GMGameProvider {
-                    Shell { game_id }
+                    Shell {
+                        game_id,
+                        initial_scene_path,
+                    }
                 }
             }
         }
@@ -92,15 +108,35 @@ fn GMGameProvider(children: Element) -> Element {
 }
 
 #[component]
-fn Shell(game_id: GameID) -> Element {
+fn Shell(game_id: GameID, initial_scene_path: Option<Vec<String>>) -> Element {
     let game = use_gm_game();
-    let mut selected_scene_id = use_signal(|| game.active_scene);
+    let navigator = navigator();
+    let initial_scene_id = initial_scene_path
+        .as_ref()
+        .and_then(|path| resolve_scene_id_from_route_path(&game, path));
+    let mut selected_scene_id = use_signal(|| initial_scene_id.or(game.active_scene));
     let mut scene_view_mode = use_signal(|| GMSceneViewMode::ThreeD);
     let shown_scene_id = selected_scene_id().or(game.active_scene);
     let shown_scene = shown_scene_id.and_then(|sid| game.scenes.get(&sid).cloned());
     let gm_creature_actions: Option<Callback<arptypes::CreatureID, Vec<CreatureMenuAction>>> = None;
     let gm_creature_actions_3d = move |_creature_id| {
         vec![CreatureMenuAction::GMWalk, CreatureMenuAction::Teleport]
+    };
+    let navigate_to_scene = {
+        let game = game.clone();
+        let game_id = game_id.clone();
+        move |scene_id: SceneID| {
+            if let Some(scene_path) = route_scene_path_for_scene_id(&game, scene_id) {
+                navigator.push(Route::GMGameScenePage {
+                    id: game_id.clone(),
+                    scene_path,
+                });
+            } else {
+                navigator.push(Route::GMGamePage {
+                    id: game_id.clone(),
+                });
+            }
+        }
     };
 
     rsx! {
@@ -179,7 +215,10 @@ fn Shell(game_id: GameID) -> Element {
                                     class: "h-full min-h-0 overflow-y-auto p-4",
                                     CampaignTreeCard {
                                         selected_scene_id: shown_scene_id,
-                                        on_select_scene: move |scene_id| selected_scene_id.set(Some(scene_id)),
+                                        on_select_scene: move |scene_id| {
+                                            selected_scene_id.set(Some(scene_id));
+                                            navigate_to_scene(scene_id);
+                                        },
                                     }
                                 }
                             }
@@ -1061,6 +1100,42 @@ fn collect_all_folder_paths(game: &Game) -> Vec<FolderPath> {
         .walk_paths(&FolderPath::root())
         .cloned()
         .collect()
+}
+
+fn resolve_scene_id_from_route_path(game: &Game, scene_path: &[String]) -> Option<SceneID> {
+    if scene_path.is_empty() {
+        return None;
+    }
+
+    let folder_segments = scene_path[..scene_path.len() - 1].to_vec();
+    let scene_name = &scene_path[scene_path.len() - 1];
+    let folder_path = FolderPath::from_vec(folder_segments);
+    let folder = game.campaign.get(&folder_path).ok()?;
+
+    folder.scenes.iter().find_map(|scene_id| {
+        game.scenes
+            .get(scene_id)
+            .filter(|scene| &scene.name == scene_name)
+            .map(|scene| scene.id)
+    })
+}
+
+fn route_scene_path_for_scene_id(game: &Game, scene_id: SceneID) -> Option<Vec<String>> {
+    let scene_name = game.scenes.get(&scene_id)?.name.clone();
+    let root = FolderPath::root();
+
+    for folder_path in game.campaign.walk_paths(&root) {
+        let Ok(folder) = game.campaign.get(folder_path) else {
+            continue;
+        };
+        if folder.scenes.contains(&scene_id) {
+            let mut path: Vec<String> = folder_path.clone().into_vec();
+            path.push(scene_name);
+            return Some(path);
+        }
+    }
+
+    None
 }
 
 #[derive(Clone, Default, PartialEq)]

@@ -19,7 +19,7 @@ mod grid;
 mod player_view;
 mod rpi;
 use admin_view::AdminPage;
-use gm_view::GMGamePage;
+use gm_view::{GMGamePage, GMGameScenePage};
 use player_view::{AcceptInvitationPage, PlayerGamePage};
 use rpi::{AUTH_TOKEN, auth_token, list_games};
 use wasm_cookies::CookieOptions;
@@ -58,7 +58,7 @@ impl Default for GameSource {
 
 #[derive(Clone, Routable, Debug)]
 #[rustfmt::skip]
-enum Route {
+pub(crate) enum Route {
   #[route("/auth-success?:id_token")]
   AuthSuccessPage {
     id_token: String
@@ -70,6 +70,8 @@ enum Route {
     AdminPage,
     #[route("/gm/:id")]
     GMGamePage { id: GameID },
+    #[route("/gm/:id/scenes/:..scene_path")]
+    GMGameScenePage { id: GameID, scene_path: Vec<String> },
     #[route("/player/:id/:player_id")]
     PlayerGamePage { id: GameID, player_id: PlayerID },
     #[route("/invitations/:game_id/:invitation_id")]
