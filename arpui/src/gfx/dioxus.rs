@@ -4,6 +4,7 @@ use arptypes::{
     CreatureID, GMCommand, GameLog, Point3, Scene, SceneID, multitenant::RPIGameRequest,
 };
 use dioxus::prelude::*;
+use std::collections::HashSet;
 use tracing::error;
 use wasm_bindgen::JsCast;
 
@@ -264,6 +265,7 @@ async fn render_scene_once(
 }
 
 fn to_scene3d(scene: &Scene, game_source: &GameSource) -> (Scene3d, Vec<SceneCreatureRef>) {
+    let controlled_creatures = player_controlled_creatures(game_source);
     let terrain = scene
         .terrain
         .iter()
@@ -283,13 +285,14 @@ fn to_scene3d(scene: &Scene, game_source: &GameSource) -> (Scene3d, Vec<SceneCre
 
     let creatures = ordered_scene_creatures
         .iter()
-        .map(|(_id, position)| Creature3d {
+        .map(|(id, position)| Creature3d {
             x: cm_to_world(position.x_cm()),
             y: cm_to_world(position.z_cm()),
             z: cm_to_world(position.y_cm()),
             size_x: 0.82,
             size_y: 1.86,
             size_z: 0.82,
+            controlled: controlled_creatures.contains(id),
         })
         .collect();
 
@@ -302,6 +305,17 @@ fn to_scene3d(scene: &Scene, game_source: &GameSource) -> (Scene3d, Vec<SceneCre
         .collect();
 
     (Scene3d { terrain, creatures }, creature_refs)
+}
+
+fn player_controlled_creatures(game_source: &GameSource) -> HashSet<CreatureID> {
+    match game_source {
+        GameSource::GM(_) => HashSet::new(),
+        GameSource::Player { player_id, game } => game
+            .players
+            .get(player_id)
+            .map(|player| player.creatures.clone())
+            .unwrap_or_default(),
+    }
 }
 
 fn cm_to_world(cm: i64) -> f32 {

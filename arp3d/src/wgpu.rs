@@ -795,7 +795,96 @@ fn append_creature_model(
         head_bottom,
     );
 
+    if creature.controlled {
+        let cursor_center = Vec3::new(center_x, head_max_y + 0.30, center_z);
+        let cursor_radius = ((footprint_x.max(footprint_z)) * 0.22).clamp(0.12, 0.22);
+        let cursor_half_height = 0.24;
+        append_control_cursor(
+            vertices,
+            indices,
+            cursor_center,
+            cursor_radius,
+            cursor_half_height,
+            highlighted,
+        );
+    }
+
     (bounds_min, bounds_max)
+}
+
+fn append_control_cursor(
+    vertices: &mut Vec<Vertex>,
+    indices: &mut Vec<u32>,
+    center: Vec3,
+    radius: f32,
+    half_height: f32,
+    highlighted: bool,
+) {
+    let top = center + Vec3::new(0.0, half_height, 0.0);
+    let bottom = center - Vec3::new(0.0, half_height, 0.0);
+    let north = center + Vec3::new(0.0, 0.0, -radius);
+    let south = center + Vec3::new(0.0, 0.0, radius);
+    let east = center + Vec3::new(radius, 0.0, 0.0);
+    let west = center + Vec3::new(-radius, 0.0, 0.0);
+
+    let (top_a, top_b, top_c, top_d, bottom_a, bottom_b, bottom_c, bottom_d) = if highlighted {
+        (
+            [0.82, 0.98, 1.0],
+            [0.70, 0.93, 1.0],
+            [0.58, 0.87, 1.0],
+            [0.66, 0.90, 1.0],
+            [0.30, 0.52, 0.80],
+            [0.25, 0.44, 0.71],
+            [0.20, 0.36, 0.61],
+            [0.24, 0.40, 0.67],
+        )
+    } else {
+        (
+            [0.72, 0.94, 1.0],
+            [0.60, 0.88, 0.98],
+            [0.50, 0.80, 0.94],
+            [0.56, 0.84, 0.96],
+            [0.24, 0.44, 0.72],
+            [0.20, 0.37, 0.62],
+            [0.16, 0.31, 0.53],
+            [0.19, 0.34, 0.58],
+        )
+    };
+
+    // Two-sided triangles keep the faceted marker visible from any camera direction.
+    push_triangle_double_sided(vertices, indices, top, north, east, top_a);
+    push_triangle_double_sided(vertices, indices, top, east, south, top_b);
+    push_triangle_double_sided(vertices, indices, top, south, west, top_c);
+    push_triangle_double_sided(vertices, indices, top, west, north, top_d);
+
+    push_triangle_double_sided(vertices, indices, bottom, east, north, bottom_a);
+    push_triangle_double_sided(vertices, indices, bottom, south, east, bottom_b);
+    push_triangle_double_sided(vertices, indices, bottom, west, south, bottom_c);
+    push_triangle_double_sided(vertices, indices, bottom, north, west, bottom_d);
+}
+
+fn push_triangle_double_sided(
+    vertices: &mut Vec<Vertex>,
+    indices: &mut Vec<u32>,
+    p0: Vec3,
+    p1: Vec3,
+    p2: Vec3,
+    color: [f32; 3],
+) {
+    let base = vertices.len() as u32;
+    vertices.push(Vertex {
+        position: p0.to_array(),
+        color,
+    });
+    vertices.push(Vertex {
+        position: p1.to_array(),
+        color,
+    });
+    vertices.push(Vertex {
+        position: p2.to_array(),
+        color,
+    });
+    indices.extend_from_slice(&[base, base + 1, base + 2, base, base + 2, base + 1]);
 }
 
 fn creature_model_bounds(creature: crate::Creature3d) -> (Vec3, Vec3) {
