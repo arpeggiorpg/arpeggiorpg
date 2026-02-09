@@ -8,9 +8,9 @@ edition = "2021"
 workspace = true
 
 [dev-dependencies]
-criterion = "0.3.0"
+criterion = "0.8.2"
 serde_json = "1.0"
-serde_yaml = "0.8"
+serde_yaml = "0.9"
 
 [dependencies]
 arptypes = { path = "../arptypes", version = "*" }
@@ -23,7 +23,7 @@ ncollide3d = "0.33"
 nonempty = { version = "*", path = "../nonempty", features = ["use_serde"] }
 num.workspace = true
 num-traits.workspace = true
-rand = "0.8.5"
+rand = "0.10.0"
 serde = "1.0.8"
 serde_derive = "1.0.8"
 thiserror.workspace = true
