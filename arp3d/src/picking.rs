@@ -6,6 +6,24 @@ use crate::{
     mesh::creature_model_bounds,
 };
 
+#[derive(Clone, Copy)]
+struct Ray {
+    origin: Vec3,
+    dir: Vec3,
+}
+
+#[derive(Clone, Copy)]
+struct RayHit {
+    distance: f32,
+    index: usize,
+}
+
+#[derive(Clone, Copy, Default)]
+struct SceneRaycastHits {
+    terrain: Option<RayHit>,
+    creature: Option<RayHit>,
+}
+
 pub fn pick_terrain_tile(
     scene: &Scene3d,
     viewport_width: u32,
@@ -13,11 +31,8 @@ pub fn pick_terrain_tile(
     cursor_x: f32,
     cursor_y: f32,
 ) -> Option<usize> {
-    if scene.terrain.is_empty() {
-        return None;
-    }
-    let (ray_origin, ray_dir) = cursor_ray(scene, viewport_width, viewport_height, cursor_x, cursor_y)?;
-    pick_terrain_tile_with_ray(scene, ray_origin, ray_dir).map(|(_, idx)| idx)
+    raycast_scene(scene, viewport_width, viewport_height, cursor_x, cursor_y)
+        .and_then(|hits| hits.terrain.map(|hit| hit.index))
 }
 
 pub fn pick_creature(
@@ -27,12 +42,8 @@ pub fn pick_creature(
     cursor_x: f32,
     cursor_y: f32,
 ) -> Option<usize> {
-    if scene.creatures.is_empty() {
-        return None;
-    }
-
-    let (ray_origin, ray_dir) = cursor_ray(scene, viewport_width, viewport_height, cursor_x, cursor_y)?;
-    pick_creature_with_ray(scene, ray_origin, ray_dir).map(|(_, idx)| idx)
+    raycast_scene(scene, viewport_width, viewport_height, cursor_x, cursor_y)
+        .and_then(|hits| hits.creature.map(|hit| hit.index))
 }
 
 pub fn pick_scene_object(
@@ -42,20 +53,39 @@ pub fn pick_scene_object(
     cursor_x: f32,
     cursor_y: f32,
 ) -> Option<PickedObject> {
-    let (ray_origin, ray_dir) = cursor_ray(scene, viewport_width, viewport_height, cursor_x, cursor_y)?;
-    let terrain_hit = pick_terrain_tile_with_ray(scene, ray_origin, ray_dir);
-    let creature_hit = pick_creature_with_ray(scene, ray_origin, ray_dir);
+    raycast_scene(scene, viewport_width, viewport_height, cursor_x, cursor_y)
+        .and_then(nearest_object)
+}
 
-    match (terrain_hit, creature_hit) {
-        (Some((terrain_t, terrain_idx)), Some((creature_t, creature_idx))) => {
-            if terrain_t <= creature_t {
-                Some(PickedObject::Terrain(terrain_idx))
+fn raycast_scene(
+    scene: &Scene3d,
+    viewport_width: u32,
+    viewport_height: u32,
+    cursor_x: f32,
+    cursor_y: f32,
+) -> Option<SceneRaycastHits> {
+    let ray = cursor_ray(scene, viewport_width, viewport_height, cursor_x, cursor_y)?;
+    Some(raycast_scene_with_ray(scene, ray))
+}
+
+fn raycast_scene_with_ray(scene: &Scene3d, ray: Ray) -> SceneRaycastHits {
+    SceneRaycastHits {
+        terrain: pick_terrain_tile_with_ray(scene, ray),
+        creature: pick_creature_with_ray(scene, ray),
+    }
+}
+
+fn nearest_object(hits: SceneRaycastHits) -> Option<PickedObject> {
+    match (hits.terrain, hits.creature) {
+        (Some(terrain_hit), Some(creature_hit)) => {
+            if terrain_hit.distance <= creature_hit.distance {
+                Some(PickedObject::Terrain(terrain_hit.index))
             } else {
-                Some(PickedObject::Creature(creature_idx))
+                Some(PickedObject::Creature(creature_hit.index))
             }
         }
-        (Some((_, terrain_idx)), None) => Some(PickedObject::Terrain(terrain_idx)),
-        (None, Some((_, creature_idx))) => Some(PickedObject::Creature(creature_idx)),
+        (Some(terrain_hit), None) => Some(PickedObject::Terrain(terrain_hit.index)),
+        (None, Some(creature_hit)) => Some(PickedObject::Creature(creature_hit.index)),
         (None, None) => None,
     }
 }
@@ -66,7 +96,7 @@ fn cursor_ray(
     viewport_height: u32,
     cursor_x: f32,
     cursor_y: f32,
-) -> Option<(Vec3, Vec3)> {
+) -> Option<Ray> {
     if viewport_width == 0 || viewport_height == 0 {
         return None;
     }
@@ -97,53 +127,60 @@ fn cursor_ray(
     if ray.length_squared() <= f32::EPSILON {
         return None;
     }
-    Some((near, ray.normalize()))
+
+    Some(Ray {
+        origin: near,
+        dir: ray.normalize(),
+    })
 }
 
-fn pick_terrain_tile_with_ray(
-    scene: &Scene3d,
-    ray_origin: Vec3,
-    ray_dir: Vec3,
-) -> Option<(f32, usize)> {
-    let mut best: Option<(f32, usize)> = None;
+fn pick_terrain_tile_with_ray(scene: &Scene3d, ray: Ray) -> Option<RayHit> {
+    let mut best: Option<RayHit> = None;
     const EPS: f32 = 1e-4;
+
     for (idx, tile) in scene.terrain.iter().enumerate() {
-        if ray_dir.y.abs() < EPS {
+        if ray.dir.y.abs() < EPS {
             continue;
         }
         let top_y = tile.y + 1.0;
-        let t = (top_y - ray_origin.y) / ray_dir.y;
+        let t = (top_y - ray.origin.y) / ray.dir.y;
         if t <= 0.0 {
             continue;
         }
-        let hit = ray_origin + ray_dir * t;
+        let hit = ray.origin + ray.dir * t;
         if hit.x >= tile.x - EPS
             && hit.x <= tile.x + 1.0 + EPS
             && hit.z >= tile.z - EPS
             && hit.z <= tile.z + 1.0 + EPS
         {
-            match best {
-                Some((best_t, _)) if t >= best_t => {}
-                _ => best = Some((t, idx)),
-            }
+            update_best_hit(&mut best, t, idx);
         }
     }
+
     best
 }
 
-fn pick_creature_with_ray(scene: &Scene3d, ray_origin: Vec3, ray_dir: Vec3) -> Option<(f32, usize)> {
-    let mut best: Option<(f32, usize)> = None;
+fn pick_creature_with_ray(scene: &Scene3d, ray: Ray) -> Option<RayHit> {
+    let mut best: Option<RayHit> = None;
+
     for (idx, creature) in scene.creatures.iter().enumerate() {
         let (min, max) = creature_model_bounds(*creature);
-        let Some(t) = intersect_ray_aabb(ray_origin, ray_dir, min, max) else {
+        let Some(t) = intersect_ray_aabb(ray.origin, ray.dir, min, max) else {
             continue;
         };
-        match best {
-            Some((best_t, _)) if t >= best_t => {}
-            _ => best = Some((t, idx)),
+        update_best_hit(&mut best, t, idx);
+    }
+
+    best
+}
+
+fn update_best_hit(best: &mut Option<RayHit>, distance: f32, index: usize) {
+    match best {
+        Some(existing) if distance >= existing.distance => {}
+        _ => {
+            *best = Some(RayHit { distance, index });
         }
     }
-    best
 }
 
 fn intersect_ray_aabb(origin: Vec3, dir: Vec3, min: Vec3, max: Vec3) -> Option<f32> {
