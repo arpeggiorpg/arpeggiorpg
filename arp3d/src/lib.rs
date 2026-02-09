@@ -21,4 +21,5 @@ pub struct Creature3d {
     pub size_x: f32,
     pub size_y: f32,
     pub size_z: f32,
+    pub controlled: bool,
 }

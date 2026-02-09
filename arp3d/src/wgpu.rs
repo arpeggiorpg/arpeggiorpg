@@ -1,8 +1,14 @@
 use bytemuck::{Pod, Zeroable};
-use glam::{Mat4, Vec3};
+use glam::{Mat4, Vec3, Vec4};
 use wgpu::util::DeviceExt;
 
 use crate::Scene3d;
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum PickedObject {
+    Terrain(usize),
+    Creature(usize),
+}
 
 #[repr(C)]
 #[derive(Copy, Clone, Pod, Zeroable)]
@@ -47,13 +53,25 @@ pub struct SceneRenderer {
 }
 
 impl SceneRenderer {
-    pub fn new(device: &wgpu::Device, config: &wgpu::SurfaceConfiguration, scene: &Scene3d) -> Self {
+    pub fn new(
+        device: &wgpu::Device,
+        config: &wgpu::SurfaceConfiguration,
+        scene: &Scene3d,
+        highlighted_terrain: Option<usize>,
+        highlighted_creature: Option<usize>,
+        movement_option_tiles: &[usize],
+    ) -> Self {
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("Arp3D Scene Shader"),
             source: wgpu::ShaderSource::Wgsl(SHADER_SOURCE.into()),
         });
 
-        let (mut vertices, mut indices, bounds) = build_scene_mesh(scene);
+        let (mut vertices, mut indices, bounds) = build_scene_mesh(
+            scene,
+            highlighted_terrain,
+            highlighted_creature,
+            movement_option_tiles,
+        );
         if vertices.is_empty() {
             vertices.push(Vertex {
                 position: [0.0, 0.0, 0.0],
@@ -216,6 +234,9 @@ pub async fn render_scene_on_surface(
     client_width: u32,
     client_height: u32,
     scene: &Scene3d,
+    highlighted_terrain: Option<usize>,
+    highlighted_creature: Option<usize>,
+    movement_option_tiles: &[usize],
 ) -> anyhow::Result<(u32, u32)> {
     let adapter = instance
         .request_adapter(&wgpu::RequestAdapterOptions {
@@ -259,7 +280,14 @@ pub async fn render_scene_on_surface(
     };
     surface.configure(&device, &config);
 
-    let renderer = SceneRenderer::new(&device, &config, scene);
+    let renderer = SceneRenderer::new(
+        &device,
+        &config,
+        scene,
+        highlighted_terrain,
+        highlighted_creature,
+        movement_option_tiles,
+    );
     let output = match surface.get_current_texture() {
         Ok(output) => output,
         Err(wgpu::SurfaceError::Lost | wgpu::SurfaceError::Outdated) => {
@@ -283,33 +311,238 @@ pub async fn render_scene_on_surface(
     Ok((width, height))
 }
 
-fn build_scene_mesh(scene: &Scene3d) -> (Vec<Vertex>, Vec<u32>, Option<SceneBounds>) {
+pub fn pick_terrain_tile(
+    scene: &Scene3d,
+    viewport_width: u32,
+    viewport_height: u32,
+    cursor_x: f32,
+    cursor_y: f32,
+) -> Option<usize> {
+    if scene.terrain.is_empty() {
+        return None;
+    }
+    let (ray_origin, ray_dir) = cursor_ray(scene, viewport_width, viewport_height, cursor_x, cursor_y)?;
+    pick_terrain_tile_with_ray(scene, ray_origin, ray_dir).map(|(_, idx)| idx)
+}
+
+pub fn pick_creature(
+    scene: &Scene3d,
+    viewport_width: u32,
+    viewport_height: u32,
+    cursor_x: f32,
+    cursor_y: f32,
+) -> Option<usize> {
+    if scene.creatures.is_empty() {
+        return None;
+    }
+
+    let (ray_origin, ray_dir) =
+        cursor_ray(scene, viewport_width, viewport_height, cursor_x, cursor_y)?;
+    pick_creature_with_ray(scene, ray_origin, ray_dir).map(|(_, idx)| idx)
+}
+
+pub fn pick_scene_object(
+    scene: &Scene3d,
+    viewport_width: u32,
+    viewport_height: u32,
+    cursor_x: f32,
+    cursor_y: f32,
+) -> Option<PickedObject> {
+    let (ray_origin, ray_dir) =
+        cursor_ray(scene, viewport_width, viewport_height, cursor_x, cursor_y)?;
+    let terrain_hit = pick_terrain_tile_with_ray(scene, ray_origin, ray_dir);
+    let creature_hit = pick_creature_with_ray(scene, ray_origin, ray_dir);
+
+    match (terrain_hit, creature_hit) {
+        (Some((terrain_t, terrain_idx)), Some((creature_t, creature_idx))) => {
+            if terrain_t <= creature_t {
+                Some(PickedObject::Terrain(terrain_idx))
+            } else {
+                Some(PickedObject::Creature(creature_idx))
+            }
+        }
+        (Some((_, terrain_idx)), None) => Some(PickedObject::Terrain(terrain_idx)),
+        (None, Some((_, creature_idx))) => Some(PickedObject::Creature(creature_idx)),
+        (None, None) => None,
+    }
+}
+
+fn build_scene_mesh(
+    scene: &Scene3d,
+    highlighted_terrain: Option<usize>,
+    highlighted_creature: Option<usize>,
+    movement_option_tiles: &[usize],
+) -> (Vec<Vertex>, Vec<u32>, Option<SceneBounds>) {
     let mut vertices = Vec::with_capacity((scene.terrain.len() + scene.creatures.len()) * 24);
     let mut indices = Vec::with_capacity((scene.terrain.len() + scene.creatures.len()) * 36);
-    let mut bounds: Option<SceneBounds> = None;
+    let movement_option_tiles: std::collections::HashSet<usize> =
+        movement_option_tiles.iter().copied().collect();
 
-    for tile in &scene.terrain {
+    for (idx, tile) in scene.terrain.iter().enumerate() {
         let min = Vec3::new(tile.x, tile.y, tile.z);
         let max = min + Vec3::ONE;
+        let top = if Some(idx) == highlighted_terrain {
+            [0.92, 0.90, 0.44]
+        } else if movement_option_tiles.contains(&idx) {
+            [0.34, 0.90, 0.94]
+        } else {
+            [0.36, 0.73, 0.31]
+        };
         append_cube(
             &mut vertices,
             &mut indices,
             min,
             max,
-            [0.36, 0.73, 0.31],
+            top,
             [0.62, 0.48, 0.30],
             [0.50, 0.38, 0.24],
             [0.22, 0.18, 0.14],
         );
+    }
+
+    for (idx, creature) in scene.creatures.iter().enumerate() {
+        let _ = append_creature_model(
+            &mut vertices,
+            &mut indices,
+            *creature,
+            Some(idx) == highlighted_creature,
+        );
+    }
+
+    let bounds = scene_bounds_for_camera(scene);
+    (vertices, indices, bounds)
+}
+
+fn cursor_ray(
+    scene: &Scene3d,
+    viewport_width: u32,
+    viewport_height: u32,
+    cursor_x: f32,
+    cursor_y: f32,
+) -> Option<(Vec3, Vec3)> {
+    if viewport_width == 0 || viewport_height == 0 {
+        return None;
+    }
+    if cursor_x < 0.0
+        || cursor_y < 0.0
+        || cursor_x > viewport_width as f32
+        || cursor_y > viewport_height as f32
+    {
+        return None;
+    }
+
+    let bounds = scene_bounds_for_camera(scene)?;
+    let view_proj = scene_mvp(viewport_width, viewport_height, Some(bounds));
+    let inv_view_proj = view_proj.inverse();
+
+    let ndc_x = (cursor_x / viewport_width as f32) * 2.0 - 1.0;
+    let ndc_y = 1.0 - (cursor_y / viewport_height as f32) * 2.0;
+
+    let near4 = inv_view_proj * Vec4::new(ndc_x, ndc_y, 0.0, 1.0);
+    let far4 = inv_view_proj * Vec4::new(ndc_x, ndc_y, 1.0, 1.0);
+    if near4.w.abs() < 1e-6 || far4.w.abs() < 1e-6 {
+        return None;
+    }
+
+    let near = near4.truncate() / near4.w;
+    let far = far4.truncate() / far4.w;
+    let ray = far - near;
+    if ray.length_squared() <= f32::EPSILON {
+        return None;
+    }
+    Some((near, ray.normalize()))
+}
+
+fn pick_terrain_tile_with_ray(scene: &Scene3d, ray_origin: Vec3, ray_dir: Vec3) -> Option<(f32, usize)> {
+    let mut best: Option<(f32, usize)> = None;
+    const EPS: f32 = 1e-4;
+    for (idx, tile) in scene.terrain.iter().enumerate() {
+        if ray_dir.y.abs() < EPS {
+            continue;
+        }
+        let top_y = tile.y + 1.0;
+        let t = (top_y - ray_origin.y) / ray_dir.y;
+        if t <= 0.0 {
+            continue;
+        }
+        let hit = ray_origin + ray_dir * t;
+        if hit.x >= tile.x - EPS
+            && hit.x <= tile.x + 1.0 + EPS
+            && hit.z >= tile.z - EPS
+            && hit.z <= tile.z + 1.0 + EPS
+        {
+            match best {
+                Some((best_t, _)) if t >= best_t => {}
+                _ => best = Some((t, idx)),
+            }
+        }
+    }
+    best
+}
+
+fn pick_creature_with_ray(scene: &Scene3d, ray_origin: Vec3, ray_dir: Vec3) -> Option<(f32, usize)> {
+    let mut best: Option<(f32, usize)> = None;
+    for (idx, creature) in scene.creatures.iter().enumerate() {
+        let (min, max) = creature_model_bounds(*creature);
+        let Some(t) = intersect_ray_aabb(ray_origin, ray_dir, min, max) else {
+            continue;
+        };
+        match best {
+            Some((best_t, _)) if t >= best_t => {}
+            _ => best = Some((t, idx)),
+        }
+    }
+    best
+}
+
+fn intersect_ray_aabb(origin: Vec3, dir: Vec3, min: Vec3, max: Vec3) -> Option<f32> {
+    let mut tmin = f32::NEG_INFINITY;
+    let mut tmax = f32::INFINITY;
+    const EPS: f32 = 1e-6;
+
+    for axis in 0..3 {
+        let o = origin[axis];
+        let d = dir[axis];
+        let mn = min[axis];
+        let mx = max[axis];
+        if d.abs() < EPS {
+            if o < mn || o > mx {
+                return None;
+            }
+            continue;
+        }
+        let inv_d = 1.0 / d;
+        let mut t1 = (mn - o) * inv_d;
+        let mut t2 = (mx - o) * inv_d;
+        if t1 > t2 {
+            std::mem::swap(&mut t1, &mut t2);
+        }
+        tmin = tmin.max(t1);
+        tmax = tmax.min(t2);
+        if tmax < tmin {
+            return None;
+        }
+    }
+
+    if tmax < 0.0 {
+        None
+    } else {
+        Some(tmin.max(0.0))
+    }
+}
+
+fn scene_bounds_for_camera(scene: &Scene3d) -> Option<SceneBounds> {
+    let mut bounds: Option<SceneBounds> = None;
+    for tile in &scene.terrain {
+        let min = Vec3::new(tile.x, tile.y, tile.z);
+        let max = min + Vec3::ONE;
         bounds = merge_bounds(bounds, min, max);
     }
-
     for creature in &scene.creatures {
-        let (model_min, model_max) = append_creature_model(&mut vertices, &mut indices, *creature);
-        bounds = merge_bounds(bounds, model_min, model_max);
+        let (min, max) = creature_model_bounds(*creature);
+        bounds = merge_bounds(bounds, min, max);
     }
-
-    (vertices, indices, bounds)
+    bounds
 }
 
 fn merge_bounds(existing: Option<SceneBounds>, min: Vec3, max: Vec3) -> Option<SceneBounds> {
@@ -429,6 +662,7 @@ fn append_creature_model(
     vertices: &mut Vec<Vertex>,
     indices: &mut Vec<u32>,
     creature: crate::Creature3d,
+    highlighted: bool,
 ) -> (Vec3, Vec3) {
     let footprint_x = creature.size_x.max(0.55);
     let footprint_z = creature.size_z.max(0.55);
@@ -471,6 +705,27 @@ fn append_creature_model(
         bounds_max = bounds_max.max(max);
     };
 
+    let (leg_top, leg_side_light, leg_side_dark, leg_bottom) = if highlighted {
+        ([0.38, 0.48, 0.98], [0.44, 0.54, 1.0], [0.30, 0.38, 0.92], [0.24, 0.30, 0.72])
+    } else {
+        ([0.22, 0.33, 0.80], [0.27, 0.38, 0.85], [0.18, 0.27, 0.70], [0.12, 0.18, 0.45])
+    };
+    let (torso_top, torso_side_light, torso_side_dark, torso_bottom) = if highlighted {
+        ([0.28, 0.72, 0.95], [0.34, 0.78, 0.98], [0.22, 0.60, 0.85], [0.14, 0.46, 0.68])
+    } else {
+        ([0.18, 0.58, 0.82], [0.22, 0.64, 0.88], [0.14, 0.46, 0.68], [0.10, 0.32, 0.48])
+    };
+    let (arm_top, arm_side_light, arm_side_dark, arm_bottom) = if highlighted {
+        ([0.96, 0.78, 0.64], [0.99, 0.82, 0.70], [0.90, 0.70, 0.56], [0.76, 0.59, 0.48])
+    } else {
+        ([0.85, 0.67, 0.54], [0.90, 0.72, 0.58], [0.76, 0.57, 0.45], [0.62, 0.47, 0.38])
+    };
+    let (head_top, head_side_light, head_side_dark, head_bottom) = if highlighted {
+        ([1.0, 0.86, 0.72], [1.0, 0.90, 0.78], [0.94, 0.77, 0.63], [0.80, 0.64, 0.52])
+    } else {
+        ([0.91, 0.74, 0.60], [0.96, 0.78, 0.64], [0.81, 0.63, 0.50], [0.66, 0.51, 0.40])
+    };
+
     // Legs
     let leg_left_center_x = center_x - (leg_width * 0.5 + leg_gap * 0.5);
     let leg_right_center_x = center_x + (leg_width * 0.5 + leg_gap * 0.5);
@@ -486,10 +741,10 @@ fn append_creature_model(
                 base_y + leg_height,
                 center_z + leg_depth * 0.5,
             ),
-            [0.22, 0.33, 0.80],
-            [0.27, 0.38, 0.85],
-            [0.18, 0.27, 0.70],
-            [0.12, 0.18, 0.45],
+            leg_top,
+            leg_side_light,
+            leg_side_dark,
+            leg_bottom,
         );
     }
 
@@ -506,10 +761,10 @@ fn append_creature_model(
             torso_max_y,
             center_z + torso_depth * 0.5,
         ),
-        [0.18, 0.58, 0.82],
-        [0.22, 0.64, 0.88],
-        [0.14, 0.46, 0.68],
-        [0.10, 0.32, 0.48],
+        torso_top,
+        torso_side_light,
+        torso_side_dark,
+        torso_bottom,
     );
 
     let arm_min_y = torso_min_y + torso_height * 0.08;
@@ -526,10 +781,10 @@ fn append_creature_model(
                 arm_max_y,
                 center_z + arm_depth * 0.5,
             ),
-            [0.85, 0.67, 0.54],
-            [0.90, 0.72, 0.58],
-            [0.76, 0.57, 0.45],
-            [0.62, 0.47, 0.38],
+            arm_top,
+            arm_side_light,
+            arm_side_dark,
+            arm_bottom,
         );
     }
 
@@ -546,13 +801,140 @@ fn append_creature_model(
             head_max_y,
             center_z + head_depth * 0.5,
         ),
-        [0.91, 0.74, 0.60],
-        [0.96, 0.78, 0.64],
-        [0.81, 0.63, 0.50],
-        [0.66, 0.51, 0.40],
+        head_top,
+        head_side_light,
+        head_side_dark,
+        head_bottom,
     );
 
+    if creature.controlled {
+        let cursor_center = Vec3::new(center_x, head_max_y + 0.30, center_z);
+        let cursor_radius = ((footprint_x.max(footprint_z)) * 0.22).clamp(0.12, 0.22);
+        let cursor_half_height = 0.24;
+        append_control_cursor(
+            vertices,
+            indices,
+            cursor_center,
+            cursor_radius,
+            cursor_half_height,
+            highlighted,
+        );
+    }
+
     (bounds_min, bounds_max)
+}
+
+fn append_control_cursor(
+    vertices: &mut Vec<Vertex>,
+    indices: &mut Vec<u32>,
+    center: Vec3,
+    radius: f32,
+    half_height: f32,
+    highlighted: bool,
+) {
+    let top = center + Vec3::new(0.0, half_height, 0.0);
+    let bottom = center - Vec3::new(0.0, half_height, 0.0);
+    let north = center + Vec3::new(0.0, 0.0, -radius);
+    let south = center + Vec3::new(0.0, 0.0, radius);
+    let east = center + Vec3::new(radius, 0.0, 0.0);
+    let west = center + Vec3::new(-radius, 0.0, 0.0);
+
+    let (top_a, top_b, top_c, top_d, bottom_a, bottom_b, bottom_c, bottom_d) = if highlighted {
+        (
+            [0.82, 0.98, 1.0],
+            [0.70, 0.93, 1.0],
+            [0.58, 0.87, 1.0],
+            [0.66, 0.90, 1.0],
+            [0.30, 0.52, 0.80],
+            [0.25, 0.44, 0.71],
+            [0.20, 0.36, 0.61],
+            [0.24, 0.40, 0.67],
+        )
+    } else {
+        (
+            [0.72, 0.94, 1.0],
+            [0.60, 0.88, 0.98],
+            [0.50, 0.80, 0.94],
+            [0.56, 0.84, 0.96],
+            [0.24, 0.44, 0.72],
+            [0.20, 0.37, 0.62],
+            [0.16, 0.31, 0.53],
+            [0.19, 0.34, 0.58],
+        )
+    };
+
+    // Two-sided triangles keep the faceted marker visible from any camera direction.
+    push_triangle_double_sided(vertices, indices, top, north, east, top_a);
+    push_triangle_double_sided(vertices, indices, top, east, south, top_b);
+    push_triangle_double_sided(vertices, indices, top, south, west, top_c);
+    push_triangle_double_sided(vertices, indices, top, west, north, top_d);
+
+    push_triangle_double_sided(vertices, indices, bottom, east, north, bottom_a);
+    push_triangle_double_sided(vertices, indices, bottom, south, east, bottom_b);
+    push_triangle_double_sided(vertices, indices, bottom, west, south, bottom_c);
+    push_triangle_double_sided(vertices, indices, bottom, north, west, bottom_d);
+}
+
+fn push_triangle_double_sided(
+    vertices: &mut Vec<Vertex>,
+    indices: &mut Vec<u32>,
+    p0: Vec3,
+    p1: Vec3,
+    p2: Vec3,
+    color: [f32; 3],
+) {
+    let base = vertices.len() as u32;
+    vertices.push(Vertex {
+        position: p0.to_array(),
+        color,
+    });
+    vertices.push(Vertex {
+        position: p1.to_array(),
+        color,
+    });
+    vertices.push(Vertex {
+        position: p2.to_array(),
+        color,
+    });
+    indices.extend_from_slice(&[base, base + 1, base + 2, base, base + 2, base + 1]);
+}
+
+fn creature_model_bounds(creature: crate::Creature3d) -> (Vec3, Vec3) {
+    let footprint_x = creature.size_x.max(0.55);
+    let footprint_z = creature.size_z.max(0.55);
+    let height = creature.size_y.max(1.3);
+
+    let center_x = creature.x + footprint_x * 0.5;
+    let center_z = creature.z + footprint_z * 0.5;
+    let base_y = creature.y;
+
+    let leg_height = height * 0.42;
+    let torso_height = height * 0.36;
+    let head_height = height * 0.22;
+
+    let leg_depth = (footprint_z * 0.22).clamp(0.14, 0.28);
+    let torso_width = (footprint_x * 0.52).clamp(0.24, 0.44);
+    let torso_depth = (footprint_z * 0.34).clamp(0.18, 0.32);
+
+    let leg_width = (footprint_x * 0.22).clamp(0.14, 0.28);
+    let arm_width = (leg_width * 0.90).clamp(0.12, 0.22);
+    let arm_depth = (leg_depth * 0.90).clamp(0.12, 0.22);
+    let arm_offset = torso_width * 0.5 + arm_width * 0.5 + 0.02;
+
+    let head_depth = (torso_depth * 0.95).clamp(0.18, 0.30);
+    let half_depth = (leg_depth.max(torso_depth).max(arm_depth).max(head_depth)) * 0.5;
+
+    let min = Vec3::new(
+        center_x - (arm_offset + arm_width * 0.5),
+        base_y,
+        center_z - half_depth,
+    );
+    let max = Vec3::new(
+        center_x + (arm_offset + arm_width * 0.5),
+        base_y + leg_height + torso_height + head_height,
+        center_z + half_depth,
+    );
+    (min, max)
 }
 
 fn scene_mvp(width: u32, height: u32, bounds: Option<SceneBounds>) -> Mat4 {

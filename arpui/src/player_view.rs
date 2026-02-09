@@ -1,5 +1,5 @@
 use arptypes::{
-    Item, Note, PlayerCommand, PlayerID, SceneID, SerializedCreature, SerializedPlayerGame,
+    Item, Note, PlayerCommand, PlayerID, SerializedCreature, SerializedPlayerGame,
     multitenant::{GameID, InvitationID, PlayerGameAndMetadata, RPIGameRequest, Role},
 };
 use dioxus::prelude::*;
@@ -8,8 +8,7 @@ use foldertree::FolderPath;
 use tracing::{error, info};
 
 use crate::{
-    GAME_LOGS, GAME_NAME, GAME_SOURCE, GameSource,
-    Route,
+    GAME_LOGS, GAME_NAME, GAME_SOURCE, GameSource, Route,
     chat::PlayerChat,
     components::{
         button::{Button, ButtonVariant},
@@ -18,6 +17,7 @@ use crate::{
         split_pane::{SplitDirection, SplitPane},
         tabs::{TabContent, TabList, TabTrigger, Tabs},
     },
+    gfx::dioxus::Scene3dView,
     grid::{CreatureMenuAction, SceneGrid},
     rpi::{self, Connector, InvitationCheck, send_request, use_ws},
 };
@@ -28,6 +28,12 @@ struct PlayerGameContext(Memo<SerializedPlayerGame>);
 fn use_player_game() -> SerializedPlayerGame {
     let game = use_context::<PlayerGameContext>().0;
     game()
+}
+
+#[derive(Clone, Copy, PartialEq)]
+enum PlayerSceneViewMode {
+    TwoD,
+    ThreeD,
 }
 
 #[component]
@@ -64,17 +70,13 @@ fn GameLoader(player_id: PlayerID) -> Element {
     });
 
     match &*future.read_unchecked() {
-        Some(Ok(game)) => {
-            let scene_id = game.players.get(&player_id).and_then(|p| p.scene);
-            rsx! {
-                PlayerGameProvider {
-                    Shell {
-                        player_id: player_id.clone(),
-                        scene_id
-                    }
+        Some(Ok(_game)) => rsx! {
+            PlayerGameProvider {
+                Shell {
+                    player_id: player_id.clone(),
                 }
             }
-        }
+        },
         Some(Err(err)) => {
             error!("Player view failed to load game state: {:?}", err);
             rsx! { div { "Unable to load player view." } }
@@ -98,7 +100,7 @@ fn PlayerGameProvider(children: Element) -> Element {
 }
 
 #[component]
-fn Shell(player_id: PlayerID, scene_id: Option<SceneID>) -> Element {
+fn Shell(player_id: PlayerID) -> Element {
     let tabs = rsx! {Tabs {
         class: "player-view-tabs h-full min-h-0 flex flex-col overflow-hidden".to_string(),
         default_value: "creatures".to_string(),
@@ -129,6 +131,8 @@ fn Shell(player_id: PlayerID, scene_id: Option<SceneID>) -> Element {
         PlayerChat {}
     };
     let game = use_player_game();
+    let mut scene_view_mode = use_signal(|| PlayerSceneViewMode::TwoD);
+    let shown_scene = game.active_scene.clone();
 
     let get_creature_actions = move |creature_id| {
         if let Some(player) = game.players.get(&player_id) {
@@ -143,10 +147,51 @@ fn Shell(player_id: PlayerID, scene_id: Option<SceneID>) -> Element {
       div {
         class: "player-view-shell flex h-full min-h-0 w-full overflow-hidden",
         div {
-          class: "player-view-shell__main grow min-h-0 min-w-0",
-            SceneGrid {
-                scene: game.active_scene,
-                get_creature_actions: get_creature_actions,
+          class: "player-view-shell__main grow min-h-0 min-w-0 relative",
+            match scene_view_mode() {
+                PlayerSceneViewMode::TwoD => rsx! {
+                    SceneGrid {
+                        scene: shown_scene.clone(),
+                        get_creature_actions: get_creature_actions,
+                    }
+                },
+                PlayerSceneViewMode::ThreeD => rsx! {
+                    if let Some(scene) = shown_scene.clone() {
+                        Scene3dView {
+                            key: "{scene.id}",
+                            scene: scene,
+                            get_creature_actions: get_creature_actions,
+                        }
+                    } else {
+                        div {
+                            class: "w-full h-full flex items-center justify-center text-gray-500",
+                            "Ask your GM to put you in a scene."
+                        }
+                    }
+                }
+            }
+            div {
+                class: "absolute top-3 left-3 z-20 inline-flex items-center gap-1 rounded-md border border-gray-300 bg-white/90 p-1 shadow-sm backdrop-blur-sm",
+                button {
+                    r#type: "button",
+                    class: if scene_view_mode() == PlayerSceneViewMode::TwoD {
+                        "px-3 py-1 text-sm rounded bg-blue-600 text-white"
+                    } else {
+                        "px-3 py-1 text-sm rounded text-gray-700 hover:bg-gray-100"
+                    },
+                    onclick: move |_| scene_view_mode.set(PlayerSceneViewMode::TwoD),
+                    "2D"
+                }
+                button {
+                    r#type: "button",
+                    class: if scene_view_mode() == PlayerSceneViewMode::ThreeD {
+                        "px-3 py-1 text-sm rounded bg-blue-600 text-white"
+                    } else {
+                        "px-3 py-1 text-sm rounded text-gray-700 hover:bg-gray-100"
+                    },
+                    onclick: move |_| scene_view_mode.set(PlayerSceneViewMode::ThreeD),
+                    "3D"
+                }
             }
         }
         div {
