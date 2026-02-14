@@ -21,10 +21,10 @@ deploy-ui:
     cd ui; npm run build
     cd ui; ./node_modules/.bin/wrangler pages deployment create --env production ./dist/
 
-deploy-dioxus:
+deploy-dioxus branch="dioxus":
     cd arpui; cp index.prod.html index.html
     cd arpui; dx build --release
-    cd arpui; ../ui/node_modules/.bin/wrangler pages deploy ./dist --project-name arpeggio
+    cd arpui; ../worker/node_modules/.bin/wrangler pages deploy ./target/dx/arpui/release/web/public --project-name arpeggio --branch {{branch}} --commit-dirty=true
 
 deploy-backend:
     cd worker;  ./node_modules/.bin/wrangler deploy
