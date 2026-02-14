@@ -24,6 +24,7 @@ const ZOOM_SENSITIVITY: f32 = 0.0015;
 const ROTATE_SENSITIVITY: f32 = 0.005;
 const TOUCH_ROTATE_SENSITIVITY: f32 = 0.004;
 const DRAG_CLICK_SUPPRESS_PX: f32 = 6.0;
+const CREATURE_RENDER_Y_OFFSET_TILES: f32 = 1.0;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum HoveredSceneObject {
@@ -1086,7 +1087,8 @@ fn to_scene3d(scene: &Scene, game_source: &GameSource) -> (Scene3d, Vec<SceneCre
         .iter()
         .map(|(id, position)| Creature3d {
             x: cm_to_world(position.x_cm()),
-            y: cm_to_world(position.z_cm()),
+            // Movement/pathfinding coordinates stay at terrain level; only lift visuals in 3D.
+            y: cm_to_world(position.z_cm()) + CREATURE_RENDER_Y_OFFSET_TILES,
             z: cm_to_world(position.y_cm()),
             size_x: 0.82,
             size_y: 1.86,
