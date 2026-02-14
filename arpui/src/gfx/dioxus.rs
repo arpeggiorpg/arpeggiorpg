@@ -93,11 +93,11 @@ pub fn Scene3dView(
     let (scene3d, scene_creatures) = to_scene3d(&scene, &game_source);
     let scene3d_for_events = scene3d.clone();
     let scene_creatures_for_events = scene_creatures.clone();
-    let mut camera_zoom = use_signal(|| 1.0f32);
-    let mut camera_pan = use_signal(CameraPan::default);
-    let mut drag_state = use_signal(|| None::<DragState>);
-    let mut suppress_next_click = use_signal(|| false);
-    let mut hovered_object = use_signal(|| None::<HoveredSceneObject>);
+    let camera_zoom = use_signal(|| 1.0f32);
+    let camera_pan = use_signal(CameraPan::default);
+    let drag_state = use_signal(|| None::<DragState>);
+    let suppress_next_click = use_signal(|| false);
+    let hovered_object = use_signal(|| None::<HoveredSceneObject>);
     let mut creature_menu = use_signal(|| None::<CreatureMenuState>);
     let mut movement_mode = use_signal(|| None::<MovementModeState>);
     let ws = use_ws();
@@ -124,6 +124,78 @@ pub fn Scene3dView(
     let scene3d_for_touch = scene3d_for_events.clone();
     let scene3d_for_click = scene3d_for_events.clone();
     let scene_creatures_for_click = scene_creatures_for_events.clone();
+    let handle_mouse_down = move |evt: Event<MouseData>| {
+        handle_canvas_mouse_down(evt, drag_state);
+    };
+    let handle_mouse_move = move |evt: Event<MouseData>| {
+        handle_canvas_mouse_move(
+            evt,
+            &scene3d_for_move,
+            drag_state,
+            camera_zoom,
+            camera_pan,
+            hovered_object,
+            suppress_next_click,
+        );
+    };
+    let handle_mouse_up = move |evt: Event<MouseData>| {
+        handle_canvas_mouse_up(evt, drag_state);
+    };
+    let handle_wheel = move |evt: Event<WheelData>| {
+        handle_canvas_wheel(evt, camera_zoom);
+    };
+    let handle_touch_start = move |evt: Event<TouchData>| {
+        handle_canvas_touch_start(evt, drag_state);
+    };
+    let handle_touch_move = move |evt: Event<TouchData>| {
+        handle_canvas_touch_move(
+            evt,
+            &scene3d_for_touch,
+            drag_state,
+            camera_zoom,
+            camera_pan,
+            suppress_next_click,
+        );
+    };
+    let handle_touch_end = move |evt: Event<TouchData>| {
+        handle_canvas_touch_end(evt, drag_state);
+    };
+    let handle_touch_cancel = move |evt: Event<TouchData>| {
+        handle_canvas_touch_end(evt, drag_state);
+    };
+    let handle_click = move |evt: Event<MouseData>| {
+        let client_x = evt.data().client_coordinates().x as f32;
+        let client_y = evt.data().client_coordinates().y as f32;
+        let maybe_request = prepare_canvas_click(
+            &scene3d_for_click,
+            &scene_creatures_for_click,
+            client_x,
+            client_y,
+            suppress_next_click,
+            creature_menu,
+            movement_mode,
+            scene_id,
+            get_creature_actions.clone(),
+            camera_zoom(),
+            camera_pan(),
+        );
+        async move {
+            if let Some(request) = maybe_request {
+                match send_request::<Result<Vec<GameLog>, String>>(request, ws).await {
+                    Ok(Ok(_logs)) => {}
+                    Ok(Err(err_msg)) => {
+                        error!(?err_msg, "Creature action request rejected");
+                    }
+                    Err(err) => {
+                        error!(?err, "Creature action request failed");
+                    }
+                }
+            }
+        }
+    };
+    let handle_mouse_leave = move |_evt: Event<MouseData>| {
+        handle_canvas_mouse_leave(drag_state, hovered_object);
+    };
 
     rsx! {
         div {
@@ -132,222 +204,16 @@ pub fn Scene3dView(
                 id: "{CANVAS_ID}",
                 class: "block h-full w-full",
                 style: "display: block; width: 100%; height: 100%; background: #0c0f1a;",
-                onmousedown: move |evt: Event<MouseData>| {
-                    if evt.data().trigger_button() != Some(MouseButton::Primary) {
-                        return;
-                    }
-                    evt.prevent_default();
-                    let client_x = evt.data().client_coordinates().x as f32;
-                    let client_y = evt.data().client_coordinates().y as f32;
-                    drag_state.set(Some(DragState {
-                        kind: DragInputKind::Mouse,
-                        last_client_x: client_x,
-                        last_client_y: client_y,
-                        total_drag_px: 0.0,
-                    }));
-                },
-                onmousemove: move |evt: Event<MouseData>| {
-                    if let Some(mut active_drag) = drag_state()
-                        && active_drag.kind == DragInputKind::Mouse
-                    {
-                        evt.prevent_default();
-                        let client_x = evt.data().client_coordinates().x as f32;
-                        let client_y = evt.data().client_coordinates().y as f32;
-                        let delta_x = client_x - active_drag.last_client_x;
-                        let delta_y = client_y - active_drag.last_client_y;
-                        if delta_x.abs() > f32::EPSILON || delta_y.abs() > f32::EPSILON {
-                            if let Some(canvas) = find_canvas() {
-                                let view = canvas_view(&canvas, camera_zoom(), camera_pan());
-                                let (pan_dx, pan_dz) =
-                                    arp3d::drag_pan_delta(&scene3d_for_move, view, delta_x, delta_y);
-                                camera_pan.with_mut(|pan| {
-                                    pan.x += pan_dx;
-                                    pan.z += pan_dz;
-                                });
-                            }
-                            active_drag.last_client_x = client_x;
-                            active_drag.last_client_y = client_y;
-                            active_drag.total_drag_px += delta_x.hypot(delta_y);
-                            if active_drag.total_drag_px > DRAG_CLICK_SUPPRESS_PX {
-                                suppress_next_click.set(true);
-                            }
-                            drag_state.set(Some(active_drag));
-                        }
-                        return;
-                    }
-                    let client_x = evt.data().client_coordinates().x as f32;
-                    let client_y = evt.data().client_coordinates().y as f32;
-                    let Some(canvas) = find_canvas() else {
-                        return;
-                    };
-                    let new_hovered = pick_object_for_pointer(
-                        &scene3d_for_move,
-                        &canvas,
-                        client_x,
-                        client_y,
-                        camera_zoom(),
-                        camera_pan(),
-                    );
-                    if hovered_object() != new_hovered {
-                        hovered_object.set(new_hovered);
-                    }
-                },
-                onmouseup: move |evt: Event<MouseData>| {
-                    if evt.data().trigger_button() == Some(MouseButton::Primary) {
-                        drag_state.set(None);
-                    }
-                },
-                onwheel: move |evt: Event<WheelData>| {
-                    evt.prevent_default();
-                    let delta_y = evt.data().delta().strip_units().y as f32;
-                    let zoom_multiplier = (-delta_y * ZOOM_SENSITIVITY).exp();
-                    let new_zoom =
-                        (camera_zoom() * zoom_multiplier).clamp(MIN_CAMERA_ZOOM, MAX_CAMERA_ZOOM);
-                    camera_zoom.set(new_zoom);
-                },
-                ontouchstart: move |evt: Event<TouchData>| {
-                    evt.prevent_default();
-                    let Some(touch) = evt
-                        .data()
-                        .target_touches()
-                        .into_iter()
-                        .next()
-                        .or_else(|| evt.data().touches().into_iter().next())
-                    else {
-                        return;
-                    };
-                    let coords = touch.client_coordinates();
-                    drag_state.set(Some(DragState {
-                        kind: DragInputKind::Touch,
-                        last_client_x: coords.x as f32,
-                        last_client_y: coords.y as f32,
-                        total_drag_px: 0.0,
-                    }));
-                },
-                ontouchmove: move |evt: Event<TouchData>| {
-                    let Some(mut active_drag) = drag_state() else {
-                        return;
-                    };
-                    if active_drag.kind != DragInputKind::Touch {
-                        return;
-                    }
-                    let Some(touch) = evt
-                        .data()
-                        .target_touches()
-                        .into_iter()
-                        .next()
-                        .or_else(|| evt.data().touches().into_iter().next())
-                    else {
-                        return;
-                    };
-                    evt.prevent_default();
-                    let coords = touch.client_coordinates();
-                    let client_x = coords.x as f32;
-                    let client_y = coords.y as f32;
-                    let delta_x = client_x - active_drag.last_client_x;
-                    let delta_y = client_y - active_drag.last_client_y;
-                    if delta_x.abs() > f32::EPSILON || delta_y.abs() > f32::EPSILON {
-                        if let Some(canvas) = find_canvas() {
-                            let view = canvas_view(&canvas, camera_zoom(), camera_pan());
-                            let (pan_dx, pan_dz) =
-                                arp3d::drag_pan_delta(&scene3d_for_touch, view, delta_x, delta_y);
-                            camera_pan.with_mut(|pan| {
-                                pan.x += pan_dx;
-                                pan.z += pan_dz;
-                            });
-                        }
-                        active_drag.last_client_x = client_x;
-                        active_drag.last_client_y = client_y;
-                        active_drag.total_drag_px += delta_x.hypot(delta_y);
-                        if active_drag.total_drag_px > DRAG_CLICK_SUPPRESS_PX {
-                            suppress_next_click.set(true);
-                        }
-                        drag_state.set(Some(active_drag));
-                    }
-                },
-                ontouchend: move |evt: Event<TouchData>| {
-                    evt.prevent_default();
-                    drag_state.set(None);
-                },
-                ontouchcancel: move |evt: Event<TouchData>| {
-                    evt.prevent_default();
-                    drag_state.set(None);
-                },
-                onclick: move |evt: Event<MouseData>| {
-                    let mut skip_click_action = false;
-                    if suppress_next_click() {
-                        suppress_next_click.set(false);
-                        skip_click_action = true;
-                    }
-                    let client_x = evt.data().client_coordinates().x as f32;
-                    let client_y = evt.data().client_coordinates().y as f32;
-                    let gm_mode = movement_mode();
-                    let player_mode = MOVEMENT_OPTIONS();
-                    let scene3d_for_click = scene3d_for_click.clone();
-                    let scene_creatures_for_click = scene_creatures_for_click.clone();
-                    let mut maybe_request: Option<RPIGameRequest> = None;
-
-                    if skip_click_action {
-                        // no-op
-                    } else if let Some(canvas) = find_canvas() {
-                        match resolve_canvas_click(
-                            &scene3d_for_click,
-                            &scene_creatures_for_click,
-                            &canvas,
-                            client_x,
-                            client_y,
-                            gm_mode.clone(),
-                            player_mode.clone(),
-                            scene_id,
-                            get_creature_actions.clone(),
-                            camera_zoom(),
-                            camera_pan(),
-                        ) {
-                            ClickResolution::KeepState => {}
-                            ClickResolution::CloseMenu => creature_menu.set(None),
-                            ClickResolution::OpenMenu(menu) => creature_menu.set(Some(menu)),
-                            ClickResolution::QueueRequest(request) => {
-                                if gm_mode.is_some() {
-                                    movement_mode.set(None);
-                                }
-                                if player_mode.is_some() {
-                                    *MOVEMENT_OPTIONS.write() = None;
-                                }
-                                creature_menu.set(None);
-                                maybe_request = Some(request);
-                            }
-                        }
-                    } else {
-                        creature_menu.set(None);
-                    }
-
-                    async move {
-                        if skip_click_action {
-                            return;
-                        }
-                        if let Some(request) = maybe_request {
-                            match send_request::<Result<Vec<GameLog>, String>>(request, ws).await {
-                                Ok(Ok(_logs)) => {}
-                                Ok(Err(err_msg)) => {
-                                    error!(?err_msg, "Creature action request rejected");
-                                }
-                                Err(err) => {
-                                    error!(?err, "Creature action request failed");
-                                }
-                            }
-                        }
-                    }
-                },
-                onmouseleave: move |_| {
-                    if let Some(active_drag) = drag_state()
-                        && active_drag.kind == DragInputKind::Mouse
-                    {
-                        drag_state.set(None);
-                    }
-                    if hovered_object().is_some() {
-                        hovered_object.set(None);
-                    }
-                },
+                onmousedown: handle_mouse_down,
+                onmousemove: handle_mouse_move,
+                onmouseup: handle_mouse_up,
+                onwheel: handle_wheel,
+                ontouchstart: handle_touch_start,
+                ontouchmove: handle_touch_move,
+                ontouchend: handle_touch_end,
+                ontouchcancel: handle_touch_cancel,
+                onclick: handle_click,
+                onmouseleave: handle_mouse_leave,
             }
 
             if let Some(mode) = movement_mode() {
@@ -383,6 +249,247 @@ pub fn Scene3dView(
             }
         }
     }
+}
+
+fn handle_canvas_mouse_down(evt: Event<MouseData>, mut drag_state: Signal<Option<DragState>>) {
+    if evt.data().trigger_button() != Some(MouseButton::Primary) {
+        return;
+    }
+    evt.prevent_default();
+    let client_x = evt.data().client_coordinates().x as f32;
+    let client_y = evt.data().client_coordinates().y as f32;
+    drag_state.set(Some(DragState {
+        kind: DragInputKind::Mouse,
+        last_client_x: client_x,
+        last_client_y: client_y,
+        total_drag_px: 0.0,
+    }));
+}
+
+fn handle_canvas_mouse_move(
+    evt: Event<MouseData>,
+    scene3d: &Scene3d,
+    mut drag_state: Signal<Option<DragState>>,
+    camera_zoom: Signal<f32>,
+    camera_pan: Signal<CameraPan>,
+    mut hovered_object: Signal<Option<HoveredSceneObject>>,
+    suppress_next_click: Signal<bool>,
+) {
+    if let Some(active_drag) = drag_state()
+        && active_drag.kind == DragInputKind::Mouse
+    {
+        evt.prevent_default();
+        let client_x = evt.data().client_coordinates().x as f32;
+        let client_y = evt.data().client_coordinates().y as f32;
+        let updated_drag = update_drag_from_client_delta(
+            scene3d,
+            active_drag,
+            client_x,
+            client_y,
+            camera_zoom(),
+            camera_pan(),
+            camera_pan,
+            suppress_next_click,
+        );
+        drag_state.set(Some(updated_drag));
+        return;
+    }
+
+    let client_x = evt.data().client_coordinates().x as f32;
+    let client_y = evt.data().client_coordinates().y as f32;
+    let Some(canvas) = find_canvas() else {
+        return;
+    };
+    let new_hovered = pick_object_for_pointer(
+        scene3d,
+        &canvas,
+        client_x,
+        client_y,
+        camera_zoom(),
+        camera_pan(),
+    );
+    if hovered_object() != new_hovered {
+        hovered_object.set(new_hovered);
+    }
+}
+
+fn handle_canvas_mouse_up(evt: Event<MouseData>, mut drag_state: Signal<Option<DragState>>) {
+    if evt.data().trigger_button() == Some(MouseButton::Primary) {
+        drag_state.set(None);
+    }
+}
+
+fn handle_canvas_wheel(evt: Event<WheelData>, mut camera_zoom: Signal<f32>) {
+    evt.prevent_default();
+    let delta_y = evt.data().delta().strip_units().y as f32;
+    let zoom_multiplier = (-delta_y * ZOOM_SENSITIVITY).exp();
+    let new_zoom = (camera_zoom() * zoom_multiplier).clamp(MIN_CAMERA_ZOOM, MAX_CAMERA_ZOOM);
+    camera_zoom.set(new_zoom);
+}
+
+fn handle_canvas_touch_start(evt: Event<TouchData>, mut drag_state: Signal<Option<DragState>>) {
+    evt.prevent_default();
+    let Some((client_x, client_y)) = first_touch_client_coords(&evt) else {
+        return;
+    };
+    drag_state.set(Some(DragState {
+        kind: DragInputKind::Touch,
+        last_client_x: client_x,
+        last_client_y: client_y,
+        total_drag_px: 0.0,
+    }));
+}
+
+fn handle_canvas_touch_move(
+    evt: Event<TouchData>,
+    scene3d: &Scene3d,
+    mut drag_state: Signal<Option<DragState>>,
+    camera_zoom: Signal<f32>,
+    camera_pan: Signal<CameraPan>,
+    suppress_next_click: Signal<bool>,
+) {
+    let Some(active_drag) = drag_state() else {
+        return;
+    };
+    if active_drag.kind != DragInputKind::Touch {
+        return;
+    }
+    let Some((client_x, client_y)) = first_touch_client_coords(&evt) else {
+        return;
+    };
+    evt.prevent_default();
+    let updated_drag = update_drag_from_client_delta(
+        scene3d,
+        active_drag,
+        client_x,
+        client_y,
+        camera_zoom(),
+        camera_pan(),
+        camera_pan,
+        suppress_next_click,
+    );
+    drag_state.set(Some(updated_drag));
+}
+
+fn handle_canvas_touch_end(evt: Event<TouchData>, mut drag_state: Signal<Option<DragState>>) {
+    evt.prevent_default();
+    drag_state.set(None);
+}
+
+fn handle_canvas_mouse_leave(
+    mut drag_state: Signal<Option<DragState>>,
+    mut hovered_object: Signal<Option<HoveredSceneObject>>,
+) {
+    if let Some(active_drag) = drag_state()
+        && active_drag.kind == DragInputKind::Mouse
+    {
+        drag_state.set(None);
+    }
+    if hovered_object().is_some() {
+        hovered_object.set(None);
+    }
+}
+
+fn prepare_canvas_click(
+    scene3d: &Scene3d,
+    scene_creatures: &[SceneCreatureRef],
+    client_x: f32,
+    client_y: f32,
+    mut suppress_next_click: Signal<bool>,
+    mut creature_menu: Signal<Option<CreatureMenuState>>,
+    mut movement_mode: Signal<Option<MovementModeState>>,
+    scene_id: SceneID,
+    get_creature_actions: Option<Callback<CreatureID, Vec<CreatureMenuAction>>>,
+    camera_zoom: f32,
+    camera_pan: CameraPan,
+) -> Option<RPIGameRequest> {
+    if suppress_next_click() {
+        suppress_next_click.set(false);
+        return None;
+    }
+
+    let gm_mode = movement_mode();
+    let player_mode = MOVEMENT_OPTIONS();
+    let mut maybe_request = None;
+
+    if let Some(canvas) = find_canvas() {
+        match resolve_canvas_click(
+            scene3d,
+            scene_creatures,
+            &canvas,
+            client_x,
+            client_y,
+            gm_mode.clone(),
+            player_mode.clone(),
+            scene_id,
+            get_creature_actions,
+            camera_zoom,
+            camera_pan,
+        ) {
+            ClickResolution::KeepState => {}
+            ClickResolution::CloseMenu => creature_menu.set(None),
+            ClickResolution::OpenMenu(menu) => creature_menu.set(Some(menu)),
+            ClickResolution::QueueRequest(request) => {
+                if gm_mode.is_some() {
+                    movement_mode.set(None);
+                }
+                if player_mode.is_some() {
+                    *MOVEMENT_OPTIONS.write() = None;
+                }
+                creature_menu.set(None);
+                maybe_request = Some(request);
+            }
+        }
+    } else {
+        creature_menu.set(None);
+    }
+
+    maybe_request
+}
+
+fn update_drag_from_client_delta(
+    scene3d: &Scene3d,
+    mut active_drag: DragState,
+    client_x: f32,
+    client_y: f32,
+    camera_zoom: f32,
+    camera_pan: CameraPan,
+    mut camera_pan_signal: Signal<CameraPan>,
+    mut suppress_next_click: Signal<bool>,
+) -> DragState {
+    let delta_x = client_x - active_drag.last_client_x;
+    let delta_y = client_y - active_drag.last_client_y;
+    if delta_x.abs() <= f32::EPSILON && delta_y.abs() <= f32::EPSILON {
+        return active_drag;
+    }
+
+    if let Some(canvas) = find_canvas() {
+        let view = canvas_view(&canvas, camera_zoom, camera_pan);
+        let (pan_dx, pan_dz) = arp3d::drag_pan_delta(scene3d, view, delta_x, delta_y);
+        camera_pan_signal.with_mut(|pan| {
+            pan.x += pan_dx;
+            pan.z += pan_dz;
+        });
+    }
+
+    active_drag.last_client_x = client_x;
+    active_drag.last_client_y = client_y;
+    active_drag.total_drag_px += delta_x.hypot(delta_y);
+    if active_drag.total_drag_px > DRAG_CLICK_SUPPRESS_PX {
+        suppress_next_click.set(true);
+    }
+    active_drag
+}
+
+fn first_touch_client_coords(evt: &Event<TouchData>) -> Option<(f32, f32)> {
+    let touch = evt
+        .data()
+        .target_touches()
+        .into_iter()
+        .next()
+        .or_else(|| evt.data().touches().into_iter().next())?;
+    let coords = touch.client_coordinates();
+    Some((coords.x as f32, coords.y as f32))
 }
 
 fn movement_options_for_render(
