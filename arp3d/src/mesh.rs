@@ -124,9 +124,9 @@ fn append_cube(
         vertices,
         indices,
         Vec3::new(x0, y0, z0),
-        Vec3::new(x1, y0, z0),
-        Vec3::new(x1, y0, z1),
         Vec3::new(x0, y0, z1),
+        Vec3::new(x1, y0, z1),
+        Vec3::new(x1, y0, z0),
         bottom,
     );
     push_quad(
@@ -142,9 +142,9 @@ fn append_cube(
         vertices,
         indices,
         Vec3::new(x0, y0, z0),
-        Vec3::new(x0, y0, z1),
-        Vec3::new(x0, y1, z1),
         Vec3::new(x0, y1, z0),
+        Vec3::new(x0, y1, z1),
+        Vec3::new(x0, y0, z1),
         side_dark,
     );
     push_quad(
@@ -160,9 +160,9 @@ fn append_cube(
         vertices,
         indices,
         Vec3::new(x0, y0, z0),
-        Vec3::new(x0, y1, z0),
-        Vec3::new(x1, y1, z0),
         Vec3::new(x1, y0, z0),
+        Vec3::new(x1, y1, z0),
+        Vec3::new(x0, y1, z0),
         side_dark,
     );
 }
