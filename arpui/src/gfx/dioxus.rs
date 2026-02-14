@@ -64,18 +64,20 @@ struct CanvasPointerInput {
     cursor: SceneCursor,
 }
 
-#[derive(Clone, Copy, PartialEq, Eq)]
-enum DragInputKind {
-    Mouse,
-    Touch,
-}
-
 #[derive(Clone, Copy)]
 struct DragState {
-    kind: DragInputKind,
     last_client_x: f32,
     last_client_y: f32,
     total_drag_px: f32,
+}
+
+#[derive(Clone, Copy)]
+enum TouchGestureState {
+    Pan(DragState),
+    Pinch {
+        last_distance: f32,
+        total_pinch_delta: f32,
+    },
 }
 
 #[derive(Clone, Copy, Default)]
@@ -96,6 +98,7 @@ pub fn Scene3dView(
     let camera_zoom = use_signal(|| 1.0f32);
     let camera_pan = use_signal(CameraPan::default);
     let drag_state = use_signal(|| None::<DragState>);
+    let touch_gesture = use_signal(|| None::<TouchGestureState>);
     let suppress_next_click = use_signal(|| false);
     let hovered_object = use_signal(|| None::<HoveredSceneObject>);
     let mut creature_menu = use_signal(|| None::<CreatureMenuState>);
@@ -145,23 +148,23 @@ pub fn Scene3dView(
         handle_canvas_wheel(evt, camera_zoom);
     };
     let handle_touch_start = move |evt: Event<TouchData>| {
-        handle_canvas_touch_start(evt, drag_state);
+        handle_canvas_touch_start(evt, touch_gesture);
     };
     let handle_touch_move = move |evt: Event<TouchData>| {
         handle_canvas_touch_move(
             evt,
             &scene3d_for_touch,
-            drag_state,
+            touch_gesture,
             camera_zoom,
             camera_pan,
             suppress_next_click,
         );
     };
     let handle_touch_end = move |evt: Event<TouchData>| {
-        handle_canvas_touch_end(evt, drag_state);
+        handle_canvas_touch_end(evt, touch_gesture);
     };
     let handle_touch_cancel = move |evt: Event<TouchData>| {
-        handle_canvas_touch_end(evt, drag_state);
+        handle_canvas_touch_cancel(evt, touch_gesture);
     };
     let handle_click = move |evt: Event<MouseData>| {
         let client_x = evt.data().client_coordinates().x as f32;
@@ -259,7 +262,6 @@ fn handle_canvas_mouse_down(evt: Event<MouseData>, mut drag_state: Signal<Option
     let client_x = evt.data().client_coordinates().x as f32;
     let client_y = evt.data().client_coordinates().y as f32;
     drag_state.set(Some(DragState {
-        kind: DragInputKind::Mouse,
         last_client_x: client_x,
         last_client_y: client_y,
         total_drag_px: 0.0,
@@ -275,9 +277,7 @@ fn handle_canvas_mouse_move(
     mut hovered_object: Signal<Option<HoveredSceneObject>>,
     suppress_next_click: Signal<bool>,
 ) {
-    if let Some(active_drag) = drag_state()
-        && active_drag.kind == DragInputKind::Mouse
-    {
+    if let Some(active_drag) = drag_state() {
         evt.prevent_default();
         let client_x = evt.data().client_coordinates().x as f32;
         let client_y = evt.data().client_coordinates().y as f32;
@@ -327,40 +327,79 @@ fn handle_canvas_wheel(evt: Event<WheelData>, mut camera_zoom: Signal<f32>) {
     camera_zoom.set(new_zoom);
 }
 
-fn handle_canvas_touch_start(evt: Event<TouchData>, mut drag_state: Signal<Option<DragState>>) {
+fn handle_canvas_touch_start(
+    evt: Event<TouchData>,
+    mut touch_gesture: Signal<Option<TouchGestureState>>,
+) {
     evt.prevent_default();
-    let Some((client_x, client_y)) = first_touch_client_coords(&evt) else {
-        return;
-    };
-    drag_state.set(Some(DragState {
-        kind: DragInputKind::Touch,
-        last_client_x: client_x,
-        last_client_y: client_y,
-        total_drag_px: 0.0,
-    }));
+    let points = touch_client_points(&evt);
+    touch_gesture.set(touch_gesture_for_points(points.as_slice()));
 }
 
 fn handle_canvas_touch_move(
     evt: Event<TouchData>,
     scene3d: &Scene3d,
-    mut drag_state: Signal<Option<DragState>>,
-    camera_zoom: Signal<f32>,
+    mut touch_gesture: Signal<Option<TouchGestureState>>,
+    mut camera_zoom: Signal<f32>,
     camera_pan: Signal<CameraPan>,
-    suppress_next_click: Signal<bool>,
+    mut suppress_next_click: Signal<bool>,
 ) {
-    let Some(active_drag) = drag_state() else {
+    let Some(gesture) = touch_gesture() else {
         return;
     };
-    if active_drag.kind != DragInputKind::Touch {
+    let points = touch_client_points(&evt);
+    if points.is_empty() {
         return;
     }
-    let Some((client_x, client_y)) = first_touch_client_coords(&evt) else {
-        return;
-    };
     evt.prevent_default();
-    let updated_drag = update_drag_from_client_delta(
+
+    if points.len() >= 2 {
+        let current_distance = touch_distance(points[0], points[1]);
+        if current_distance <= f32::EPSILON {
+            return;
+        }
+        match gesture {
+            TouchGestureState::Pinch {
+                last_distance,
+                mut total_pinch_delta,
+            } => {
+                if last_distance > f32::EPSILON {
+                    let zoom_multiplier = current_distance / last_distance;
+                    let new_zoom =
+                        (camera_zoom() * zoom_multiplier).clamp(MIN_CAMERA_ZOOM, MAX_CAMERA_ZOOM);
+                    camera_zoom.set(new_zoom);
+                    total_pinch_delta += (current_distance - last_distance).abs();
+                    if total_pinch_delta > DRAG_CLICK_SUPPRESS_PX {
+                        suppress_next_click.set(true);
+                    }
+                }
+                touch_gesture.set(Some(TouchGestureState::Pinch {
+                    last_distance: current_distance,
+                    total_pinch_delta,
+                }));
+            }
+            TouchGestureState::Pan(_) => {
+                touch_gesture.set(Some(TouchGestureState::Pinch {
+                    last_distance: current_distance,
+                    total_pinch_delta: 0.0,
+                }));
+            }
+        }
+        return;
+    }
+
+    let (client_x, client_y) = points[0];
+    let pan_state = match gesture {
+        TouchGestureState::Pan(state) => state,
+        TouchGestureState::Pinch { .. } => DragState {
+            last_client_x: client_x,
+            last_client_y: client_y,
+            total_drag_px: 0.0,
+        },
+    };
+    let updated_pan = update_drag_from_client_delta(
         scene3d,
-        active_drag,
+        pan_state,
         client_x,
         client_y,
         camera_zoom(),
@@ -368,21 +407,31 @@ fn handle_canvas_touch_move(
         camera_pan,
         suppress_next_click,
     );
-    drag_state.set(Some(updated_drag));
+    touch_gesture.set(Some(TouchGestureState::Pan(updated_pan)));
 }
 
-fn handle_canvas_touch_end(evt: Event<TouchData>, mut drag_state: Signal<Option<DragState>>) {
+fn handle_canvas_touch_end(
+    evt: Event<TouchData>,
+    mut touch_gesture: Signal<Option<TouchGestureState>>,
+) {
     evt.prevent_default();
-    drag_state.set(None);
+    let points = touch_client_points(&evt);
+    touch_gesture.set(touch_gesture_for_points(points.as_slice()));
+}
+
+fn handle_canvas_touch_cancel(
+    evt: Event<TouchData>,
+    mut touch_gesture: Signal<Option<TouchGestureState>>,
+) {
+    evt.prevent_default();
+    touch_gesture.set(None);
 }
 
 fn handle_canvas_mouse_leave(
     mut drag_state: Signal<Option<DragState>>,
     mut hovered_object: Signal<Option<HoveredSceneObject>>,
 ) {
-    if let Some(active_drag) = drag_state()
-        && active_drag.kind == DragInputKind::Mouse
-    {
+    if drag_state().is_some() {
         drag_state.set(None);
     }
     if hovered_object().is_some() {
@@ -481,15 +530,38 @@ fn update_drag_from_client_delta(
     active_drag
 }
 
-fn first_touch_client_coords(evt: &Event<TouchData>) -> Option<(f32, f32)> {
-    let touch = evt
-        .data()
-        .target_touches()
+fn touch_client_points(evt: &Event<TouchData>) -> Vec<(f32, f32)> {
+    let mut touches = evt.data().target_touches();
+    if touches.is_empty() {
+        touches = evt.data().touches();
+    }
+    touches
         .into_iter()
-        .next()
-        .or_else(|| evt.data().touches().into_iter().next())?;
-    let coords = touch.client_coordinates();
-    Some((coords.x as f32, coords.y as f32))
+        .map(|touch| {
+            let coords = touch.client_coordinates();
+            (coords.x as f32, coords.y as f32)
+        })
+        .collect()
+}
+
+fn touch_gesture_for_points(points: &[(f32, f32)]) -> Option<TouchGestureState> {
+    if points.len() >= 2 {
+        return Some(TouchGestureState::Pinch {
+            last_distance: touch_distance(points[0], points[1]),
+            total_pinch_delta: 0.0,
+        });
+    }
+    points.first().map(|(x, y)| {
+        TouchGestureState::Pan(DragState {
+            last_client_x: *x,
+            last_client_y: *y,
+            total_drag_px: 0.0,
+        })
+    })
+}
+
+fn touch_distance(a: (f32, f32), b: (f32, f32)) -> f32 {
+    (a.0 - b.0).hypot(a.1 - b.1)
 }
 
 fn movement_options_for_render(
