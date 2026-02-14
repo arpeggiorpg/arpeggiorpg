@@ -8,6 +8,7 @@ use arptypes::{
 };
 use dioxus::prelude::*;
 use js_sys::encode_uri_component;
+use serde::Serialize;
 use tracing::{error, info};
 
 mod chat;
@@ -37,6 +38,12 @@ pub static GAME_SOURCE: GlobalSignal<GameSource> = Signal::global(GameSource::de
 pub static GAME_LOGS: GlobalSignal<VecDeque<(GameIndex, GameLog)>> =
     Signal::global(|| VecDeque::new());
 pub static GAME_NAME: GlobalSignal<String> = Signal::global(|| String::new());
+
+#[derive(Serialize)]
+struct OAuthState {
+    return_to: String,
+    frontend_origin: Option<String>,
+}
 
 #[derive(Clone, PartialEq)]
 pub enum GameSource {
@@ -107,18 +114,24 @@ fn AuthRequiredLayout() -> Element {
         let encoded_redirect = encode_uri_component(&redirect_uri)
             .as_string()
             .unwrap_or_else(|| redirect_uri.clone());
-        let return_to = web_sys::window()
+        let (return_to, frontend_origin) = web_sys::window()
             .and_then(|window| {
                 let location = window.location();
                 let pathname = location.pathname().ok()?;
                 let search = location.search().ok().unwrap_or_default();
                 let hash = location.hash().ok().unwrap_or_default();
-                Some(format!("{pathname}{search}{hash}"))
+                let origin = location.origin().ok();
+                Some((format!("{pathname}{search}{hash}"), origin))
             })
-            .unwrap_or_else(|| "/".to_string());
-        let encoded_state = encode_uri_component(&return_to)
+            .unwrap_or_else(|| ("/".to_string(), None));
+        let state = serde_json::to_string(&OAuthState {
+            return_to: return_to.clone(),
+            frontend_origin,
+        })
+        .unwrap_or(return_to);
+        let encoded_state = encode_uri_component(&state)
             .as_string()
-            .unwrap_or(return_to);
+            .unwrap_or(state);
 
         format!(
             "https://accounts.google.com/o/oauth2/v2/auth?client_id={}&redirect_uri={}&response_type=code&scope=openid%20email%20profile&prompt=consent&state={}",

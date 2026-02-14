@@ -1,4 +1,5 @@
 use arpeggio::types::PlayerID;
+use std::collections::HashSet;
 
 use serde::Deserialize;
 use serde_json::json;
@@ -371,6 +372,58 @@ struct GoogleTokenResponse {
     // refresh_token: Option<String>,
 }
 
+#[derive(Debug, Deserialize)]
+struct OAuthState {
+    return_to: Option<String>,
+    frontend_origin: Option<String>,
+}
+
+fn parse_oauth_state(state: Option<String>) -> (Option<String>, Option<String>) {
+    let Some(state) = state else {
+        return (None, None);
+    };
+    if let Ok(parsed) = serde_json::from_str::<OAuthState>(&state) {
+        (parsed.return_to, parsed.frontend_origin)
+    } else {
+        // Backward compatibility for older clients that send only return_to as plain state.
+        (Some(state), None)
+    }
+}
+
+fn normalize_origin(url: &str) -> Option<String> {
+    let parsed = worker::Url::parse(url).ok()?;
+    let host = parsed.host_str()?;
+    let mut normalized = format!("{}://{host}", parsed.scheme());
+    if let Some(port) = parsed.port() {
+        normalized.push(':');
+        normalized.push_str(&port.to_string());
+    }
+    Some(normalized)
+}
+
+fn frontend_origin_is_allowed(env: &Env, frontend_base: &str, candidate: &str) -> bool {
+    let Some(candidate) = normalize_origin(candidate) else {
+        return false;
+    };
+    let mut allowed_origins = HashSet::new();
+    if let Some(default_origin) = normalize_origin(frontend_base) {
+        allowed_origins.insert(default_origin);
+    }
+    if let Ok(extra) = env.var("FRONTEND_ALLOWED_ORIGINS") {
+        for origin in extra
+            .to_string()
+            .split(',')
+            .map(str::trim)
+            .filter(|origin| !origin.is_empty())
+        {
+            if let Some(normalized) = normalize_origin(origin) {
+                allowed_origins.insert(normalized);
+            }
+        }
+    }
+    allowed_origins.contains(&candidate)
+}
+
 async fn oauth_redirect(req: Request, env: Env) -> Result<Response> {
     let mut url = req.url().map_err(rust_error)?;
     let code = url.query_pairs().find_map(|(key, value)| {
@@ -387,13 +440,14 @@ async fn oauth_redirect(req: Request, env: Env) -> Result<Response> {
     }
 
     let code = code.unwrap();
-    let state = url.query_pairs().find_map(|(key, value)| {
+    let state_raw = url.query_pairs().find_map(|(key, value)| {
         if key == "state" {
             Some(value.into_owned())
         } else {
             None
         }
     });
+    let (return_to, frontend_origin) = parse_oauth_state(state_raw.clone());
 
     // remove query parameters to match the original redirect URI sent to Google
     url.set_query(None);
@@ -418,7 +472,7 @@ async fn oauth_redirect(req: Request, env: Env) -> Result<Response> {
 
     info!(
         event = "oauth-exchange-start",
-        state = state.as_deref().unwrap_or_default()
+        state = state_raw.as_deref().unwrap_or_default()
     );
 
     let client = reqwest::Client::new();
@@ -454,12 +508,22 @@ async fn oauth_redirect(req: Request, env: Env) -> Result<Response> {
 
     let frontend_base = env.var("FRONTEND_URL")?.to_string();
     let mut frontend_url = worker::Url::parse(&frontend_base).map_err(rust_error)?;
+    if let Some(frontend_origin) = frontend_origin {
+        if frontend_origin_is_allowed(&env, &frontend_base, &frontend_origin) {
+            frontend_url = worker::Url::parse(&frontend_origin).map_err(rust_error)?;
+        } else {
+            info!(
+                event = "oauth-disallowed-frontend-origin",
+                frontend_origin = frontend_origin.as_str()
+            );
+        }
+    }
     frontend_url.set_path("/auth-success");
     {
         let mut pairs = frontend_url.query_pairs_mut();
         pairs.clear();
         pairs.append_pair("id_token", &id_token);
-        if let Some(return_to) = state {
+        if let Some(return_to) = return_to {
             // Accept only app-relative paths and reject protocol-relative URLs
             // like "//evil.example", which could otherwise create an open redirect.
             if return_to.starts_with('/') && !return_to.starts_with("//") {

@@ -39,6 +39,20 @@ pub fn rpi_url() -> String {
         .expect("meta RPI_URL tag must have content")
 }
 
+fn websocket_base_url() -> anyhow::Result<String> {
+    let base = rpi_url().trim_end_matches('/').to_string();
+    if let Some(rest) = base.strip_prefix("https://") {
+        return Ok(format!("wss://{rest}"));
+    }
+    if let Some(rest) = base.strip_prefix("http://") {
+        return Ok(format!("ws://{rest}"));
+    }
+    if base.starts_with("wss://") || base.starts_with("ws://") {
+        return Ok(base);
+    }
+    Err(anyhow::anyhow!("Unsupported RPI_URL scheme: {base}"))
+}
+
 pub async fn list_games() -> Result<multitenant::GameList, anyhow::Error> {
     rpi_get("g/list").await
 }
@@ -227,7 +241,8 @@ async fn connect_coroutine(role: Role, game_id: GameID) -> anyhow::Result<WebSoc
         .ok_or(format_err!("token wasn't a string"))?;
     info!(token, "got websocket token!");
 
-    let ws_url = format!("ws://localhost:8787/ws/{game_id}/{token}");
+    let ws_base = websocket_base_url()?;
+    let ws_url = format!("{ws_base}/ws/{game_id}/{token}");
     let response = reqwest::Client::default()
         .get(ws_url)
         .upgrade()
