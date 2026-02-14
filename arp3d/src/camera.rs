@@ -37,7 +37,7 @@ pub(crate) fn scene_mvp(
         let center = (bounds.min + bounds.max) * 0.5 + Vec3::new(view.pan_x, 0.0, view.pan_z);
         let distance = camera_distance(bounds, aspect, view.camera_zoom);
 
-        let eye_dir = Vec3::new(1.0, 1.25, 1.0).normalize();
+        let eye_dir = orbit_eye_direction(view.camera_yaw);
         let eye = center + eye_dir * distance;
         let view = Mat4::look_at_rh(eye, center, Vec3::Y);
         let extent = bounds.max - bounds.min;
@@ -48,7 +48,7 @@ pub(crate) fn scene_mvp(
         proj * view
     } else {
         let target = Vec3::new(view.pan_x, 0.0, view.pan_z);
-        let eye = target + Vec3::new(2.2, 2.2, 2.2);
+        let eye = target + orbit_eye_direction(view.camera_yaw) * Vec3::new(2.2, 2.2, 2.2).length();
         let view_matrix = Mat4::look_at_rh(eye, target, Vec3::Y);
         let proj = Mat4::perspective_rh(vfov, aspect, 0.1, 100.0);
         proj * view_matrix
@@ -71,16 +71,8 @@ pub(crate) fn drag_pan_delta(
     let units_per_px_x = (2.0 * distance * (hfov * 0.5).tan()) / view.viewport_width.max(1) as f32;
     let units_per_px_y = (2.0 * distance * (vfov * 0.5).tan()) / view.viewport_height.max(1) as f32;
 
-    let right = Vec3::new(
-        std::f32::consts::FRAC_1_SQRT_2,
-        0.0,
-        -std::f32::consts::FRAC_1_SQRT_2,
-    );
-    let forward = Vec3::new(
-        -std::f32::consts::FRAC_1_SQRT_2,
-        0.0,
-        -std::f32::consts::FRAC_1_SQRT_2,
-    );
+    let forward = orbit_forward_direction(view.camera_yaw);
+    let right = Vec3::new(-forward.z, 0.0, forward.x);
     let pan = right * (-delta_x * units_per_px_x) + forward * (delta_y * units_per_px_y);
     (pan.x, pan.z)
 }
@@ -102,4 +94,18 @@ fn camera_distance(bounds: SceneBounds, aspect: f32, camera_zoom: f32) -> f32 {
     let hfov = 2.0 * ((vfov * 0.5).tan() * aspect).atan();
     let limiting_fov = vfov.min(hfov).max(0.25);
     ((radius / (limiting_fov * 0.5).tan()) * 1.35) / camera_zoom.max(0.05)
+}
+
+fn orbit_eye_direction(camera_yaw: f32) -> Vec3 {
+    // Preserve prior default pitch while allowing horizontal orbit around Y.
+    Vec3::new(
+        camera_yaw.cos() * std::f32::consts::SQRT_2,
+        1.25,
+        camera_yaw.sin() * std::f32::consts::SQRT_2,
+    )
+    .normalize()
+}
+
+fn orbit_forward_direction(camera_yaw: f32) -> Vec3 {
+    Vec3::new(-camera_yaw.cos(), 0.0, -camera_yaw.sin()).normalize()
 }

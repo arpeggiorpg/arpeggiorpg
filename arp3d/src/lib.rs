@@ -41,6 +41,7 @@ pub struct SceneViewParams {
     pub viewport_width: u32,
     pub viewport_height: u32,
     pub camera_zoom: f32,
+    pub camera_yaw: f32,
     pub pan_x: f32,
     pub pan_z: f32,
 }
