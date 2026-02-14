@@ -1,5 +1,5 @@
 use anyhow::Context;
-use arp3d::{Creature3d, PickedObject, Scene3d, TerrainTile3d};
+use arp3d::{Creature3d, PickedObject, Scene3d, SceneCursor, SceneViewParams, TerrainTile3d};
 use arptypes::{
     CreatureID, GameLog, Point3, Scene, SceneID, multitenant::RPIGameRequest,
 };
@@ -54,6 +54,12 @@ enum ClickResolution {
     CloseMenu,
     OpenMenu(CreatureMenuState),
     QueueRequest(RPIGameRequest),
+}
+
+#[derive(Clone, Copy)]
+struct CanvasPointerInput {
+    view: SceneViewParams,
+    cursor: SceneCursor,
 }
 
 #[component]
@@ -391,8 +397,11 @@ async fn render_scene_once(
         ..Default::default()
     });
     let surface = instance.create_surface(wgpu::SurfaceTarget::Canvas(canvas.clone()))?;
-    let client_width = canvas.client_width() as u32;
-    let client_height = canvas.client_height() as u32;
+    let view = SceneViewParams {
+        viewport_width: canvas.client_width() as u32,
+        viewport_height: canvas.client_height() as u32,
+        camera_zoom,
+    };
     let (hovered_tile, hovered_creature) = match hovered_object {
         Some(HoveredSceneObject::Terrain(idx)) => (Some(idx), None),
         Some(HoveredSceneObject::Creature(idx)) => (None, Some(idx)),
@@ -402,10 +411,8 @@ async fn render_scene_once(
     let (width, height) = arp3d::render_scene_on_surface(
         &instance,
         &surface,
-        client_width,
-        client_height,
+        view,
         &scene3d,
-        camera_zoom,
         hovered_tile,
         hovered_creature,
         &movement_option_tile_indices,
@@ -488,13 +495,8 @@ fn pick_object_for_pointer(
     client_y: f32,
     camera_zoom: f32,
 ) -> Option<HoveredSceneObject> {
-    let rect = canvas.get_bounding_client_rect();
-    let x = client_x - rect.left() as f32;
-    let y = client_y - rect.top() as f32;
-    let client_width = canvas.client_width().max(1) as u32;
-    let client_height = canvas.client_height().max(1) as u32;
-
-    arp3d::pick_scene_object(scene3d, client_width, client_height, x, y, camera_zoom).map(
+    let pointer = canvas_pointer_input(canvas, client_x, client_y, camera_zoom);
+    arp3d::pick_scene_object(scene3d, pointer.view, pointer.cursor).map(
         |picked| match picked {
             PickedObject::Terrain(idx) => HoveredSceneObject::Terrain(idx),
             PickedObject::Creature(idx) => HoveredSceneObject::Creature(idx),
@@ -504,17 +506,9 @@ fn pick_object_for_pointer(
 
 fn pick_terrain_for_pointer(
     scene3d: &Scene3d,
-    canvas: &web_sys::HtmlCanvasElement,
-    client_x: f32,
-    client_y: f32,
-    camera_zoom: f32,
+    pointer: CanvasPointerInput,
 ) -> Option<usize> {
-    let rect = canvas.get_bounding_client_rect();
-    let x = client_x - rect.left() as f32;
-    let y = client_y - rect.top() as f32;
-    let client_width = canvas.client_width().max(1) as u32;
-    let client_height = canvas.client_height().max(1) as u32;
-    arp3d::pick_terrain_tile(scene3d, client_width, client_height, x, y, camera_zoom)
+    arp3d::pick_terrain_tile(scene3d, pointer.view, pointer.cursor)
 }
 
 fn resolve_canvas_click(
@@ -529,10 +523,10 @@ fn resolve_canvas_click(
     get_creature_actions: Option<Callback<CreatureID, Vec<CreatureMenuAction>>>,
     camera_zoom: f32,
 ) -> ClickResolution {
+    let pointer = canvas_pointer_input(canvas, client_x, client_y, camera_zoom);
+
     if let Some(mode) = gm_mode {
-        let Some(tile_idx) =
-            pick_terrain_for_pointer(scene3d, canvas, client_x, client_y, camera_zoom)
-        else {
+        let Some(tile_idx) = pick_terrain_for_pointer(scene3d, pointer) else {
             return ClickResolution::KeepState;
         };
         let Some(tile) = scene3d.terrain.get(tile_idx).copied() else {
@@ -550,9 +544,7 @@ fn resolve_canvas_click(
     }
 
     if let Some((creature_id, options)) = player_mode {
-        let Some(tile_idx) =
-            pick_terrain_for_pointer(scene3d, canvas, client_x, client_y, camera_zoom)
-        else {
+        let Some(tile_idx) = pick_terrain_for_pointer(scene3d, pointer) else {
             return ClickResolution::KeepState;
         };
         let Some(tile) = scene3d.terrain.get(tile_idx).copied() else {
@@ -625,5 +617,25 @@ fn creature_name(game_source: &GameSource, creature_id: CreatureID) -> String {
             .get(&creature_id)
             .map(|c| c.name.clone())
             .unwrap_or_else(|| creature_id.to_string()),
+    }
+}
+
+fn canvas_pointer_input(
+    canvas: &web_sys::HtmlCanvasElement,
+    client_x: f32,
+    client_y: f32,
+    camera_zoom: f32,
+) -> CanvasPointerInput {
+    let rect = canvas.get_bounding_client_rect();
+    CanvasPointerInput {
+        view: SceneViewParams {
+            viewport_width: canvas.client_width().max(1) as u32,
+            viewport_height: canvas.client_height().max(1) as u32,
+            camera_zoom,
+        },
+        cursor: SceneCursor {
+            x: client_x - rect.left() as f32,
+            y: client_y - rect.top() as f32,
+        },
     }
 }

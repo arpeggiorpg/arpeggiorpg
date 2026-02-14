@@ -1,7 +1,7 @@
 use glam::{Vec3, Vec4};
 
 use crate::{
-    PickedObject, Scene3d,
+    PickedObject, Scene3d, SceneCursor, SceneViewParams,
     camera::{scene_bounds_for_camera, scene_mvp},
     mesh::creature_model_bounds,
 };
@@ -26,77 +26,34 @@ struct SceneRaycastHits {
 
 pub fn pick_terrain_tile(
     scene: &Scene3d,
-    viewport_width: u32,
-    viewport_height: u32,
-    cursor_x: f32,
-    cursor_y: f32,
-    camera_zoom: f32,
+    view: SceneViewParams,
+    cursor: SceneCursor,
 ) -> Option<usize> {
-    raycast_scene(
-        scene,
-        viewport_width,
-        viewport_height,
-        cursor_x,
-        cursor_y,
-        camera_zoom,
-    )
-        .and_then(|hits| hits.terrain.map(|hit| hit.index))
+    raycast_scene(scene, view, cursor).and_then(|hits| hits.terrain.map(|hit| hit.index))
 }
 
 pub fn pick_creature(
     scene: &Scene3d,
-    viewport_width: u32,
-    viewport_height: u32,
-    cursor_x: f32,
-    cursor_y: f32,
-    camera_zoom: f32,
+    view: SceneViewParams,
+    cursor: SceneCursor,
 ) -> Option<usize> {
-    raycast_scene(
-        scene,
-        viewport_width,
-        viewport_height,
-        cursor_x,
-        cursor_y,
-        camera_zoom,
-    )
-        .and_then(|hits| hits.creature.map(|hit| hit.index))
+    raycast_scene(scene, view, cursor).and_then(|hits| hits.creature.map(|hit| hit.index))
 }
 
 pub fn pick_scene_object(
     scene: &Scene3d,
-    viewport_width: u32,
-    viewport_height: u32,
-    cursor_x: f32,
-    cursor_y: f32,
-    camera_zoom: f32,
+    view: SceneViewParams,
+    cursor: SceneCursor,
 ) -> Option<PickedObject> {
-    raycast_scene(
-        scene,
-        viewport_width,
-        viewport_height,
-        cursor_x,
-        cursor_y,
-        camera_zoom,
-    )
-        .and_then(nearest_object)
+    raycast_scene(scene, view, cursor).and_then(nearest_object)
 }
 
 fn raycast_scene(
     scene: &Scene3d,
-    viewport_width: u32,
-    viewport_height: u32,
-    cursor_x: f32,
-    cursor_y: f32,
-    camera_zoom: f32,
+    view: SceneViewParams,
+    cursor: SceneCursor,
 ) -> Option<SceneRaycastHits> {
-    let ray = cursor_ray(
-        scene,
-        viewport_width,
-        viewport_height,
-        cursor_x,
-        cursor_y,
-        camera_zoom,
-    )?;
+    let ray = cursor_ray(scene, view, cursor)?;
     Some(raycast_scene_with_ray(scene, ray))
 }
 
@@ -122,14 +79,11 @@ fn nearest_object(hits: SceneRaycastHits) -> Option<PickedObject> {
     }
 }
 
-fn cursor_ray(
-    scene: &Scene3d,
-    viewport_width: u32,
-    viewport_height: u32,
-    cursor_x: f32,
-    cursor_y: f32,
-    camera_zoom: f32,
-) -> Option<Ray> {
+fn cursor_ray(scene: &Scene3d, view: SceneViewParams, cursor: SceneCursor) -> Option<Ray> {
+    let viewport_width = view.viewport_width;
+    let viewport_height = view.viewport_height;
+    let cursor_x = cursor.x;
+    let cursor_y = cursor.y;
     if viewport_width == 0 || viewport_height == 0 {
         return None;
     }
@@ -142,7 +96,7 @@ fn cursor_ray(
     }
 
     let bounds = scene_bounds_for_camera(scene)?;
-    let view_proj = scene_mvp(viewport_width, viewport_height, Some(bounds), camera_zoom);
+    let view_proj = scene_mvp(viewport_width, viewport_height, Some(bounds), view.camera_zoom);
     let inv_view_proj = view_proj.inverse();
 
     let ndc_x = (cursor_x / viewport_width as f32) * 2.0 - 1.0;

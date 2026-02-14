@@ -2,7 +2,7 @@ use bytemuck::{Pod, Zeroable};
 use wgpu::util::DeviceExt;
 
 use crate::{
-    Scene3d,
+    Scene3d, SceneViewParams,
     camera::scene_mvp,
     mesh::{self, Vertex},
 };
@@ -203,10 +203,8 @@ impl SceneRenderer {
 pub async fn render_scene_on_surface(
     instance: &wgpu::Instance,
     surface: &wgpu::Surface<'_>,
-    client_width: u32,
-    client_height: u32,
+    view: SceneViewParams,
     scene: &Scene3d,
-    camera_zoom: f32,
     highlighted_terrain: Option<usize>,
     highlighted_creature: Option<usize>,
     movement_option_tiles: &[usize],
@@ -230,8 +228,8 @@ pub async fn render_scene_on_surface(
         .await?;
 
     let max_texture_size = device.limits().max_texture_dimension_2d;
-    let width = client_width.min(max_texture_size).max(1);
-    let height = client_height.min(max_texture_size).max(1);
+    let width = view.viewport_width.min(max_texture_size).max(1);
+    let height = view.viewport_height.min(max_texture_size).max(1);
 
     let surface_caps = surface.get_capabilities(&adapter);
     let surface_format = surface_caps
@@ -257,7 +255,7 @@ pub async fn render_scene_on_surface(
         &device,
         &config,
         scene,
-        camera_zoom,
+        view.camera_zoom,
         highlighted_terrain,
         highlighted_creature,
         movement_option_tiles,

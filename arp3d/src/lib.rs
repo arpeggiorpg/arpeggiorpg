@@ -35,3 +35,16 @@ pub enum PickedObject {
     Terrain(usize),
     Creature(usize),
 }
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct SceneViewParams {
+    pub viewport_width: u32,
+    pub viewport_height: u32,
+    pub camera_zoom: f32,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct SceneCursor {
+    pub x: f32,
+    pub y: f32,
+}
