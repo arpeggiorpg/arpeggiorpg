@@ -3,6 +3,7 @@ use arp3d::{Creature3d, PickedObject, Scene3d, TerrainTile3d};
 use arptypes::{
     CreatureID, GameLog, Point3, Scene, SceneID, multitenant::RPIGameRequest,
 };
+use dioxus::events::WheelData;
 use dioxus::prelude::*;
 use std::collections::HashSet;
 use tracing::error;
@@ -15,6 +16,9 @@ use crate::{
 };
 
 const CANVAS_ID: &str = "gm-wgpu-canvas";
+const MIN_CAMERA_ZOOM: f32 = 0.4;
+const MAX_CAMERA_ZOOM: f32 = 3.0;
+const ZOOM_SENSITIVITY: f32 = 0.0015;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum HoveredSceneObject {
@@ -61,6 +65,7 @@ pub fn Scene3dView(
     let (scene3d, scene_creatures) = to_scene3d(&scene, &game_source);
     let scene3d_for_events = scene3d.clone();
     let scene_creatures_for_events = scene_creatures.clone();
+    let mut camera_zoom = use_signal(|| 1.0f32);
     let mut hovered_object = use_signal(|| None::<HoveredSceneObject>);
     let mut creature_menu = use_signal(|| None::<CreatureMenuState>);
     let mut movement_mode = use_signal(|| None::<MovementModeState>);
@@ -72,8 +77,11 @@ pub fn Scene3dView(
         let hovered_object = hovered_object();
         let gm_mode = movement_mode();
         let movement_options = movement_options_for_render(gm_mode, MOVEMENT_OPTIONS());
+        let camera_zoom = camera_zoom();
         async move {
-            if let Err(err) = render_scene_once(scene3d, hovered_object, movement_options).await {
+            if let Err(err) =
+                render_scene_once(scene3d, hovered_object, movement_options, camera_zoom).await
+            {
                 error!(?err, "Failed to render wgpu scene prototype");
             }
         }
@@ -96,10 +104,24 @@ pub fn Scene3dView(
                     let Some(canvas) = find_canvas() else {
                         return;
                     };
-                    let new_hovered = pick_object_for_pointer(&scene3d_for_move, &canvas, client_x, client_y);
+                    let new_hovered = pick_object_for_pointer(
+                        &scene3d_for_move,
+                        &canvas,
+                        client_x,
+                        client_y,
+                        camera_zoom(),
+                    );
                     if hovered_object() != new_hovered {
                         hovered_object.set(new_hovered);
                     }
+                },
+                onwheel: move |evt: Event<WheelData>| {
+                    evt.prevent_default();
+                    let delta_y = evt.data().delta().strip_units().y as f32;
+                    let zoom_multiplier = (-delta_y * ZOOM_SENSITIVITY).exp();
+                    let new_zoom =
+                        (camera_zoom() * zoom_multiplier).clamp(MIN_CAMERA_ZOOM, MAX_CAMERA_ZOOM);
+                    camera_zoom.set(new_zoom);
                 },
                 onclick: move |evt: Event<MouseData>| {
                     let client_x = evt.data().client_coordinates().x as f32;
@@ -121,6 +143,7 @@ pub fn Scene3dView(
                             player_mode.clone(),
                             scene_id,
                             get_creature_actions.clone(),
+                            camera_zoom(),
                         ) {
                             ClickResolution::KeepState => {}
                             ClickResolution::CloseMenu => creature_menu.set(None),
@@ -353,6 +376,7 @@ async fn render_scene_once(
     scene3d: Scene3d,
     hovered_object: Option<HoveredSceneObject>,
     movement_options: Vec<Point3>,
+    camera_zoom: f32,
 ) -> anyhow::Result<()> {
     let window = web_sys::window().context("window missing")?;
     let document = window.document().context("document missing")?;
@@ -381,6 +405,7 @@ async fn render_scene_once(
         client_width,
         client_height,
         &scene3d,
+        camera_zoom,
         hovered_tile,
         hovered_creature,
         &movement_option_tile_indices,
@@ -461,6 +486,7 @@ fn pick_object_for_pointer(
     canvas: &web_sys::HtmlCanvasElement,
     client_x: f32,
     client_y: f32,
+    camera_zoom: f32,
 ) -> Option<HoveredSceneObject> {
     let rect = canvas.get_bounding_client_rect();
     let x = client_x - rect.left() as f32;
@@ -468,12 +494,12 @@ fn pick_object_for_pointer(
     let client_width = canvas.client_width().max(1) as u32;
     let client_height = canvas.client_height().max(1) as u32;
 
-    arp3d::pick_scene_object(scene3d, client_width, client_height, x, y).map(|picked| {
-        match picked {
+    arp3d::pick_scene_object(scene3d, client_width, client_height, x, y, camera_zoom).map(
+        |picked| match picked {
             PickedObject::Terrain(idx) => HoveredSceneObject::Terrain(idx),
             PickedObject::Creature(idx) => HoveredSceneObject::Creature(idx),
-        }
-    })
+        },
+    )
 }
 
 fn pick_terrain_for_pointer(
@@ -481,13 +507,14 @@ fn pick_terrain_for_pointer(
     canvas: &web_sys::HtmlCanvasElement,
     client_x: f32,
     client_y: f32,
+    camera_zoom: f32,
 ) -> Option<usize> {
     let rect = canvas.get_bounding_client_rect();
     let x = client_x - rect.left() as f32;
     let y = client_y - rect.top() as f32;
     let client_width = canvas.client_width().max(1) as u32;
     let client_height = canvas.client_height().max(1) as u32;
-    arp3d::pick_terrain_tile(scene3d, client_width, client_height, x, y)
+    arp3d::pick_terrain_tile(scene3d, client_width, client_height, x, y, camera_zoom)
 }
 
 fn resolve_canvas_click(
@@ -500,9 +527,12 @@ fn resolve_canvas_click(
     player_mode: Option<(CreatureID, Vec<Point3>)>,
     scene_id: SceneID,
     get_creature_actions: Option<Callback<CreatureID, Vec<CreatureMenuAction>>>,
+    camera_zoom: f32,
 ) -> ClickResolution {
     if let Some(mode) = gm_mode {
-        let Some(tile_idx) = pick_terrain_for_pointer(scene3d, canvas, client_x, client_y) else {
+        let Some(tile_idx) =
+            pick_terrain_for_pointer(scene3d, canvas, client_x, client_y, camera_zoom)
+        else {
             return ClickResolution::KeepState;
         };
         let Some(tile) = scene3d.terrain.get(tile_idx).copied() else {
@@ -520,7 +550,9 @@ fn resolve_canvas_click(
     }
 
     if let Some((creature_id, options)) = player_mode {
-        let Some(tile_idx) = pick_terrain_for_pointer(scene3d, canvas, client_x, client_y) else {
+        let Some(tile_idx) =
+            pick_terrain_for_pointer(scene3d, canvas, client_x, client_y, camera_zoom)
+        else {
             return ClickResolution::KeepState;
         };
         let Some(tile) = scene3d.terrain.get(tile_idx).copied() else {
@@ -536,7 +568,7 @@ fn resolve_canvas_click(
     }
 
     let Some(HoveredSceneObject::Creature(creature_index)) =
-        pick_object_for_pointer(scene3d, canvas, client_x, client_y)
+        pick_object_for_pointer(scene3d, canvas, client_x, client_y, camera_zoom)
     else {
         return ClickResolution::CloseMenu;
     };

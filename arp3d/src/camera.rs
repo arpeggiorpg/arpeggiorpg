@@ -24,7 +24,12 @@ pub(crate) fn scene_bounds_for_camera(scene: &Scene3d) -> Option<SceneBounds> {
     bounds
 }
 
-pub(crate) fn scene_mvp(width: u32, height: u32, bounds: Option<SceneBounds>) -> Mat4 {
+pub(crate) fn scene_mvp(
+    width: u32,
+    height: u32,
+    bounds: Option<SceneBounds>,
+    camera_zoom: f32,
+) -> Mat4 {
     let vfov = std::f32::consts::FRAC_PI_4;
     let aspect = width.max(1) as f32 / height.max(1) as f32;
 
@@ -35,7 +40,7 @@ pub(crate) fn scene_mvp(width: u32, height: u32, bounds: Option<SceneBounds>) ->
 
         let hfov = 2.0 * ((vfov * 0.5).tan() * aspect).atan();
         let limiting_fov = vfov.min(hfov).max(0.25);
-        let distance = (radius / (limiting_fov * 0.5).tan()) * 1.35;
+        let distance = ((radius / (limiting_fov * 0.5).tan()) * 1.35) / camera_zoom.max(0.05);
 
         let eye_dir = Vec3::new(1.0, 1.25, 1.0).normalize();
         let eye = center + eye_dir * distance;

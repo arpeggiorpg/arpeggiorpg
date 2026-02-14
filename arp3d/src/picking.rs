@@ -30,8 +30,16 @@ pub fn pick_terrain_tile(
     viewport_height: u32,
     cursor_x: f32,
     cursor_y: f32,
+    camera_zoom: f32,
 ) -> Option<usize> {
-    raycast_scene(scene, viewport_width, viewport_height, cursor_x, cursor_y)
+    raycast_scene(
+        scene,
+        viewport_width,
+        viewport_height,
+        cursor_x,
+        cursor_y,
+        camera_zoom,
+    )
         .and_then(|hits| hits.terrain.map(|hit| hit.index))
 }
 
@@ -41,8 +49,16 @@ pub fn pick_creature(
     viewport_height: u32,
     cursor_x: f32,
     cursor_y: f32,
+    camera_zoom: f32,
 ) -> Option<usize> {
-    raycast_scene(scene, viewport_width, viewport_height, cursor_x, cursor_y)
+    raycast_scene(
+        scene,
+        viewport_width,
+        viewport_height,
+        cursor_x,
+        cursor_y,
+        camera_zoom,
+    )
         .and_then(|hits| hits.creature.map(|hit| hit.index))
 }
 
@@ -52,8 +68,16 @@ pub fn pick_scene_object(
     viewport_height: u32,
     cursor_x: f32,
     cursor_y: f32,
+    camera_zoom: f32,
 ) -> Option<PickedObject> {
-    raycast_scene(scene, viewport_width, viewport_height, cursor_x, cursor_y)
+    raycast_scene(
+        scene,
+        viewport_width,
+        viewport_height,
+        cursor_x,
+        cursor_y,
+        camera_zoom,
+    )
         .and_then(nearest_object)
 }
 
@@ -63,8 +87,16 @@ fn raycast_scene(
     viewport_height: u32,
     cursor_x: f32,
     cursor_y: f32,
+    camera_zoom: f32,
 ) -> Option<SceneRaycastHits> {
-    let ray = cursor_ray(scene, viewport_width, viewport_height, cursor_x, cursor_y)?;
+    let ray = cursor_ray(
+        scene,
+        viewport_width,
+        viewport_height,
+        cursor_x,
+        cursor_y,
+        camera_zoom,
+    )?;
     Some(raycast_scene_with_ray(scene, ray))
 }
 
@@ -96,6 +128,7 @@ fn cursor_ray(
     viewport_height: u32,
     cursor_x: f32,
     cursor_y: f32,
+    camera_zoom: f32,
 ) -> Option<Ray> {
     if viewport_width == 0 || viewport_height == 0 {
         return None;
@@ -109,7 +142,7 @@ fn cursor_ray(
     }
 
     let bounds = scene_bounds_for_camera(scene)?;
-    let view_proj = scene_mvp(viewport_width, viewport_height, Some(bounds));
+    let view_proj = scene_mvp(viewport_width, viewport_height, Some(bounds), camera_zoom);
     let inv_view_proj = view_proj.inverse();
 
     let ndc_x = (cursor_x / viewport_width as f32) * 2.0 - 1.0;

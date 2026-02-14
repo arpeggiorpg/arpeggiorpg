@@ -28,6 +28,7 @@ impl SceneRenderer {
         device: &wgpu::Device,
         config: &wgpu::SurfaceConfiguration,
         scene: &Scene3d,
+        camera_zoom: f32,
         highlighted_terrain: Option<usize>,
         highlighted_creature: Option<usize>,
         movement_option_tiles: &[usize],
@@ -71,7 +72,7 @@ impl SceneRenderer {
         });
 
         let uniforms = Uniforms {
-            mvp: scene_mvp(config.width, config.height, bounds).to_cols_array_2d(),
+            mvp: scene_mvp(config.width, config.height, bounds, camera_zoom).to_cols_array_2d(),
         };
         let uniform_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Arp3D Uniform Buffer"),
@@ -205,6 +206,7 @@ pub async fn render_scene_on_surface(
     client_width: u32,
     client_height: u32,
     scene: &Scene3d,
+    camera_zoom: f32,
     highlighted_terrain: Option<usize>,
     highlighted_creature: Option<usize>,
     movement_option_tiles: &[usize],
@@ -255,6 +257,7 @@ pub async fn render_scene_on_surface(
         &device,
         &config,
         scene,
+        camera_zoom,
         highlighted_terrain,
         highlighted_creature,
         movement_option_tiles,
