@@ -41,10 +41,21 @@ pub struct SceneViewParams {
     pub viewport_width: u32,
     pub viewport_height: u32,
     pub camera_zoom: f32,
+    pub pan_x: f32,
+    pub pan_z: f32,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct SceneCursor {
     pub x: f32,
     pub y: f32,
+}
+
+pub fn drag_pan_delta(
+    scene: &Scene3d,
+    view: SceneViewParams,
+    delta_x: f32,
+    delta_y: f32,
+) -> (f32, f32) {
+    camera::drag_pan_delta(scene, view, delta_x, delta_y)
 }

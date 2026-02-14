@@ -3,8 +3,9 @@ use arp3d::{Creature3d, PickedObject, Scene3d, SceneCursor, SceneViewParams, Ter
 use arptypes::{
     CreatureID, GameLog, Point3, Scene, SceneID, multitenant::RPIGameRequest,
 };
-use dioxus::events::WheelData;
+use dioxus::events::{TouchData, WheelData};
 use dioxus::prelude::*;
+use dioxus_elements::input_data::MouseButton;
 use std::collections::HashSet;
 use tracing::error;
 use wasm_bindgen::JsCast;
@@ -19,6 +20,7 @@ const CANVAS_ID: &str = "gm-wgpu-canvas";
 const MIN_CAMERA_ZOOM: f32 = 0.4;
 const MAX_CAMERA_ZOOM: f32 = 3.0;
 const ZOOM_SENSITIVITY: f32 = 0.0015;
+const DRAG_CLICK_SUPPRESS_PX: f32 = 6.0;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum HoveredSceneObject {
@@ -62,6 +64,26 @@ struct CanvasPointerInput {
     cursor: SceneCursor,
 }
 
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum DragInputKind {
+    Mouse,
+    Touch,
+}
+
+#[derive(Clone, Copy)]
+struct DragState {
+    kind: DragInputKind,
+    last_client_x: f32,
+    last_client_y: f32,
+    total_drag_px: f32,
+}
+
+#[derive(Clone, Copy, Default)]
+struct CameraPan {
+    x: f32,
+    z: f32,
+}
+
 #[component]
 pub fn Scene3dView(
     scene: Scene,
@@ -72,6 +94,9 @@ pub fn Scene3dView(
     let scene3d_for_events = scene3d.clone();
     let scene_creatures_for_events = scene_creatures.clone();
     let mut camera_zoom = use_signal(|| 1.0f32);
+    let mut camera_pan = use_signal(CameraPan::default);
+    let mut drag_state = use_signal(|| None::<DragState>);
+    let mut suppress_next_click = use_signal(|| false);
     let mut hovered_object = use_signal(|| None::<HoveredSceneObject>);
     let mut creature_menu = use_signal(|| None::<CreatureMenuState>);
     let mut movement_mode = use_signal(|| None::<MovementModeState>);
@@ -84,9 +109,11 @@ pub fn Scene3dView(
         let gm_mode = movement_mode();
         let movement_options = movement_options_for_render(gm_mode, MOVEMENT_OPTIONS());
         let camera_zoom = camera_zoom();
+        let camera_pan = camera_pan();
         async move {
             if let Err(err) =
-                render_scene_once(scene3d, hovered_object, movement_options, camera_zoom).await
+                render_scene_once(scene3d, hovered_object, movement_options, camera_zoom, camera_pan)
+                    .await
             {
                 error!(?err, "Failed to render wgpu scene prototype");
             }
@@ -94,6 +121,7 @@ pub fn Scene3dView(
     });
 
     let scene3d_for_move = scene3d_for_events.clone();
+    let scene3d_for_touch = scene3d_for_events.clone();
     let scene3d_for_click = scene3d_for_events.clone();
     let scene_creatures_for_click = scene_creatures_for_events.clone();
 
@@ -104,7 +132,49 @@ pub fn Scene3dView(
                 id: "{CANVAS_ID}",
                 class: "block h-full w-full",
                 style: "display: block; width: 100%; height: 100%; background: #0c0f1a;",
+                onmousedown: move |evt: Event<MouseData>| {
+                    if evt.data().trigger_button() != Some(MouseButton::Primary) {
+                        return;
+                    }
+                    evt.prevent_default();
+                    let client_x = evt.data().client_coordinates().x as f32;
+                    let client_y = evt.data().client_coordinates().y as f32;
+                    drag_state.set(Some(DragState {
+                        kind: DragInputKind::Mouse,
+                        last_client_x: client_x,
+                        last_client_y: client_y,
+                        total_drag_px: 0.0,
+                    }));
+                },
                 onmousemove: move |evt: Event<MouseData>| {
+                    if let Some(mut active_drag) = drag_state()
+                        && active_drag.kind == DragInputKind::Mouse
+                    {
+                        evt.prevent_default();
+                        let client_x = evt.data().client_coordinates().x as f32;
+                        let client_y = evt.data().client_coordinates().y as f32;
+                        let delta_x = client_x - active_drag.last_client_x;
+                        let delta_y = client_y - active_drag.last_client_y;
+                        if delta_x.abs() > f32::EPSILON || delta_y.abs() > f32::EPSILON {
+                            if let Some(canvas) = find_canvas() {
+                                let view = canvas_view(&canvas, camera_zoom(), camera_pan());
+                                let (pan_dx, pan_dz) =
+                                    arp3d::drag_pan_delta(&scene3d_for_move, view, delta_x, delta_y);
+                                camera_pan.with_mut(|pan| {
+                                    pan.x += pan_dx;
+                                    pan.z += pan_dz;
+                                });
+                            }
+                            active_drag.last_client_x = client_x;
+                            active_drag.last_client_y = client_y;
+                            active_drag.total_drag_px += delta_x.hypot(delta_y);
+                            if active_drag.total_drag_px > DRAG_CLICK_SUPPRESS_PX {
+                                suppress_next_click.set(true);
+                            }
+                            drag_state.set(Some(active_drag));
+                        }
+                        return;
+                    }
                     let client_x = evt.data().client_coordinates().x as f32;
                     let client_y = evt.data().client_coordinates().y as f32;
                     let Some(canvas) = find_canvas() else {
@@ -116,9 +186,15 @@ pub fn Scene3dView(
                         client_x,
                         client_y,
                         camera_zoom(),
+                        camera_pan(),
                     );
                     if hovered_object() != new_hovered {
                         hovered_object.set(new_hovered);
+                    }
+                },
+                onmouseup: move |evt: Event<MouseData>| {
+                    if evt.data().trigger_button() == Some(MouseButton::Primary) {
+                        drag_state.set(None);
                     }
                 },
                 onwheel: move |evt: Event<WheelData>| {
@@ -129,7 +205,80 @@ pub fn Scene3dView(
                         (camera_zoom() * zoom_multiplier).clamp(MIN_CAMERA_ZOOM, MAX_CAMERA_ZOOM);
                     camera_zoom.set(new_zoom);
                 },
+                ontouchstart: move |evt: Event<TouchData>| {
+                    evt.prevent_default();
+                    let Some(touch) = evt
+                        .data()
+                        .target_touches()
+                        .into_iter()
+                        .next()
+                        .or_else(|| evt.data().touches().into_iter().next())
+                    else {
+                        return;
+                    };
+                    let coords = touch.client_coordinates();
+                    drag_state.set(Some(DragState {
+                        kind: DragInputKind::Touch,
+                        last_client_x: coords.x as f32,
+                        last_client_y: coords.y as f32,
+                        total_drag_px: 0.0,
+                    }));
+                },
+                ontouchmove: move |evt: Event<TouchData>| {
+                    let Some(mut active_drag) = drag_state() else {
+                        return;
+                    };
+                    if active_drag.kind != DragInputKind::Touch {
+                        return;
+                    }
+                    let Some(touch) = evt
+                        .data()
+                        .target_touches()
+                        .into_iter()
+                        .next()
+                        .or_else(|| evt.data().touches().into_iter().next())
+                    else {
+                        return;
+                    };
+                    evt.prevent_default();
+                    let coords = touch.client_coordinates();
+                    let client_x = coords.x as f32;
+                    let client_y = coords.y as f32;
+                    let delta_x = client_x - active_drag.last_client_x;
+                    let delta_y = client_y - active_drag.last_client_y;
+                    if delta_x.abs() > f32::EPSILON || delta_y.abs() > f32::EPSILON {
+                        if let Some(canvas) = find_canvas() {
+                            let view = canvas_view(&canvas, camera_zoom(), camera_pan());
+                            let (pan_dx, pan_dz) =
+                                arp3d::drag_pan_delta(&scene3d_for_touch, view, delta_x, delta_y);
+                            camera_pan.with_mut(|pan| {
+                                pan.x += pan_dx;
+                                pan.z += pan_dz;
+                            });
+                        }
+                        active_drag.last_client_x = client_x;
+                        active_drag.last_client_y = client_y;
+                        active_drag.total_drag_px += delta_x.hypot(delta_y);
+                        if active_drag.total_drag_px > DRAG_CLICK_SUPPRESS_PX {
+                            suppress_next_click.set(true);
+                        }
+                        drag_state.set(Some(active_drag));
+                    }
+                },
+                ontouchend: move |evt: Event<TouchData>| {
+                    evt.prevent_default();
+                    drag_state.set(None);
+                },
+                ontouchcancel: move |evt: Event<TouchData>| {
+                    evt.prevent_default();
+                    drag_state.set(None);
+                },
                 onclick: move |evt: Event<MouseData>| {
+                    let mut skip_click_action = false;
+                    if suppress_next_click() {
+                        suppress_next_click.set(false);
+                        skip_click_action = true;
+                    }
                     let client_x = evt.data().client_coordinates().x as f32;
                     let client_y = evt.data().client_coordinates().y as f32;
                     let gm_mode = movement_mode();
@@ -138,7 +287,9 @@ pub fn Scene3dView(
                     let scene_creatures_for_click = scene_creatures_for_click.clone();
                     let mut maybe_request: Option<RPIGameRequest> = None;
 
-                    if let Some(canvas) = find_canvas() {
+                    if skip_click_action {
+                        // no-op
+                    } else if let Some(canvas) = find_canvas() {
                         match resolve_canvas_click(
                             &scene3d_for_click,
                             &scene_creatures_for_click,
@@ -150,6 +301,7 @@ pub fn Scene3dView(
                             scene_id,
                             get_creature_actions.clone(),
                             camera_zoom(),
+                            camera_pan(),
                         ) {
                             ClickResolution::KeepState => {}
                             ClickResolution::CloseMenu => creature_menu.set(None),
@@ -170,6 +322,9 @@ pub fn Scene3dView(
                     }
 
                     async move {
+                        if skip_click_action {
+                            return;
+                        }
                         if let Some(request) = maybe_request {
                             match send_request::<Result<Vec<GameLog>, String>>(request, ws).await {
                                 Ok(Ok(_logs)) => {}
@@ -184,6 +339,11 @@ pub fn Scene3dView(
                     }
                 },
                 onmouseleave: move |_| {
+                    if let Some(active_drag) = drag_state()
+                        && active_drag.kind == DragInputKind::Mouse
+                    {
+                        drag_state.set(None);
+                    }
                     if hovered_object().is_some() {
                         hovered_object.set(None);
                     }
@@ -383,6 +543,7 @@ async fn render_scene_once(
     hovered_object: Option<HoveredSceneObject>,
     movement_options: Vec<Point3>,
     camera_zoom: f32,
+    camera_pan: CameraPan,
 ) -> anyhow::Result<()> {
     let window = web_sys::window().context("window missing")?;
     let document = window.document().context("document missing")?;
@@ -401,6 +562,8 @@ async fn render_scene_once(
         viewport_width: canvas.client_width() as u32,
         viewport_height: canvas.client_height() as u32,
         camera_zoom,
+        pan_x: camera_pan.x,
+        pan_z: camera_pan.z,
     };
     let (hovered_tile, hovered_creature) = match hovered_object {
         Some(HoveredSceneObject::Terrain(idx)) => (Some(idx), None),
@@ -494,8 +657,9 @@ fn pick_object_for_pointer(
     client_x: f32,
     client_y: f32,
     camera_zoom: f32,
+    camera_pan: CameraPan,
 ) -> Option<HoveredSceneObject> {
-    let pointer = canvas_pointer_input(canvas, client_x, client_y, camera_zoom);
+    let pointer = canvas_pointer_input(canvas, client_x, client_y, camera_zoom, camera_pan);
     arp3d::pick_scene_object(scene3d, pointer.view, pointer.cursor).map(
         |picked| match picked {
             PickedObject::Terrain(idx) => HoveredSceneObject::Terrain(idx),
@@ -522,8 +686,9 @@ fn resolve_canvas_click(
     scene_id: SceneID,
     get_creature_actions: Option<Callback<CreatureID, Vec<CreatureMenuAction>>>,
     camera_zoom: f32,
+    camera_pan: CameraPan,
 ) -> ClickResolution {
-    let pointer = canvas_pointer_input(canvas, client_x, client_y, camera_zoom);
+    let pointer = canvas_pointer_input(canvas, client_x, client_y, camera_zoom, camera_pan);
 
     if let Some(mode) = gm_mode {
         let Some(tile_idx) = pick_terrain_for_pointer(scene3d, pointer) else {
@@ -560,7 +725,7 @@ fn resolve_canvas_click(
     }
 
     let Some(HoveredSceneObject::Creature(creature_index)) =
-        pick_object_for_pointer(scene3d, canvas, client_x, client_y, camera_zoom)
+        pick_object_for_pointer(scene3d, canvas, client_x, client_y, camera_zoom, camera_pan)
     else {
         return ClickResolution::CloseMenu;
     };
@@ -625,17 +790,28 @@ fn canvas_pointer_input(
     client_x: f32,
     client_y: f32,
     camera_zoom: f32,
+    camera_pan: CameraPan,
 ) -> CanvasPointerInput {
     let rect = canvas.get_bounding_client_rect();
     CanvasPointerInput {
-        view: SceneViewParams {
-            viewport_width: canvas.client_width().max(1) as u32,
-            viewport_height: canvas.client_height().max(1) as u32,
-            camera_zoom,
-        },
+        view: canvas_view(canvas, camera_zoom, camera_pan),
         cursor: SceneCursor {
             x: client_x - rect.left() as f32,
             y: client_y - rect.top() as f32,
         },
+    }
+}
+
+fn canvas_view(
+    canvas: &web_sys::HtmlCanvasElement,
+    camera_zoom: f32,
+    camera_pan: CameraPan,
+) -> SceneViewParams {
+    SceneViewParams {
+        viewport_width: canvas.client_width().max(1) as u32,
+        viewport_height: canvas.client_height().max(1) as u32,
+        camera_zoom,
+        pan_x: camera_pan.x,
+        pan_z: camera_pan.z,
     }
 }

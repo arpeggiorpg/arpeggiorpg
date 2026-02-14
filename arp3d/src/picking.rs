@@ -96,7 +96,7 @@ fn cursor_ray(scene: &Scene3d, view: SceneViewParams, cursor: SceneCursor) -> Op
     }
 
     let bounds = scene_bounds_for_camera(scene)?;
-    let view_proj = scene_mvp(viewport_width, viewport_height, Some(bounds), view.camera_zoom);
+    let view_proj = scene_mvp(viewport_width, viewport_height, Some(bounds), view);
     let inv_view_proj = view_proj.inverse();
 
     let ndc_x = (cursor_x / viewport_width as f32) * 2.0 - 1.0;
