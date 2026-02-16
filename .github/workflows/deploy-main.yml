@@ -11,7 +11,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
   CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
 
 jobs:
@@ -34,6 +34,11 @@ jobs:
       - name: Install worker dependencies
         working-directory: worker
         run: npm ci
+
+      - name: Validate Cloudflare auth env
+        run: |
+          test -n "${CLOUDFLARE_ACCOUNT_ID}" || (echo "::error::Missing CLOUDFLARE_ACCOUNT_ID secret" && exit 1)
+          test -n "${CLOUDFLARE_API_TOKEN}" || (echo "::error::Missing CLOUDFLARE_API_TOKEN secret" && exit 1)
 
       - name: Deploy backend worker
         working-directory: worker
@@ -59,6 +64,11 @@ jobs:
       - name: Install worker dependencies (wrangler)
         working-directory: worker
         run: npm ci
+
+      - name: Validate Cloudflare auth env
+        run: |
+          test -n "${CLOUDFLARE_ACCOUNT_ID}" || (echo "::error::Missing CLOUDFLARE_ACCOUNT_ID secret" && exit 1)
+          test -n "${CLOUDFLARE_API_TOKEN}" || (echo "::error::Missing CLOUDFLARE_API_TOKEN secret" && exit 1)
 
       - uses: cargo-bins/cargo-binstall@main
 
