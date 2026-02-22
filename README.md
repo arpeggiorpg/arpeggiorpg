@@ -42,7 +42,7 @@ just worker
 Then start the frontend:
 
 ```shell
-just dxui
+just ui
 ```
 
 Hit it at http://localhost:5173/

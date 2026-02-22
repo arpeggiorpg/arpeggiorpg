@@ -3,10 +3,10 @@ set windows-shell := ["powershell.exe", "-NoLogo", "-Command"]
 default:
     just --list
 
-ui:
+legacy-ui:
     cd ui; npm run dev
 
-dxui:
+ui:
     cd arpui; cp index.dev.html index.html
     cd arpui; dx serve
 
