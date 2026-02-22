@@ -428,6 +428,7 @@ fn handle_canvas_mouse_move(
                 suppress_next_click,
             ),
             DragMode::Rotate => update_rotate_drag_from_client_delta(
+                scene_models,
                 scene3d,
                 active_drag,
                 client_x,
@@ -563,6 +564,7 @@ fn handle_canvas_touch_move(
                     if delta_center_x.abs() > f32::EPSILON {
                         let delta_yaw = -delta_center_x * TOUCH_ROTATE_SENSITIVITY;
                         rotate_camera_around_pivot(
+                            scene_models,
                             scene3d,
                             delta_yaw,
                             rotate_pivot,
@@ -760,6 +762,7 @@ fn update_pan_drag_from_client_delta(
 }
 
 fn update_rotate_drag_from_client_delta(
+    scene_models: &Arc<arp3d::SceneModelLibrary>,
     scene3d: &Scene3d,
     mut active_drag: DragState,
     client_x: f32,
@@ -775,6 +778,7 @@ fn update_rotate_drag_from_client_delta(
     }
     let delta_yaw = -delta_x * ROTATE_SENSITIVITY;
     rotate_camera_around_pivot(
+        scene_models,
         scene3d,
         delta_yaw,
         active_drag.rotate_pivot,
@@ -791,6 +795,7 @@ fn update_rotate_drag_from_client_delta(
 }
 
 fn rotate_camera_around_pivot(
+    scene_models: &Arc<arp3d::SceneModelLibrary>,
     scene3d: &Scene3d,
     delta_yaw: f32,
     rotate_pivot: Option<(f32, f32)>,
@@ -805,7 +810,7 @@ fn rotate_camera_around_pivot(
     let Some((pivot_x, pivot_z)) = rotate_pivot else {
         return;
     };
-    let Some((base_x, base_z)) = scene_focus_center_xz(scene3d) else {
+    let Some((base_x, base_z)) = scene_focus_center_xz(scene_models, scene3d) else {
         return;
     };
 
@@ -825,7 +830,10 @@ fn rotate_camera_around_pivot(
     });
 }
 
-fn scene_focus_center_xz(scene3d: &Scene3d) -> Option<(f32, f32)> {
+fn scene_focus_center_xz(
+    scene_models: &Arc<arp3d::SceneModelLibrary>,
+    scene3d: &Scene3d,
+) -> Option<(f32, f32)> {
     let mut min_x = f32::INFINITY;
     let mut max_x = f32::NEG_INFINITY;
     let mut min_z = f32::INFINITY;
@@ -839,12 +847,11 @@ fn scene_focus_center_xz(scene3d: &Scene3d) -> Option<(f32, f32)> {
     }
 
     for creature in &scene3d.creatures {
-        let half_w = creature.size_x * 0.5;
-        let half_d = creature.size_z * 0.5;
-        min_x = min_x.min(creature.x - half_w);
-        max_x = max_x.max(creature.x + half_w);
-        min_z = min_z.min(creature.z - half_d);
-        max_z = max_z.max(creature.z + half_d);
+        let (bounds_min, bounds_max) = arp3d::creature_bounds(scene_models, *creature);
+        min_x = min_x.min(bounds_min[0]);
+        max_x = max_x.max(bounds_max[0]);
+        min_z = min_z.min(bounds_min[2]);
+        max_z = max_z.max(bounds_max[2]);
     }
 
     if !min_x.is_finite() || !min_z.is_finite() || !max_x.is_finite() || !max_z.is_finite() {
@@ -1178,9 +1185,6 @@ fn to_scene3d(scene: &Scene, game_source: &GameSource) -> (Scene3d, Vec<SceneCre
             // Movement/pathfinding coordinates stay at terrain level; only lift visuals in 3D.
             y: cm_to_world(position.z_cm()) + CREATURE_RENDER_Y_OFFSET_TILES,
             z: cm_to_world(position.y_cm()),
-            size_x: 0.82,
-            size_y: 1.86,
-            size_z: 0.82,
             controlled: controlled_creatures.contains(id),
         })
         .collect();

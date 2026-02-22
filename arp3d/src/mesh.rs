@@ -103,24 +103,25 @@ pub(crate) fn build_scene_mesh(
             [1.0, 1.0, 1.0]
         };
 
-        let scale = creature_scale(*creature);
-        let translation = Vec3::new(creature.x, creature.y, creature.z);
+        let (creature_min, creature_max) = creature_model_bounds(models, *creature);
         append_mesh_instance(
             &mut vertices,
             &mut indices,
             &models.creature,
-            scale,
-            translation,
+            Vec3::ONE,
+            Vec3::new(creature.x, creature.y, creature.z),
             creature_tint,
         );
 
         if creature.controlled {
             let cursor_center = Vec3::new(
-                creature.x + scale.x * 0.5,
-                creature.y + scale.y + 0.30,
-                creature.z + scale.z * 0.5,
+                (creature_min.x + creature_max.x) * 0.5,
+                creature_max.y + 0.30,
+                (creature_min.z + creature_max.z) * 0.5,
             );
-            let cursor_radius = (scale.x.max(scale.z) * 0.22).clamp(0.12, 0.22);
+            let creature_width = creature_max.x - creature_min.x;
+            let creature_depth = creature_max.z - creature_min.z;
+            let cursor_radius = (creature_width.max(creature_depth) * 0.22).clamp(0.12, 0.22);
             let cursor_half_height = 0.24;
             let cursor_tint = if highlighted {
                 [1.12, 1.20, 1.24]
@@ -175,20 +176,11 @@ pub(crate) fn creature_model_bounds(
     models: &SceneModelLibrary,
     creature: Creature3d,
 ) -> (Vec3, Vec3) {
-    let scale = creature_scale(creature);
     let translation = Vec3::new(creature.x, creature.y, creature.z);
 
     (
-        models.creature.bounds_min * scale + translation,
-        models.creature.bounds_max * scale + translation,
-    )
-}
-
-fn creature_scale(creature: Creature3d) -> Vec3 {
-    Vec3::new(
-        creature.size_x.max(0.55),
-        creature.size_y.max(1.3),
-        creature.size_z.max(0.55),
+        models.creature.bounds_min + translation,
+        models.creature.bounds_max + translation,
     )
 }
 

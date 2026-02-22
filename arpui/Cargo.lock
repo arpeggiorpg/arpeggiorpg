@@ -64,6 +64,7 @@ dependencies = [
  "bytemuck",
  "glam",
  "gltf",
+ "tracing",
  "wgpu",
 ]
 

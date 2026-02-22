@@ -25,9 +25,6 @@ pub struct Creature3d {
     pub x: f32,
     pub y: f32,
     pub z: f32,
-    pub size_x: f32,
-    pub size_y: f32,
-    pub size_z: f32,
     pub controlled: bool,
 }
 
@@ -61,4 +58,9 @@ pub fn drag_pan_delta(
     delta_y: f32,
 ) -> (f32, f32) {
     camera::drag_pan_delta(models, scene, view, delta_x, delta_y)
+}
+
+pub fn creature_bounds(models: &SceneModelLibrary, creature: Creature3d) -> ([f32; 3], [f32; 3]) {
+    let (min, max) = mesh::creature_model_bounds(models, creature);
+    (min.to_array(), max.to_array())
 }
