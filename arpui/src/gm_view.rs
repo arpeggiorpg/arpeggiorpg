@@ -74,7 +74,7 @@ fn GameLoader(game_id: GameID, initial_scene_path: Option<Vec<String>>) -> Eleme
         Ok(game)
     });
 
-    match &*future.read_unchecked() {
+    match &*future.read() {
         Some(Ok(_game)) => {
             rsx! {
                 GMGameProvider {

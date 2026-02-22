@@ -69,7 +69,7 @@ fn GameLoader(player_id: PlayerID) -> Element {
         }
     });
 
-    match &*future.read_unchecked() {
+    match &*future.read() {
         Some(Ok(_game)) => rsx! {
             PlayerGameProvider {
                 Shell {
@@ -743,7 +743,7 @@ pub fn AcceptInvitationPage(game_id: GameID, invitation_id: InvitationID) -> Ele
         }
     };
 
-    match &*check.read_unchecked() {
+    match &*check.read() {
         None => rsx! {
             div {
                 class: "flex h-full items-center justify-center",

@@ -66,7 +66,7 @@ pub fn AdminPage() -> Element {
     let me: Resource<anyhow::Result<crate::rpi::CurrentUser>> =
         use_resource(move || async move { current_user().await });
 
-    match &*me.read_unchecked() {
+    match &*me.read() {
         Some(Ok(me)) if me.is_superuser => rsx! { SuperuserAdminPage {} },
         Some(Ok(_)) => rsx! {
             div {
@@ -108,7 +108,7 @@ fn SuperuserAdminPage() -> Element {
         rpi_get("superuser/games").await
     });
 
-    match &*data.read_unchecked() {
+    match &*data.read() {
         Some(Ok(data)) => {
             let orphan_dos = find_orphan_dos(data);
             rsx! {

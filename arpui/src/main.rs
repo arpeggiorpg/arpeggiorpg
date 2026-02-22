@@ -147,7 +147,7 @@ fn AuthRequiredLayout() -> Element {
         current_user().await.map(Some)
     });
     let show_admin_link = matches!(
-        &*current_user.read_unchecked(),
+        &*current_user.read(),
         Some(Ok(Some(user))) if user.is_superuser
     );
     let navigator = navigator();
@@ -250,7 +250,7 @@ fn AuthSuccessPage(id_token: String, return_to: Option<String>) -> Element {
 fn GameListPage() -> Element {
     let list = use_resource(move || list_games());
 
-    match &*list.read_unchecked() {
+    match &*list.read() {
         Some(Ok(list)) => rsx! {
           GameList {list: list.clone()}
         },
