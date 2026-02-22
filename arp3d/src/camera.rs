@@ -2,7 +2,7 @@ use glam::{Mat4, Vec3};
 
 use crate::{Scene3d, SceneViewParams};
 
-use crate::mesh::creature_model_bounds;
+use crate::mesh::{SceneModelLibrary, creature_model_bounds};
 
 #[derive(Clone, Copy)]
 pub(crate) struct SceneBounds {
@@ -10,7 +10,10 @@ pub(crate) struct SceneBounds {
     pub(crate) max: Vec3,
 }
 
-pub(crate) fn scene_bounds_for_camera(scene: &Scene3d) -> Option<SceneBounds> {
+pub(crate) fn scene_bounds_for_camera(
+    scene: &Scene3d,
+    models: &SceneModelLibrary,
+) -> Option<SceneBounds> {
     let mut bounds: Option<SceneBounds> = None;
     for tile in &scene.terrain {
         let min = Vec3::new(tile.x, tile.y, tile.z);
@@ -18,7 +21,7 @@ pub(crate) fn scene_bounds_for_camera(scene: &Scene3d) -> Option<SceneBounds> {
         bounds = merge_bounds(bounds, min, max);
     }
     for creature in &scene.creatures {
-        let (min, max) = creature_model_bounds(*creature);
+        let (min, max) = creature_model_bounds(models, *creature);
         bounds = merge_bounds(bounds, min, max);
     }
     bounds
@@ -56,6 +59,7 @@ pub(crate) fn scene_mvp(
 }
 
 pub(crate) fn drag_pan_delta(
+    models: &SceneModelLibrary,
     scene: &Scene3d,
     view: SceneViewParams,
     delta_x: f32,
@@ -64,7 +68,7 @@ pub(crate) fn drag_pan_delta(
     let vfov = std::f32::consts::FRAC_PI_4;
     let aspect = view.viewport_width.max(1) as f32 / view.viewport_height.max(1) as f32;
     let hfov = 2.0 * ((vfov * 0.5).tan() * aspect).atan();
-    let distance = scene_bounds_for_camera(scene)
+    let distance = scene_bounds_for_camera(scene, models)
         .map(|bounds| camera_distance(bounds, aspect, view.camera_zoom))
         .unwrap_or_else(|| Vec3::new(2.2, 2.2, 2.2).length() / view.camera_zoom.max(0.05));
 

@@ -320,7 +320,8 @@ def write_glb(meshes: list[Mesh], out_path: Path):
 
 def main():
     script_dir = Path(__file__).resolve().parent
-    out_dir = script_dir.parent / "assets" / "models"
+    repo_root = script_dir.parent.parent
+    out_dir = repo_root / "arpui" / "assets" / "models"
     model_meshes = [
         build_terrain_mesh(),
         build_creature_mesh(),

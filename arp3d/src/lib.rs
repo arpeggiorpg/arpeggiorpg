@@ -3,6 +3,7 @@ mod mesh;
 mod picking;
 mod renderer;
 
+pub use mesh::SceneModelLibrary;
 pub use picking::{pick_creature, pick_scene_object, pick_terrain_tile};
 pub use renderer::render_scene_on_surface;
 
@@ -53,10 +54,11 @@ pub struct SceneCursor {
 }
 
 pub fn drag_pan_delta(
+    models: &SceneModelLibrary,
     scene: &Scene3d,
     view: SceneViewParams,
     delta_x: f32,
     delta_y: f32,
 ) -> (f32, f32) {
-    camera::drag_pan_delta(scene, view, delta_x, delta_y)
+    camera::drag_pan_delta(models, scene, view, delta_x, delta_y)
 }

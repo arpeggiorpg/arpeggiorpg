@@ -3,7 +3,7 @@ use glam::{Vec3, Vec4};
 use crate::{
     PickedObject, Scene3d, SceneCursor, SceneViewParams,
     camera::{scene_bounds_for_camera, scene_mvp},
-    mesh::creature_model_bounds,
+    mesh::{SceneModelLibrary, creature_model_bounds},
 };
 
 #[derive(Clone, Copy)]
@@ -25,38 +25,50 @@ struct SceneRaycastHits {
 }
 
 pub fn pick_terrain_tile(
+    models: &SceneModelLibrary,
     scene: &Scene3d,
     view: SceneViewParams,
     cursor: SceneCursor,
 ) -> Option<usize> {
-    raycast_scene(scene, view, cursor).and_then(|hits| hits.terrain.map(|hit| hit.index))
+    raycast_scene(models, scene, view, cursor).and_then(|hits| hits.terrain.map(|hit| hit.index))
 }
 
-pub fn pick_creature(scene: &Scene3d, view: SceneViewParams, cursor: SceneCursor) -> Option<usize> {
-    raycast_scene(scene, view, cursor).and_then(|hits| hits.creature.map(|hit| hit.index))
+pub fn pick_creature(
+    models: &SceneModelLibrary,
+    scene: &Scene3d,
+    view: SceneViewParams,
+    cursor: SceneCursor,
+) -> Option<usize> {
+    raycast_scene(models, scene, view, cursor).and_then(|hits| hits.creature.map(|hit| hit.index))
 }
 
 pub fn pick_scene_object(
+    models: &SceneModelLibrary,
     scene: &Scene3d,
     view: SceneViewParams,
     cursor: SceneCursor,
 ) -> Option<PickedObject> {
-    raycast_scene(scene, view, cursor).and_then(nearest_object)
+    raycast_scene(models, scene, view, cursor).and_then(nearest_object)
 }
 
 fn raycast_scene(
+    models: &SceneModelLibrary,
     scene: &Scene3d,
     view: SceneViewParams,
     cursor: SceneCursor,
 ) -> Option<SceneRaycastHits> {
-    let ray = cursor_ray(scene, view, cursor)?;
-    Some(raycast_scene_with_ray(scene, ray))
+    let ray = cursor_ray(models, scene, view, cursor)?;
+    Some(raycast_scene_with_ray(models, scene, ray))
 }
 
-fn raycast_scene_with_ray(scene: &Scene3d, ray: Ray) -> SceneRaycastHits {
+fn raycast_scene_with_ray(
+    models: &SceneModelLibrary,
+    scene: &Scene3d,
+    ray: Ray,
+) -> SceneRaycastHits {
     SceneRaycastHits {
         terrain: pick_terrain_tile_with_ray(scene, ray),
-        creature: pick_creature_with_ray(scene, ray),
+        creature: pick_creature_with_ray(models, scene, ray),
     }
 }
 
@@ -75,7 +87,12 @@ fn nearest_object(hits: SceneRaycastHits) -> Option<PickedObject> {
     }
 }
 
-fn cursor_ray(scene: &Scene3d, view: SceneViewParams, cursor: SceneCursor) -> Option<Ray> {
+fn cursor_ray(
+    models: &SceneModelLibrary,
+    scene: &Scene3d,
+    view: SceneViewParams,
+    cursor: SceneCursor,
+) -> Option<Ray> {
     let viewport_width = view.viewport_width;
     let viewport_height = view.viewport_height;
     let cursor_x = cursor.x;
@@ -91,7 +108,7 @@ fn cursor_ray(scene: &Scene3d, view: SceneViewParams, cursor: SceneCursor) -> Op
         return None;
     }
 
-    let bounds = scene_bounds_for_camera(scene)?;
+    let bounds = scene_bounds_for_camera(scene, models)?;
     let view_proj = scene_mvp(viewport_width, viewport_height, Some(bounds), view);
     let inv_view_proj = view_proj.inverse();
 
@@ -143,11 +160,11 @@ fn pick_terrain_tile_with_ray(scene: &Scene3d, ray: Ray) -> Option<RayHit> {
     best
 }
 
-fn pick_creature_with_ray(scene: &Scene3d, ray: Ray) -> Option<RayHit> {
+fn pick_creature_with_ray(models: &SceneModelLibrary, scene: &Scene3d, ray: Ray) -> Option<RayHit> {
     let mut best: Option<RayHit> = None;
 
     for (idx, creature) in scene.creatures.iter().enumerate() {
-        let (min, max) = creature_model_bounds(*creature);
+        let (min, max) = creature_model_bounds(models, *creature);
         let Some(t) = intersect_ray_aabb(ray.origin, ray.dir, min, max) else {
             continue;
         };

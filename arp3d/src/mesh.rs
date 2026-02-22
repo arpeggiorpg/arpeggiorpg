@@ -1,4 +1,4 @@
-use std::{collections::HashSet, sync::OnceLock};
+use std::collections::HashSet;
 
 use anyhow::{Context, bail};
 use bytemuck::{Pod, Zeroable};
@@ -40,28 +40,40 @@ struct SourceMesh {
     bounds_max: Vec3,
 }
 
-struct SceneMeshes {
+pub struct SceneModelLibrary {
     terrain: SourceMesh,
     creature: SourceMesh,
     cursor: SourceMesh,
 }
 
-static SCENE_MESHES: OnceLock<SceneMeshes> = OnceLock::new();
+impl SceneModelLibrary {
+    pub fn from_glb_bytes(
+        terrain_cube_glb: &[u8],
+        creature_glb: &[u8],
+        control_cursor_glb: &[u8],
+    ) -> anyhow::Result<Self> {
+        Ok(Self {
+            terrain: load_mesh_from_glb(terrain_cube_glb, "terrain_cube")?,
+            creature: load_mesh_from_glb(creature_glb, "creature")?,
+            cursor: load_mesh_from_glb(control_cursor_glb, "control_cursor")?,
+        })
+    }
+}
 
 pub(crate) fn build_scene_mesh(
+    models: &SceneModelLibrary,
     scene: &Scene3d,
     highlighted_terrain: Option<usize>,
     highlighted_creature: Option<usize>,
     movement_option_tiles: &[usize],
 ) -> (Vec<Vertex>, Vec<u32>, Option<SceneBounds>) {
-    let meshes = scene_meshes();
     let mut vertices = Vec::with_capacity(
-        scene.terrain.len() * meshes.terrain.vertices.len()
-            + scene.creatures.len() * meshes.creature.vertices.len(),
+        scene.terrain.len() * models.terrain.vertices.len()
+            + scene.creatures.len() * models.creature.vertices.len(),
     );
     let mut indices = Vec::with_capacity(
-        scene.terrain.len() * meshes.terrain.indices.len()
-            + scene.creatures.len() * meshes.creature.indices.len(),
+        scene.terrain.len() * models.terrain.indices.len()
+            + scene.creatures.len() * models.creature.indices.len(),
     );
     let movement_option_tiles: HashSet<usize> = movement_option_tiles.iter().copied().collect();
 
@@ -76,7 +88,7 @@ pub(crate) fn build_scene_mesh(
         append_mesh_instance(
             &mut vertices,
             &mut indices,
-            &meshes.terrain,
+            &models.terrain,
             Vec3::ONE,
             Vec3::new(tile.x, tile.y, tile.z),
             tint,
@@ -96,7 +108,7 @@ pub(crate) fn build_scene_mesh(
         append_mesh_instance(
             &mut vertices,
             &mut indices,
-            &meshes.creature,
+            &models.creature,
             scale,
             translation,
             creature_tint,
@@ -118,7 +130,7 @@ pub(crate) fn build_scene_mesh(
             append_mesh_instance(
                 &mut vertices,
                 &mut indices,
-                &meshes.cursor,
+                &models.cursor,
                 Vec3::new(cursor_radius, cursor_half_height, cursor_radius),
                 cursor_center,
                 cursor_tint,
@@ -126,7 +138,7 @@ pub(crate) fn build_scene_mesh(
         }
     }
 
-    let bounds = scene_bounds_for_camera(scene);
+    let bounds = scene_bounds_for_camera(scene, models);
     (vertices, indices, bounds)
 }
 
@@ -159,14 +171,16 @@ fn tinted_color(base: [f32; 3], tint: [f32; 3]) -> [f32; 3] {
     ]
 }
 
-pub(crate) fn creature_model_bounds(creature: Creature3d) -> (Vec3, Vec3) {
-    let meshes = scene_meshes();
+pub(crate) fn creature_model_bounds(
+    models: &SceneModelLibrary,
+    creature: Creature3d,
+) -> (Vec3, Vec3) {
     let scale = creature_scale(creature);
     let translation = Vec3::new(creature.x, creature.y, creature.z);
 
     (
-        meshes.creature.bounds_min * scale + translation,
-        meshes.creature.bounds_max * scale + translation,
+        models.creature.bounds_min * scale + translation,
+        models.creature.bounds_max * scale + translation,
     )
 }
 
@@ -176,26 +190,6 @@ fn creature_scale(creature: Creature3d) -> Vec3 {
         creature.size_y.max(1.3),
         creature.size_z.max(0.55),
     )
-}
-
-fn scene_meshes() -> &'static SceneMeshes {
-    SCENE_MESHES.get_or_init(|| {
-        load_scene_meshes().expect("failed to load built-in scene model GLBs from arp3d/assets")
-    })
-}
-
-fn load_scene_meshes() -> anyhow::Result<SceneMeshes> {
-    Ok(SceneMeshes {
-        terrain: load_mesh_from_glb(
-            include_bytes!("../assets/models/terrain_cube.glb"),
-            "terrain_cube",
-        )?,
-        creature: load_mesh_from_glb(include_bytes!("../assets/models/creature.glb"), "creature")?,
-        cursor: load_mesh_from_glb(
-            include_bytes!("../assets/models/control_cursor.glb"),
-            "control_cursor",
-        )?,
-    })
 }
 
 fn load_mesh_from_glb(glb_bytes: &[u8], name: &str) -> anyhow::Result<SourceMesh> {
