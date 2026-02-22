@@ -103,21 +103,22 @@ pub(crate) fn build_scene_mesh(
             [1.0, 1.0, 1.0]
         };
 
+        let translation = creature_world_translation(*creature);
         let (creature_min, creature_max) = creature_model_bounds(models, *creature);
         append_mesh_instance(
             &mut vertices,
             &mut indices,
             &models.creature,
             Vec3::ONE,
-            Vec3::new(creature.x, creature.y, creature.z),
+            translation,
             creature_tint,
         );
 
         if creature.controlled {
             let cursor_center = Vec3::new(
-                (creature_min.x + creature_max.x) * 0.5,
-                creature_max.y + 0.30,
-                (creature_min.z + creature_max.z) * 0.5,
+                translation.x,
+                translation.y + creature_model_height(models),
+                translation.z,
             );
             let creature_width = creature_max.x - creature_min.x;
             let creature_depth = creature_max.z - creature_min.z;
@@ -176,12 +177,21 @@ pub(crate) fn creature_model_bounds(
     models: &SceneModelLibrary,
     creature: Creature3d,
 ) -> (Vec3, Vec3) {
-    let translation = Vec3::new(creature.x, creature.y, creature.z);
+    let translation = creature_world_translation(creature);
 
     (
         models.creature.bounds_min + translation,
         models.creature.bounds_max + translation,
     )
+}
+
+fn creature_world_translation(creature: Creature3d) -> Vec3 {
+    // Creature origin is rendered at the center of the terrain tile (top surface in Y).
+    Vec3::new(creature.x + 0.5, creature.y, creature.z + 0.5)
+}
+
+fn creature_model_height(models: &SceneModelLibrary) -> f32 {
+    models.creature.bounds_max.y - models.creature.bounds_min.y
 }
 
 fn load_mesh_from_glb(glb_bytes: &[u8], name: &str) -> anyhow::Result<SourceMesh> {

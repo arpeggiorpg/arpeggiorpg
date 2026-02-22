@@ -889,7 +889,11 @@ fn rotation_pivot_for_pointer(
         arp3d::pick_creature(scene_models, scene3d, pointer.view, pointer.cursor)
         && let Some(creature) = scene3d.creatures.get(creature_idx)
     {
-        return Some((creature.x, creature.z));
+        let (bounds_min, bounds_max) = arp3d::creature_bounds(scene_models, *creature);
+        return Some((
+            (bounds_min[0] + bounds_max[0]) * 0.5,
+            (bounds_min[2] + bounds_max[2]) * 0.5,
+        ));
     }
     None
 }
