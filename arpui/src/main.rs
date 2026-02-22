@@ -11,9 +11,9 @@ use js_sys::encode_uri_component;
 use serde::Serialize;
 use tracing::{error, info};
 
+mod admin_view;
 mod chat;
 mod components;
-mod admin_view;
 mod gfx;
 mod gm_view;
 mod grid;
@@ -129,9 +129,7 @@ fn AuthRequiredLayout() -> Element {
             frontend_origin,
         })
         .unwrap_or(return_to);
-        let encoded_state = encode_uri_component(&state)
-            .as_string()
-            .unwrap_or(state);
+        let encoded_state = encode_uri_component(&state).as_string().unwrap_or(state);
 
         format!(
             "https://accounts.google.com/o/oauth2/v2/auth?client_id={}&redirect_uri={}&response_type=code&scope=openid%20email%20profile&prompt=consent&state={}",

@@ -32,11 +32,7 @@ pub fn pick_terrain_tile(
     raycast_scene(scene, view, cursor).and_then(|hits| hits.terrain.map(|hit| hit.index))
 }
 
-pub fn pick_creature(
-    scene: &Scene3d,
-    view: SceneViewParams,
-    cursor: SceneCursor,
-) -> Option<usize> {
+pub fn pick_creature(scene: &Scene3d, view: SceneViewParams, cursor: SceneCursor) -> Option<usize> {
     raycast_scene(scene, view, cursor).and_then(|hits| hits.creature.map(|hit| hit.index))
 }
 

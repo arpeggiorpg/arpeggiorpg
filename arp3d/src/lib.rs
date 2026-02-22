@@ -3,8 +3,8 @@ mod mesh;
 mod picking;
 mod renderer;
 
-pub use renderer::render_scene_on_surface;
 pub use picking::{pick_creature, pick_scene_object, pick_terrain_tile};
+pub use renderer::render_scene_on_surface;
 
 #[derive(Clone, Debug, PartialEq, Default)]
 pub struct Scene3d {
