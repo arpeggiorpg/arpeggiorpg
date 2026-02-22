@@ -445,7 +445,8 @@ fn get_do_status(game_id: &str, data: &SuperuserGamesResponse) -> DoStatus {
 }
 
 fn find_orphan_dos(data: &SuperuserGamesResponse) -> Vec<OrphanDo> {
-    let known_legacy_do_ids: HashSet<String> = data.arpeggiogame_legacy_ids.values().cloned().collect();
+    let known_legacy_do_ids: HashSet<String> =
+        data.arpeggiogame_legacy_ids.values().cloned().collect();
     let known_sql_do_ids: HashSet<String> = data.arpeggiogame_ids.values().cloned().collect();
 
     let mut namespace_id_to_name: HashMap<String, String> = HashMap::new();

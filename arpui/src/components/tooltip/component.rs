@@ -166,5 +166,4 @@ fn show_hint_popover(popover: &web_sys::HtmlElement, anchor: &web_sys::HtmlEleme
             return;
         }
     }
-
 }

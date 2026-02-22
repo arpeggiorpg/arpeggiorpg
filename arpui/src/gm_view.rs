@@ -119,9 +119,8 @@ fn Shell(game_id: GameID, initial_scene_path: Option<Vec<String>>) -> Element {
     let shown_scene_id = selected_scene_id().or(game.active_scene);
     let shown_scene = shown_scene_id.and_then(|sid| game.scenes.get(&sid).cloned());
     let gm_creature_actions: Option<Callback<arptypes::CreatureID, Vec<CreatureMenuAction>>> = None;
-    let gm_creature_actions_3d = move |_creature_id| {
-        vec![CreatureMenuAction::GMWalk, CreatureMenuAction::Teleport]
-    };
+    let gm_creature_actions_3d =
+        move |_creature_id| vec![CreatureMenuAction::GMWalk, CreatureMenuAction::Teleport];
     let navigate_to_scene = {
         let game = game.clone();
         let game_id = game_id.clone();

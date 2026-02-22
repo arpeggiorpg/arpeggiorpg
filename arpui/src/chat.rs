@@ -1,5 +1,5 @@
 use arptypes::{
-    GMCommand, multitenant::RPIGameRequest, CreatureID, CreatureLog, GameLog, PlayerCommand,
+    CreatureID, CreatureLog, GMCommand, GameLog, PlayerCommand, multitenant::RPIGameRequest,
 };
 use dioxus::prelude::*;
 use tracing::warn;
@@ -40,18 +40,14 @@ fn ChatPanel(mode: ChatMode) -> Element {
     let ws = use_ws();
     let mut message = use_signal(|| String::new());
     let chat_logs = GAME_LOGS.read();
-    let send_message_handler = move |_| {
-        async move {
-            let _ = maybe_send_chat(mode, ws, message).await;
-        }
+    let send_message_handler = move |_| async move {
+        let _ = maybe_send_chat(mode, ws, message).await;
     };
 
     let handle_keydown = {
-        move |evt: KeyboardEvent| {
-            async move {
-                if evt.key() == dioxus::prelude::Key::Enter && !evt.modifiers().shift() {
-                    let _ = maybe_send_chat(mode, ws, message).await;
-                }
+        move |evt: KeyboardEvent| async move {
+            if evt.key() == dioxus::prelude::Key::Enter && !evt.modifiers().shift() {
+                let _ = maybe_send_chat(mode, ws, message).await;
             }
         }
     };
