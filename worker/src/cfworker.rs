@@ -1,7 +1,7 @@
 use arpeggio::types::PlayerID;
 use std::collections::HashSet;
 
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tracing::{error, info};
 use uuid::Uuid;
@@ -11,6 +11,11 @@ use crate::{rust_error, storage};
 use arptypes::multitenant::{
     GameID, GameList, GameMetadata, GameProfile, InvitationCheck, Role, UserID,
 };
+
+#[derive(Debug, Serialize)]
+struct CurrentUserResponse {
+    is_superuser: bool,
+}
 
 /// The main cloudflare Worker for Arpeggio. Handles routes for listing &
 /// creating games, etc, and forwarding websockets to the Durable Object.
@@ -62,6 +67,7 @@ async fn http_routes(req: Request, env: Env) -> Result<Response> {
     let user_id = validation_result.unwrap();
 
     match parts {
+        ["me"] => current_user(env, user_id).await,
         ["superuser", rest @ ..] => {
             if !storage::check_superuser(&env, user_id).await? {
                 return Response::error("You ain't super", 401);
@@ -82,6 +88,11 @@ async fn http_routes(req: Request, env: Env) -> Result<Response> {
         }
         _ => Response::error(format!("No route matched {path:?}"), 404),
     }
+}
+
+async fn current_user(env: Env, user_id: UserID) -> Result<Response> {
+    let is_superuser = storage::check_superuser(&env, user_id).await?;
+    Response::from_json(&CurrentUserResponse { is_superuser })
 }
 
 /// Example curl command:

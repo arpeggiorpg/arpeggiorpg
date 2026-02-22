@@ -22,7 +22,7 @@ mod rpi;
 use admin_view::AdminPage;
 use gm_view::{GMGamePage, GMGameScenePage};
 use player_view::{AcceptInvitationPage, PlayerGamePage};
-use rpi::{AUTH_TOKEN, auth_token, list_games};
+use rpi::{AUTH_TOKEN, auth_token, current_user, list_games};
 use wasm_cookies::CookieOptions;
 
 use crate::{
@@ -139,8 +139,18 @@ fn AuthRequiredLayout() -> Element {
         )
     };
 
-    let navigator = navigator();
     let has_auth_token = !AUTH_TOKEN().is_empty();
+    let current_user = use_resource(move || async move {
+        if !has_auth_token {
+            return Ok(None::<crate::rpi::CurrentUser>);
+        }
+        current_user().await.map(Some)
+    });
+    let show_admin_link = matches!(
+        &*current_user.read_unchecked(),
+        Some(Ok(Some(user))) if user.is_superuser
+    );
+    let navigator = navigator();
 
     rsx! {
       if !has_auth_token {
@@ -185,9 +195,11 @@ fn AuthRequiredLayout() -> Element {
                 class: "text-sm text-gray-600 hover:text-gray-800",
                 "Game List"
               }
-              Link { to: Route::AdminPage {},
-                class: "text-sm text-gray-600 hover:text-gray-800",
-                "Admin"
+              if show_admin_link {
+                Link { to: Route::AdminPage {},
+                  class: "text-sm text-gray-600 hover:text-gray-800",
+                  "Admin"
+                }
               }
               Button {
                 variant: ButtonVariant::Ghost,

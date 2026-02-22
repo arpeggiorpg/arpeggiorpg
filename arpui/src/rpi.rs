@@ -53,8 +53,17 @@ fn websocket_base_url() -> anyhow::Result<String> {
     Err(anyhow::anyhow!("Unsupported RPI_URL scheme: {base}"))
 }
 
+#[derive(Clone, Debug, serde::Deserialize, PartialEq)]
+pub struct CurrentUser {
+    pub is_superuser: bool,
+}
+
 pub async fn list_games() -> Result<multitenant::GameList, anyhow::Error> {
     rpi_get("g/list").await
+}
+
+pub async fn current_user() -> Result<CurrentUser, anyhow::Error> {
+    rpi_get("me").await
 }
 
 pub async fn create_game(name: String) -> Result<GameID, anyhow::Error> {

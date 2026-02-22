@@ -10,7 +10,7 @@ use crate::{
         button::{Button, ButtonVariant},
         modal::Modal,
     },
-    rpi::rpi_get,
+    rpi::{current_user, rpi_get},
 };
 
 #[derive(Clone, Debug, Deserialize)]
@@ -63,6 +63,40 @@ struct DoStatus {
 
 #[component]
 pub fn AdminPage() -> Element {
+    let me: Resource<anyhow::Result<crate::rpi::CurrentUser>> =
+        use_resource(move || async move { current_user().await });
+
+    match &*me.read_unchecked() {
+        Some(Ok(me)) if me.is_superuser => rsx! { SuperuserAdminPage {} },
+        Some(Ok(_)) => rsx! {
+            div {
+                class: "p-6",
+                div {
+                    class: "rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800",
+                    "You are not authorized to view this page."
+                }
+            }
+        },
+        Some(Err(err)) => rsx! {
+            div {
+                class: "p-6",
+                div {
+                    class: "rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800",
+                    "Error loading user permissions: {err}"
+                }
+            }
+        },
+        None => rsx! {
+            div {
+                class: "p-6 text-sm text-gray-500",
+                "Checking permissions..."
+            }
+        },
+    }
+}
+
+#[component]
+fn SuperuserAdminPage() -> Element {
     let mut reload_nonce = use_signal(|| 0u32);
     let mut status_message = use_signal(|| None::<String>);
     let mut error_message = use_signal(|| None::<String>);
