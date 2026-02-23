@@ -14,11 +14,11 @@ use tracing::info;
 use wasm_bindgen_futures::spawn_local;
 use wasm_cookies::CookieOptions;
 
+use crate::{GAME_LOGS, GAME_SOURCE, GameSource};
 use arptypes::{
     Game, GameLog, SerializedGame, SerializedPlayerGame,
     multitenant::{self, GameID, GameIndex, RPIGameRequest, Role},
 };
-use crate::{GAME_LOGS, GAME_SOURCE, GameSource};
 
 pub static AUTH_TOKEN: GlobalSignal<String> = Signal::global(String::new);
 
@@ -125,12 +125,8 @@ pub fn Connector(
             let (mut websocket_tx, websocket_rx) = websocket.split();
             let receiver_response_handlers = response_handlers.clone();
             spawn_local(async move {
-                let result = ws_receiver(
-                    websocket_rx,
-                    receiver_response_handlers,
-                    player_id.clone(),
-                )
-                .await;
+                let result =
+                    ws_receiver(websocket_rx, receiver_response_handlers, player_id.clone()).await;
                 match result {
                     Ok(r) => info!(?r, "ws_receiver completed"),
                     Err(error) => error!(?error, "ws_receiver error"),
@@ -298,14 +294,14 @@ async fn ensure_authorized_response(
     if status == StatusCode::UNAUTHORIZED || status == StatusCode::FORBIDDEN {
         let body = response.text().await.unwrap_or_default();
         logout_for_auth_failure();
-        return Err(anyhow::anyhow!(
-            "{context} failed with {status}: {body}"
-        ));
+        return Err(anyhow::anyhow!("{context} failed with {status}: {body}"));
     }
     Ok(response)
 }
 
-pub(crate) async fn rpi_get<T: serde::de::DeserializeOwned>(path: &str) -> Result<T, anyhow::Error> {
+pub(crate) async fn rpi_get<T: serde::de::DeserializeOwned>(
+    path: &str,
+) -> Result<T, anyhow::Error> {
     let rpi_url = rpi_url();
     let url = format!("{rpi_url}/{path}");
     let client = reqwest::Client::new();

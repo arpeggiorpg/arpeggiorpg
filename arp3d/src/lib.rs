@@ -3,8 +3,9 @@ mod mesh;
 mod picking;
 mod renderer;
 
-pub use renderer::render_scene_on_surface;
+pub use mesh::SceneModelLibrary;
 pub use picking::{pick_creature, pick_scene_object, pick_terrain_tile};
+pub use renderer::render_scene_on_surface;
 
 #[derive(Clone, Debug, PartialEq, Default)]
 pub struct Scene3d {
@@ -24,9 +25,6 @@ pub struct Creature3d {
     pub x: f32,
     pub y: f32,
     pub z: f32,
-    pub size_x: f32,
-    pub size_y: f32,
-    pub size_z: f32,
     pub controlled: bool,
 }
 
@@ -53,10 +51,16 @@ pub struct SceneCursor {
 }
 
 pub fn drag_pan_delta(
+    models: &SceneModelLibrary,
     scene: &Scene3d,
     view: SceneViewParams,
     delta_x: f32,
     delta_y: f32,
 ) -> (f32, f32) {
-    camera::drag_pan_delta(scene, view, delta_x, delta_y)
+    camera::drag_pan_delta(models, scene, view, delta_x, delta_y)
+}
+
+pub fn creature_bounds(models: &SceneModelLibrary, creature: Creature3d) -> ([f32; 3], [f32; 3]) {
+    let (min, max) = mesh::creature_model_bounds(models, creature);
+    (min.to_array(), max.to_array())
 }

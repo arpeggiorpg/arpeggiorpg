@@ -463,7 +463,11 @@ impl CreatureMenuAction {
         }
     }
 
-    pub(crate) async fn act(&self, scene_id: SceneID, creature_id: CreatureID) -> anyhow::Result<()> {
+    pub(crate) async fn act(
+        &self,
+        scene_id: SceneID,
+        creature_id: CreatureID,
+    ) -> anyhow::Result<()> {
         match self {
             CreatureMenuAction::PlayerWalk => {
                 // Request movement options from server
@@ -476,10 +480,14 @@ impl CreatureMenuAction {
                 *MOVEMENT_OPTIONS.write() = Some((creature_id, options));
             }
             CreatureMenuAction::GMWalk => {
-                return Err(anyhow::anyhow!("GM walk is only supported in the 3D scene view."));
+                return Err(anyhow::anyhow!(
+                    "GM walk is only supported in the 3D scene view."
+                ));
             }
             CreatureMenuAction::Teleport => {
-                return Err(anyhow::anyhow!("Teleport is only supported in the 3D scene view."));
+                return Err(anyhow::anyhow!(
+                    "Teleport is only supported in the 3D scene view."
+                ));
             }
         }
         Ok(())

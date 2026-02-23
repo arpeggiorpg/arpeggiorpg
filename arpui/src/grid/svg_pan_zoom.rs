@@ -1,5 +1,5 @@
-use dioxus::prelude::*;
 use dioxus::events::{MouseData, WheelData};
+use dioxus::prelude::*;
 use dioxus_elements::input_data::MouseButton;
 
 #[derive(Clone, Copy, Debug)]

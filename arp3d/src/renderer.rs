@@ -4,7 +4,7 @@ use wgpu::util::DeviceExt;
 use crate::{
     Scene3d, SceneViewParams,
     camera::scene_mvp,
-    mesh::{self, Vertex},
+    mesh::{self, SceneModelLibrary, Vertex},
 };
 
 #[repr(C)]
@@ -27,6 +27,7 @@ impl SceneRenderer {
     pub fn new(
         device: &wgpu::Device,
         config: &wgpu::SurfaceConfiguration,
+        models: &SceneModelLibrary,
         scene: &Scene3d,
         view: SceneViewParams,
         highlighted_terrain: Option<usize>,
@@ -39,6 +40,7 @@ impl SceneRenderer {
         });
 
         let (mut vertices, mut indices, bounds) = mesh::build_scene_mesh(
+            models,
             scene,
             highlighted_terrain,
             highlighted_creature,
@@ -208,6 +210,7 @@ impl SceneRenderer {
 pub async fn render_scene_on_surface(
     instance: &wgpu::Instance,
     surface: &wgpu::Surface<'_>,
+    models: &SceneModelLibrary,
     view: SceneViewParams,
     scene: &Scene3d,
     highlighted_terrain: Option<usize>,
@@ -259,6 +262,7 @@ pub async fn render_scene_on_surface(
     let renderer = SceneRenderer::new(
         &device,
         &config,
+        models,
         scene,
         view,
         highlighted_terrain,

@@ -1,6 +1,6 @@
 use dioxus::prelude::*;
-use wasm_bindgen::closure::Closure;
 use wasm_bindgen::JsCast;
+use wasm_bindgen::closure::Closure;
 use web_sys::{MouseEvent, Window};
 
 #[derive(Clone, Copy, PartialEq)]
@@ -10,7 +10,6 @@ pub enum SplitDirection {
 }
 
 // This is unabashed AI slop but it works!!!
-
 
 #[component]
 pub fn SplitPane(
@@ -79,14 +78,26 @@ pub fn SplitPane(
     let (container_class, first_pane_style, second_pane_style, splitter_class) = match direction {
         SplitDirection::Horizontal => (
             "flex h-full w-full",
-            format!("width: {}%; height: 100%; overflow: auto;", split_position()),
-            format!("width: {}%; height: 100%; overflow: auto;", 100.0 - split_position()),
+            format!(
+                "width: {}%; height: 100%; overflow: auto;",
+                split_position()
+            ),
+            format!(
+                "width: {}%; height: 100%; overflow: auto;",
+                100.0 - split_position()
+            ),
             "w-1 bg-gray-300 hover:bg-gray-400 cursor-col-resize flex-shrink-0 select-none transition-colors duration-150 active:bg-gray-500",
         ),
         SplitDirection::Vertical => (
             "flex flex-col h-full w-full",
-            format!("height: {}%; width: 100%; overflow: auto;", split_position()),
-            format!("height: {}%; width: 100%; overflow: auto;", 100.0 - split_position()),
+            format!(
+                "height: {}%; width: 100%; overflow: auto;",
+                split_position()
+            ),
+            format!(
+                "height: {}%; width: 100%; overflow: auto;",
+                100.0 - split_position()
+            ),
             "h-1 bg-gray-300 hover:bg-gray-400 cursor-row-resize flex-shrink-0 select-none transition-colors duration-150 active:bg-gray-500",
         ),
     };

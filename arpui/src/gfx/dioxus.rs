@@ -1,13 +1,12 @@
 use anyhow::Context;
 use arp3d::{Creature3d, PickedObject, Scene3d, SceneCursor, SceneViewParams, TerrainTile3d};
-use arptypes::{
-    CreatureID, GameLog, Point3, Scene, SceneID, multitenant::RPIGameRequest,
-};
+use arptypes::{CreatureID, GameLog, Point3, Scene, SceneID, multitenant::RPIGameRequest};
+use dioxus::asset_resolver::read_asset_bytes;
 use dioxus::events::{TouchData, WheelData};
 use dioxus::prelude::*;
 use dioxus_elements::input_data::MouseButton;
 use keyboard_types::Modifiers;
-use std::collections::HashSet;
+use std::{collections::HashSet, sync::Arc};
 use tracing::error;
 use wasm_bindgen::JsCast;
 
@@ -25,6 +24,12 @@ const ROTATE_SENSITIVITY: f32 = 0.005;
 const TOUCH_ROTATE_SENSITIVITY: f32 = 0.004;
 const DRAG_CLICK_SUPPRESS_PX: f32 = 6.0;
 const CREATURE_RENDER_Y_OFFSET_TILES: f32 = 1.0;
+static TERRAIN_CUBE_MODEL_ASSET: Asset = asset!("/assets/models/terrain_cube.glb");
+static CREATURE_MODEL_ASSET: Asset = asset!("/assets/models/creature.glb");
+static CONTROL_CURSOR_MODEL_ASSET: Asset = asset!("/assets/models/control_cursor.glb");
+
+pub static SCENE_MODEL_LIBRARY: GlobalSignal<Option<Arc<arp3d::SceneModelLibrary>>> =
+    Signal::global(|| None);
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum HoveredSceneObject {
@@ -105,10 +110,48 @@ pub fn Scene3dView(
     scene: Scene,
     #[props(default)] get_creature_actions: Option<Callback<CreatureID, Vec<CreatureMenuAction>>>,
 ) -> Element {
+    let mut model_load_error = use_signal(|| None::<String>);
+    let _model_loader = use_resource(move || async move {
+        if SCENE_MODEL_LIBRARY().is_some() || model_load_error().is_some() {
+            return;
+        }
+        match load_scene_model_library().await {
+            Ok(library) => {
+                *SCENE_MODEL_LIBRARY.write() = Some(Arc::new(library));
+            }
+            Err(err) => {
+                error!(?err, "Failed to load 3D model assets");
+                model_load_error.set(Some(err.to_string()));
+            }
+        }
+    });
+
     let game_source = GAME_SOURCE();
     let (scene3d, scene_creatures) = to_scene3d(&scene, &game_source);
     let scene3d_for_events = scene3d.clone();
     let scene_creatures_for_events = scene_creatures.clone();
+    let Some(scene_models) = SCENE_MODEL_LIBRARY() else {
+        return rsx! {
+            div {
+                class: "h-full w-full flex items-center justify-center bg-slate-950 text-slate-200",
+                if let Some(load_error) = model_load_error() {
+                    div {
+                        class: "flex flex-col items-center gap-3 rounded border border-red-400/40 bg-red-900/20 px-4 py-3 max-w-lg",
+                        div { class: "text-sm font-semibold text-red-200", "Failed to load 3D assets." }
+                        div { class: "text-xs text-red-100/90 break-all", "{load_error}" }
+                        button {
+                            r#type: "button",
+                            class: "rounded border border-red-300 bg-red-100 px-3 py-1 text-xs font-medium text-red-900 hover:bg-red-200",
+                            onclick: move |_| model_load_error.set(None),
+                            "Retry"
+                        }
+                    }
+                } else {
+                    div { class: "text-sm text-slate-300", "Loading 3D assets..." }
+                }
+            }
+        };
+    };
     let camera_zoom = use_signal(|| 1.0f32);
     let camera_yaw = use_signal(|| std::f32::consts::FRAC_PI_4);
     let camera_pan = use_signal(CameraPan::default);
@@ -120,8 +163,10 @@ pub fn Scene3dView(
     let mut movement_mode = use_signal(|| None::<MovementModeState>);
     let ws = use_ws();
     let scene_id = scene.id;
+    let scene_models_for_events = scene_models.clone();
 
     let _startup = use_resource(move || {
+        let scene_models = scene_models.clone();
         let scene3d = scene3d.clone();
         let hovered_object = hovered_object();
         let gm_mode = movement_mode();
@@ -130,16 +175,16 @@ pub fn Scene3dView(
         let camera_yaw = camera_yaw();
         let camera_pan = camera_pan();
         async move {
-            if let Err(err) =
-                render_scene_once(
-                    scene3d,
-                    hovered_object,
-                    movement_options,
-                    camera_zoom,
-                    camera_yaw,
-                    camera_pan,
-                )
-                .await
+            if let Err(err) = render_scene_once(
+                &scene_models,
+                scene3d,
+                hovered_object,
+                movement_options,
+                camera_zoom,
+                camera_yaw,
+                camera_pan,
+            )
+            .await
             {
                 error!(?err, "Failed to render wgpu scene prototype");
             }
@@ -151,10 +196,16 @@ pub fn Scene3dView(
     let scene3d_for_touch_start = scene3d_for_events.clone();
     let scene3d_for_touch_move = scene3d_for_events.clone();
     let scene3d_for_click = scene3d_for_events.clone();
+    let scene_models_for_move = scene_models_for_events.clone();
+    let scene_models_for_mouse_down = scene_models_for_events.clone();
+    let scene_models_for_touch_start = scene_models_for_events.clone();
+    let scene_models_for_touch_move = scene_models_for_events.clone();
+    let scene_models_for_click = scene_models_for_events.clone();
     let scene_creatures_for_click = scene_creatures_for_events.clone();
     let handle_mouse_down = move |evt: Event<MouseData>| {
         handle_canvas_mouse_down(
             evt,
+            &scene_models_for_mouse_down,
             &scene3d_for_mouse_down,
             drag_state,
             camera_zoom,
@@ -165,6 +216,7 @@ pub fn Scene3dView(
     let handle_mouse_move = move |evt: Event<MouseData>| {
         handle_canvas_mouse_move(
             evt,
+            &scene_models_for_move,
             &scene3d_for_move,
             drag_state,
             camera_zoom,
@@ -183,6 +235,7 @@ pub fn Scene3dView(
     let handle_touch_start = move |evt: Event<TouchData>| {
         handle_canvas_touch_start(
             evt,
+            &scene_models_for_touch_start,
             &scene3d_for_touch_start,
             touch_gesture,
             camera_zoom,
@@ -193,6 +246,7 @@ pub fn Scene3dView(
     let handle_touch_move = move |evt: Event<TouchData>| {
         handle_canvas_touch_move(
             evt,
+            &scene_models_for_touch_move,
             &scene3d_for_touch_move,
             touch_gesture,
             camera_zoom,
@@ -211,6 +265,7 @@ pub fn Scene3dView(
         let client_x = evt.data().client_coordinates().x as f32;
         let client_y = evt.data().client_coordinates().y as f32;
         let maybe_request = prepare_canvas_click(
+            &scene_models_for_click,
             &scene3d_for_click,
             &scene_creatures_for_click,
             client_x,
@@ -299,6 +354,7 @@ pub fn Scene3dView(
 
 fn handle_canvas_mouse_down(
     evt: Event<MouseData>,
+    scene_models: &Arc<arp3d::SceneModelLibrary>,
     scene3d: &Scene3d,
     mut drag_state: Signal<Option<DragState>>,
     camera_zoom: Signal<f32>,
@@ -321,6 +377,7 @@ fn handle_canvas_mouse_down(
     let rotate_pivot = if mode == DragMode::Rotate {
         find_canvas().and_then(|canvas| {
             rotation_pivot_for_pointer(
+                scene_models,
                 scene3d,
                 &canvas,
                 client_x,
@@ -344,6 +401,7 @@ fn handle_canvas_mouse_down(
 
 fn handle_canvas_mouse_move(
     evt: Event<MouseData>,
+    scene_models: &Arc<arp3d::SceneModelLibrary>,
     scene3d: &Scene3d,
     mut drag_state: Signal<Option<DragState>>,
     camera_zoom: Signal<f32>,
@@ -358,6 +416,7 @@ fn handle_canvas_mouse_move(
         let client_y = evt.data().client_coordinates().y as f32;
         let updated_drag = match active_drag.mode {
             DragMode::Pan => update_pan_drag_from_client_delta(
+                scene_models,
                 scene3d,
                 active_drag,
                 client_x,
@@ -369,6 +428,7 @@ fn handle_canvas_mouse_move(
                 suppress_next_click,
             ),
             DragMode::Rotate => update_rotate_drag_from_client_delta(
+                scene_models,
                 scene3d,
                 active_drag,
                 client_x,
@@ -388,6 +448,7 @@ fn handle_canvas_mouse_move(
         return;
     };
     let new_hovered = pick_object_for_pointer(
+        scene_models,
         scene3d,
         &canvas,
         client_x,
@@ -417,6 +478,7 @@ fn handle_canvas_wheel(evt: Event<WheelData>, mut camera_zoom: Signal<f32>) {
 
 fn handle_canvas_touch_start(
     evt: Event<TouchData>,
+    scene_models: &Arc<arp3d::SceneModelLibrary>,
     scene3d: &Scene3d,
     mut touch_gesture: Signal<Option<TouchGestureState>>,
     camera_zoom: Signal<f32>,
@@ -429,6 +491,7 @@ fn handle_canvas_touch_start(
         find_canvas().and_then(|canvas| {
             let center = touch_center(points[0], points[1]);
             rotation_pivot_for_pointer(
+                scene_models,
                 scene3d,
                 &canvas,
                 center.0,
@@ -446,6 +509,7 @@ fn handle_canvas_touch_start(
 
 fn handle_canvas_touch_move(
     evt: Event<TouchData>,
+    scene_models: &Arc<arp3d::SceneModelLibrary>,
     scene3d: &Scene3d,
     mut touch_gesture: Signal<Option<TouchGestureState>>,
     mut camera_zoom: Signal<f32>,
@@ -478,6 +542,7 @@ fn handle_canvas_touch_move(
                 if rotate_pivot.is_none() {
                     rotate_pivot = find_canvas().and_then(|canvas| {
                         rotation_pivot_for_pointer(
+                            scene_models,
                             scene3d,
                             &canvas,
                             center.0,
@@ -499,6 +564,7 @@ fn handle_canvas_touch_move(
                     if delta_center_x.abs() > f32::EPSILON {
                         let delta_yaw = -delta_center_x * TOUCH_ROTATE_SENSITIVITY;
                         rotate_camera_around_pivot(
+                            scene_models,
                             scene3d,
                             delta_yaw,
                             rotate_pivot,
@@ -522,6 +588,7 @@ fn handle_canvas_touch_move(
                 let center = touch_center(points[0], points[1]);
                 let rotate_pivot = find_canvas().and_then(|canvas| {
                     rotation_pivot_for_pointer(
+                        scene_models,
                         scene3d,
                         &canvas,
                         center.0,
@@ -554,6 +621,7 @@ fn handle_canvas_touch_move(
         },
     };
     let updated_pan = update_pan_drag_from_client_delta(
+        scene_models,
         scene3d,
         pan_state,
         client_x,
@@ -597,6 +665,7 @@ fn handle_canvas_mouse_leave(
 }
 
 fn prepare_canvas_click(
+    scene_models: &Arc<arp3d::SceneModelLibrary>,
     scene3d: &Scene3d,
     scene_creatures: &[SceneCreatureRef],
     client_x: f32,
@@ -621,6 +690,7 @@ fn prepare_canvas_click(
 
     if let Some(canvas) = find_canvas() {
         match resolve_canvas_click(
+            scene_models,
             scene3d,
             scene_creatures,
             &canvas,
@@ -656,6 +726,7 @@ fn prepare_canvas_click(
 }
 
 fn update_pan_drag_from_client_delta(
+    scene_models: &Arc<arp3d::SceneModelLibrary>,
     scene3d: &Scene3d,
     mut active_drag: DragState,
     client_x: f32,
@@ -674,7 +745,7 @@ fn update_pan_drag_from_client_delta(
 
     if let Some(canvas) = find_canvas() {
         let view = canvas_view(&canvas, camera_zoom, camera_yaw, camera_pan);
-        let (pan_dx, pan_dz) = arp3d::drag_pan_delta(scene3d, view, delta_x, delta_y);
+        let (pan_dx, pan_dz) = arp3d::drag_pan_delta(scene_models, scene3d, view, delta_x, delta_y);
         camera_pan_signal.with_mut(|pan| {
             pan.x += pan_dx;
             pan.z += pan_dz;
@@ -691,6 +762,7 @@ fn update_pan_drag_from_client_delta(
 }
 
 fn update_rotate_drag_from_client_delta(
+    scene_models: &Arc<arp3d::SceneModelLibrary>,
     scene3d: &Scene3d,
     mut active_drag: DragState,
     client_x: f32,
@@ -706,6 +778,7 @@ fn update_rotate_drag_from_client_delta(
     }
     let delta_yaw = -delta_x * ROTATE_SENSITIVITY;
     rotate_camera_around_pivot(
+        scene_models,
         scene3d,
         delta_yaw,
         active_drag.rotate_pivot,
@@ -722,6 +795,7 @@ fn update_rotate_drag_from_client_delta(
 }
 
 fn rotate_camera_around_pivot(
+    scene_models: &Arc<arp3d::SceneModelLibrary>,
     scene3d: &Scene3d,
     delta_yaw: f32,
     rotate_pivot: Option<(f32, f32)>,
@@ -736,7 +810,7 @@ fn rotate_camera_around_pivot(
     let Some((pivot_x, pivot_z)) = rotate_pivot else {
         return;
     };
-    let Some((base_x, base_z)) = scene_focus_center_xz(scene3d) else {
+    let Some((base_x, base_z)) = scene_focus_center_xz(scene_models, scene3d) else {
         return;
     };
 
@@ -756,7 +830,10 @@ fn rotate_camera_around_pivot(
     });
 }
 
-fn scene_focus_center_xz(scene3d: &Scene3d) -> Option<(f32, f32)> {
+fn scene_focus_center_xz(
+    scene_models: &Arc<arp3d::SceneModelLibrary>,
+    scene3d: &Scene3d,
+) -> Option<(f32, f32)> {
     let mut min_x = f32::INFINITY;
     let mut max_x = f32::NEG_INFINITY;
     let mut min_z = f32::INFINITY;
@@ -770,12 +847,11 @@ fn scene_focus_center_xz(scene3d: &Scene3d) -> Option<(f32, f32)> {
     }
 
     for creature in &scene3d.creatures {
-        let half_w = creature.size_x * 0.5;
-        let half_d = creature.size_z * 0.5;
-        min_x = min_x.min(creature.x - half_w);
-        max_x = max_x.max(creature.x + half_w);
-        min_z = min_z.min(creature.z - half_d);
-        max_z = max_z.max(creature.z + half_d);
+        let (bounds_min, bounds_max) = arp3d::creature_bounds(scene_models, *creature);
+        min_x = min_x.min(bounds_min[0]);
+        max_x = max_x.max(bounds_max[0]);
+        min_z = min_z.min(bounds_min[2]);
+        max_z = max_z.max(bounds_max[2]);
     }
 
     if !min_x.is_finite() || !min_z.is_finite() || !max_x.is_finite() || !max_z.is_finite() {
@@ -786,6 +862,7 @@ fn scene_focus_center_xz(scene3d: &Scene3d) -> Option<(f32, f32)> {
 }
 
 fn rotation_pivot_for_pointer(
+    scene_models: &Arc<arp3d::SceneModelLibrary>,
     scene3d: &Scene3d,
     canvas: &web_sys::HtmlCanvasElement,
     client_x: f32,
@@ -802,15 +879,21 @@ fn rotation_pivot_for_pointer(
         camera_yaw,
         camera_pan,
     );
-    if let Some(tile_idx) = arp3d::pick_terrain_tile(scene3d, pointer.view, pointer.cursor)
+    if let Some(tile_idx) =
+        arp3d::pick_terrain_tile(scene_models, scene3d, pointer.view, pointer.cursor)
         && let Some(tile) = scene3d.terrain.get(tile_idx)
     {
         return Some((tile.x + 0.5, tile.z + 0.5));
     }
-    if let Some(creature_idx) = arp3d::pick_creature(scene3d, pointer.view, pointer.cursor)
+    if let Some(creature_idx) =
+        arp3d::pick_creature(scene_models, scene3d, pointer.view, pointer.cursor)
         && let Some(creature) = scene3d.creatures.get(creature_idx)
     {
-        return Some((creature.x, creature.z));
+        let (bounds_min, bounds_max) = arp3d::creature_bounds(scene_models, *creature);
+        return Some((
+            (bounds_min[0] + bounds_max[0]) * 0.5,
+            (bounds_min[2] + bounds_max[2]) * 0.5,
+        ));
     }
     None
 }
@@ -1014,7 +1097,22 @@ fn PlayerMovementModeOverlay(creature_name: String, on_cancel: EventHandler<()>)
     }
 }
 
+async fn load_scene_model_library() -> anyhow::Result<arp3d::SceneModelLibrary> {
+    let terrain_cube_glb = read_asset_bytes(&TERRAIN_CUBE_MODEL_ASSET)
+        .await
+        .map_err(|err| anyhow::anyhow!("loading terrain_cube.glb: {err}"))?;
+    let creature_glb = read_asset_bytes(&CREATURE_MODEL_ASSET)
+        .await
+        .map_err(|err| anyhow::anyhow!("loading creature.glb: {err}"))?;
+    let control_cursor_glb = read_asset_bytes(&CONTROL_CURSOR_MODEL_ASSET)
+        .await
+        .map_err(|err| anyhow::anyhow!("loading control_cursor.glb: {err}"))?;
+    arp3d::SceneModelLibrary::from_glb_bytes(&terrain_cube_glb, &creature_glb, &control_cursor_glb)
+        .context("parsing scene model glb bytes")
+}
+
 async fn render_scene_once(
+    scene_models: &Arc<arp3d::SceneModelLibrary>,
     scene3d: Scene3d,
     hovered_object: Option<HoveredSceneObject>,
     movement_options: Vec<Point3>,
@@ -1052,6 +1150,7 @@ async fn render_scene_once(
     let (width, height) = arp3d::render_scene_on_surface(
         &instance,
         &surface,
+        scene_models,
         view,
         &scene3d,
         hovered_tile,
@@ -1090,9 +1189,6 @@ fn to_scene3d(scene: &Scene, game_source: &GameSource) -> (Scene3d, Vec<SceneCre
             // Movement/pathfinding coordinates stay at terrain level; only lift visuals in 3D.
             y: cm_to_world(position.z_cm()) + CREATURE_RENDER_Y_OFFSET_TILES,
             z: cm_to_world(position.y_cm()),
-            size_x: 0.82,
-            size_y: 1.86,
-            size_z: 0.82,
             controlled: controlled_creatures.contains(id),
         })
         .collect();
@@ -1131,6 +1227,7 @@ fn find_canvas() -> Option<web_sys::HtmlCanvasElement> {
 }
 
 fn pick_object_for_pointer(
+    scene_models: &Arc<arp3d::SceneModelLibrary>,
     scene3d: &Scene3d,
     canvas: &web_sys::HtmlCanvasElement,
     client_x: f32,
@@ -1147,22 +1244,24 @@ fn pick_object_for_pointer(
         camera_yaw,
         camera_pan,
     );
-    arp3d::pick_scene_object(scene3d, pointer.view, pointer.cursor).map(
-        |picked| match picked {
+    arp3d::pick_scene_object(scene_models, scene3d, pointer.view, pointer.cursor).map(|picked| {
+        match picked {
             PickedObject::Terrain(idx) => HoveredSceneObject::Terrain(idx),
             PickedObject::Creature(idx) => HoveredSceneObject::Creature(idx),
-        },
-    )
+        }
+    })
 }
 
 fn pick_terrain_for_pointer(
+    scene_models: &Arc<arp3d::SceneModelLibrary>,
     scene3d: &Scene3d,
     pointer: CanvasPointerInput,
 ) -> Option<usize> {
-    arp3d::pick_terrain_tile(scene3d, pointer.view, pointer.cursor)
+    arp3d::pick_terrain_tile(scene_models, scene3d, pointer.view, pointer.cursor)
 }
 
 fn resolve_canvas_click(
+    scene_models: &Arc<arp3d::SceneModelLibrary>,
     scene3d: &Scene3d,
     scene_creatures: &[SceneCreatureRef],
     canvas: &web_sys::HtmlCanvasElement,
@@ -1186,14 +1285,15 @@ fn resolve_canvas_click(
     );
 
     if let Some(mode) = gm_mode {
-        let Some(tile_idx) = pick_terrain_for_pointer(scene3d, pointer) else {
+        let Some(tile_idx) = pick_terrain_for_pointer(scene_models, scene3d, pointer) else {
             return ClickResolution::KeepState;
         };
         let Some(tile) = scene3d.terrain.get(tile_idx).copied() else {
             return ClickResolution::KeepState;
         };
         let destination = terrain_tile_to_point(tile);
-        if mode.action.requires_movement_options() && !mode.movement_options.contains(&destination) {
+        if mode.action.requires_movement_options() && !mode.movement_options.contains(&destination)
+        {
             return ClickResolution::KeepState;
         }
         return ClickResolution::QueueRequest(mode.action.destination_request(
@@ -1204,7 +1304,7 @@ fn resolve_canvas_click(
     }
 
     if let Some((creature_id, options)) = player_mode {
-        let Some(tile_idx) = pick_terrain_for_pointer(scene3d, pointer) else {
+        let Some(tile_idx) = pick_terrain_for_pointer(scene_models, scene3d, pointer) else {
             return ClickResolution::KeepState;
         };
         let Some(tile) = scene3d.terrain.get(tile_idx).copied() else {
@@ -1214,22 +1314,23 @@ fn resolve_canvas_click(
         if !options.contains(&destination) {
             return ClickResolution::KeepState;
         }
-        return ClickResolution::QueueRequest(
-            CreatureMenuAction::PlayerWalk.destination_request(scene_id, creature_id, destination),
-        );
+        return ClickResolution::QueueRequest(CreatureMenuAction::PlayerWalk.destination_request(
+            scene_id,
+            creature_id,
+            destination,
+        ));
     }
 
-    let Some(HoveredSceneObject::Creature(creature_index)) =
-        pick_object_for_pointer(
-            scene3d,
-            canvas,
-            client_x,
-            client_y,
-            camera_zoom,
-            camera_yaw,
-            camera_pan,
-        )
-    else {
+    let Some(HoveredSceneObject::Creature(creature_index)) = pick_object_for_pointer(
+        scene_models,
+        scene3d,
+        canvas,
+        client_x,
+        client_y,
+        camera_zoom,
+        camera_yaw,
+        camera_pan,
+    ) else {
         return ClickResolution::CloseMenu;
     };
     let Some(creature_ref) = scene_creatures.get(creature_index).cloned() else {
@@ -1253,7 +1354,11 @@ fn resolve_canvas_click(
 }
 
 fn terrain_tile_to_point(tile: TerrainTile3d) -> Point3 {
-    Point3::new(world_to_cm(tile.x), world_to_cm(tile.z), world_to_cm(tile.y))
+    Point3::new(
+        world_to_cm(tile.x),
+        world_to_cm(tile.z),
+        world_to_cm(tile.y),
+    )
 }
 
 fn world_to_cm(world: f32) -> i64 {
