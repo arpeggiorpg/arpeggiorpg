@@ -5,24 +5,24 @@ authors = ["Christopher Armstrong <227068+radix@users.noreply.github.com>"]
 edition = "2024"
 
 [dependencies]
-anyhow = { version = "1.0.75", features = ["backtrace"] }
+anyhow = { version = "1.0.102", features = ["backtrace"] }
 arptypes = { path = "../arptypes", version = "*" }
 dioxus = { version = "0.7.3", features = ["web", "router"] }
 foldertree = { path = "../foldertree", version = "*" }
-futures = "0.3.30"
+futures = "0.3.32"
 futures-util = { version = "*" }
 # arpeggio depend on rand, which depends on getrandom, which by default does not work on WASM. We
 # need to enable the "js" feature. Unfortunately, since arpui is not a workspace member, we have to
 # manually pin the version to the same one. (Wait, why aren't we a workspace member again? mostly
 # because I'm afraid of dependency conflicts between workers-rs and dioxus versions of dependencies)
 getrandom = { version = "0.2.9", features = ["js"] }
-reqwest = { version = "0.12.3", features = ["json"] }
-reqwest-websocket = { version = "0.3" }
+reqwest = { version = "0.13.2", features = ["json"] }
+reqwest-websocket = { version = "0.6" }
 serde = { version = "*" }
 serde_json = { version = "*" }
-tracing = "0.1.41"
-uom = { version = "0.35", default-features = false, features = ["u32", "i64", "serde", "si"] }
-uuid = { version = "1.1.2", features = ["v4", "serde"] }
+tracing = "0.1.44"
+uom = { version = "0.38", default-features = false, features = ["u32", "i64", "serde", "si"] }
+uuid = { version = "1.21.0", features = ["v4", "serde"] }
 wasm-bindgen = "0.2.105"
 wasm-bindgen-futures = "0.4.42"
 wasm-cookies = "0.2.1"
@@ -30,7 +30,7 @@ js-sys = "0.3.69"
 dioxus-primitives = { git = "https://github.com/DioxusLabs/components", version = "0.0.1", default-features = false }
 dioxus-logger = "0.7.1"
 arp3d = { path = "../arp3d", version = "*" }
-wgpu = { version = "26.0.1", features = ["webgl"] }
+wgpu = { version = "28.0.0", features = ["webgl"] }
 
 [dependencies.web-sys]
 version = "0.3.69"
