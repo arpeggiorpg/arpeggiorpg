@@ -154,6 +154,7 @@ pub fn Scene3dView(
     };
     let camera_zoom = use_signal(|| 1.0f32);
     let camera_yaw = use_signal(|| std::f32::consts::FRAC_PI_4);
+    let camera_top_down = use_signal(|| false);
     let camera_pan = use_signal(CameraPan::default);
     let drag_state = use_signal(|| None::<DragState>);
     let touch_gesture = use_signal(|| None::<TouchGestureState>);
@@ -168,21 +169,18 @@ pub fn Scene3dView(
     let _startup = use_resource(move || {
         let scene_models = scene_models.clone();
         let scene3d = scene3d.clone();
-        let hovered_object = hovered_object();
         let gm_mode = movement_mode();
         let movement_options = movement_options_for_render(gm_mode, MOVEMENT_OPTIONS());
-        let camera_zoom = camera_zoom();
-        let camera_yaw = camera_yaw();
-        let camera_pan = camera_pan();
         async move {
             if let Err(err) = render_scene_once(
                 &scene_models,
                 scene3d,
-                hovered_object,
+                hovered_object(),
                 movement_options,
-                camera_zoom,
-                camera_yaw,
-                camera_pan,
+                camera_zoom(),
+                camera_yaw(),
+                camera_top_down(),
+                camera_pan(),
             )
             .await
             {
@@ -210,6 +208,7 @@ pub fn Scene3dView(
             drag_state,
             camera_zoom,
             camera_yaw,
+            camera_top_down,
             camera_pan,
         );
     };
@@ -221,6 +220,7 @@ pub fn Scene3dView(
             drag_state,
             camera_zoom,
             camera_yaw,
+            camera_top_down,
             camera_pan,
             hovered_object,
             suppress_next_click,
@@ -240,6 +240,7 @@ pub fn Scene3dView(
             touch_gesture,
             camera_zoom,
             camera_yaw,
+            camera_top_down,
             camera_pan,
         );
     };
@@ -251,6 +252,7 @@ pub fn Scene3dView(
             touch_gesture,
             camera_zoom,
             camera_yaw,
+            camera_top_down,
             camera_pan,
             suppress_next_click,
         );
@@ -277,6 +279,7 @@ pub fn Scene3dView(
             get_creature_actions.clone(),
             camera_zoom(),
             camera_yaw(),
+            camera_top_down(),
             camera_pan(),
         );
         async move {
@@ -296,6 +299,9 @@ pub fn Scene3dView(
     let handle_mouse_leave = move |_evt: Event<MouseData>| {
         handle_canvas_mouse_leave(drag_state, hovered_object);
     };
+    let handle_key_down = move |evt: Event<KeyboardData>| {
+        handle_canvas_key_down(evt, camera_top_down);
+    };
 
     rsx! {
         div {
@@ -304,6 +310,7 @@ pub fn Scene3dView(
                 id: "{CANVAS_ID}",
                 class: "block h-full w-full",
                 style: "display: block; width: 100%; height: 100%; background: #0c0f1a;",
+                tabindex: "0",
                 onmousedown: handle_mouse_down,
                 onmousemove: handle_mouse_move,
                 onmouseup: handle_mouse_up,
@@ -315,6 +322,7 @@ pub fn Scene3dView(
                 ontouchcancel: handle_touch_cancel,
                 onclick: handle_click,
                 onmouseleave: handle_mouse_leave,
+                onkeydown: handle_key_down,
             }
 
             if let Some(mode) = movement_mode() {
@@ -359,6 +367,7 @@ fn handle_canvas_mouse_down(
     mut drag_state: Signal<Option<DragState>>,
     camera_zoom: Signal<f32>,
     camera_yaw: Signal<f32>,
+    camera_top_down: Signal<bool>,
     camera_pan: Signal<CameraPan>,
 ) {
     let is_primary = evt.data().trigger_button() == Some(MouseButton::Primary);
@@ -372,6 +381,12 @@ fn handle_canvas_mouse_down(
         return;
     };
     evt.prevent_default();
+    if let Some(canvas) = find_canvas() {
+        let _ = canvas.focus();
+    }
+    if mode == DragMode::Rotate && camera_top_down() {
+        return;
+    }
     let client_x = evt.data().client_coordinates().x as f32;
     let client_y = evt.data().client_coordinates().y as f32;
     let rotate_pivot = if mode == DragMode::Rotate {
@@ -384,6 +399,7 @@ fn handle_canvas_mouse_down(
                 client_y,
                 camera_zoom(),
                 camera_yaw(),
+                camera_top_down(),
                 camera_pan(),
             )
         })
@@ -406,6 +422,7 @@ fn handle_canvas_mouse_move(
     mut drag_state: Signal<Option<DragState>>,
     camera_zoom: Signal<f32>,
     camera_yaw: Signal<f32>,
+    camera_top_down: Signal<bool>,
     camera_pan: Signal<CameraPan>,
     mut hovered_object: Signal<Option<HoveredSceneObject>>,
     suppress_next_click: Signal<bool>,
@@ -423,6 +440,7 @@ fn handle_canvas_mouse_move(
                 client_y,
                 camera_zoom(),
                 camera_yaw(),
+                camera_top_down(),
                 camera_pan(),
                 camera_pan,
                 suppress_next_click,
@@ -434,6 +452,7 @@ fn handle_canvas_mouse_move(
                 client_x,
                 client_y,
                 camera_yaw,
+                camera_top_down,
                 camera_pan,
                 suppress_next_click,
             ),
@@ -455,6 +474,7 @@ fn handle_canvas_mouse_move(
         client_y,
         camera_zoom(),
         camera_yaw(),
+        camera_top_down(),
         camera_pan(),
     );
     if hovered_object() != new_hovered {
@@ -476,6 +496,13 @@ fn handle_canvas_wheel(evt: Event<WheelData>, mut camera_zoom: Signal<f32>) {
     camera_zoom.set(new_zoom);
 }
 
+fn handle_canvas_key_down(evt: Event<KeyboardData>, mut camera_top_down: Signal<bool>) {
+    if matches!(evt.key(), Key::Character(ref s) if s.eq_ignore_ascii_case("o")) {
+        evt.prevent_default();
+        camera_top_down.set(!camera_top_down());
+    }
+}
+
 fn handle_canvas_touch_start(
     evt: Event<TouchData>,
     scene_models: &Arc<arp3d::SceneModelLibrary>,
@@ -483,9 +510,13 @@ fn handle_canvas_touch_start(
     mut touch_gesture: Signal<Option<TouchGestureState>>,
     camera_zoom: Signal<f32>,
     camera_yaw: Signal<f32>,
+    camera_top_down: Signal<bool>,
     camera_pan: Signal<CameraPan>,
 ) {
     evt.prevent_default();
+    if let Some(canvas) = find_canvas() {
+        let _ = canvas.focus();
+    }
     let points = touch_client_points(&evt);
     let rotate_pivot = if points.len() >= 2 {
         find_canvas().and_then(|canvas| {
@@ -498,6 +529,7 @@ fn handle_canvas_touch_start(
                 center.1,
                 camera_zoom(),
                 camera_yaw(),
+                camera_top_down(),
                 camera_pan(),
             )
         })
@@ -514,6 +546,7 @@ fn handle_canvas_touch_move(
     mut touch_gesture: Signal<Option<TouchGestureState>>,
     mut camera_zoom: Signal<f32>,
     camera_yaw: Signal<f32>,
+    camera_top_down: Signal<bool>,
     camera_pan: Signal<CameraPan>,
     mut suppress_next_click: Signal<bool>,
 ) {
@@ -549,6 +582,7 @@ fn handle_canvas_touch_move(
                             center.1,
                             camera_zoom(),
                             camera_yaw(),
+                            camera_top_down(),
                             camera_pan(),
                         )
                     });
@@ -569,6 +603,7 @@ fn handle_canvas_touch_move(
                             delta_yaw,
                             rotate_pivot,
                             camera_yaw,
+                            camera_top_down(),
                             camera_pan,
                         );
                         total_pinch_delta += delta_center_x.abs();
@@ -595,6 +630,7 @@ fn handle_canvas_touch_move(
                         center.1,
                         camera_zoom(),
                         camera_yaw(),
+                        camera_top_down(),
                         camera_pan(),
                     )
                 });
@@ -628,6 +664,7 @@ fn handle_canvas_touch_move(
         client_y,
         camera_zoom(),
         camera_yaw(),
+        camera_top_down(),
         camera_pan(),
         camera_pan,
         suppress_next_click,
@@ -677,6 +714,7 @@ fn prepare_canvas_click(
     get_creature_actions: Option<Callback<CreatureID, Vec<CreatureMenuAction>>>,
     camera_zoom: f32,
     camera_yaw: f32,
+    camera_top_down: bool,
     camera_pan: CameraPan,
 ) -> Option<RPIGameRequest> {
     if suppress_next_click() {
@@ -702,6 +740,7 @@ fn prepare_canvas_click(
             get_creature_actions,
             camera_zoom,
             camera_yaw,
+            camera_top_down,
             camera_pan,
         ) {
             ClickResolution::KeepState => {}
@@ -733,6 +772,7 @@ fn update_pan_drag_from_client_delta(
     client_y: f32,
     camera_zoom: f32,
     camera_yaw: f32,
+    camera_top_down: bool,
     camera_pan: CameraPan,
     mut camera_pan_signal: Signal<CameraPan>,
     mut suppress_next_click: Signal<bool>,
@@ -744,7 +784,13 @@ fn update_pan_drag_from_client_delta(
     }
 
     if let Some(canvas) = find_canvas() {
-        let view = canvas_view(&canvas, camera_zoom, camera_yaw, camera_pan);
+        let view = canvas_view(
+            &canvas,
+            camera_zoom,
+            camera_yaw,
+            camera_top_down,
+            camera_pan,
+        );
         let (pan_dx, pan_dz) = arp3d::drag_pan_delta(scene_models, scene3d, view, delta_x, delta_y);
         camera_pan_signal.with_mut(|pan| {
             pan.x += pan_dx;
@@ -768,6 +814,7 @@ fn update_rotate_drag_from_client_delta(
     client_x: f32,
     client_y: f32,
     camera_yaw: Signal<f32>,
+    camera_top_down: Signal<bool>,
     camera_pan: Signal<CameraPan>,
     mut suppress_next_click: Signal<bool>,
 ) -> DragState {
@@ -783,6 +830,7 @@ fn update_rotate_drag_from_client_delta(
         delta_yaw,
         active_drag.rotate_pivot,
         camera_yaw,
+        camera_top_down(),
         camera_pan,
     );
     active_drag.last_client_x = client_x;
@@ -800,8 +848,12 @@ fn rotate_camera_around_pivot(
     delta_yaw: f32,
     rotate_pivot: Option<(f32, f32)>,
     mut camera_yaw: Signal<f32>,
+    camera_top_down: bool,
     mut camera_pan: Signal<CameraPan>,
 ) {
+    if camera_top_down {
+        return;
+    }
     if delta_yaw.abs() <= f32::EPSILON {
         return;
     }
@@ -869,6 +921,7 @@ fn rotation_pivot_for_pointer(
     client_y: f32,
     camera_zoom: f32,
     camera_yaw: f32,
+    camera_top_down: bool,
     camera_pan: CameraPan,
 ) -> Option<(f32, f32)> {
     let pointer = canvas_pointer_input(
@@ -877,6 +930,7 @@ fn rotation_pivot_for_pointer(
         client_y,
         camera_zoom,
         camera_yaw,
+        camera_top_down,
         camera_pan,
     );
     if let Some(tile_idx) =
@@ -1118,6 +1172,7 @@ async fn render_scene_once(
     movement_options: Vec<Point3>,
     camera_zoom: f32,
     camera_yaw: f32,
+    camera_top_down: bool,
     camera_pan: CameraPan,
 ) -> anyhow::Result<()> {
     let window = web_sys::window().context("window missing")?;
@@ -1138,6 +1193,7 @@ async fn render_scene_once(
         viewport_height: canvas.client_height() as u32,
         camera_zoom,
         camera_yaw,
+        top_down: camera_top_down,
         pan_x: camera_pan.x,
         pan_z: camera_pan.z,
     };
@@ -1234,6 +1290,7 @@ fn pick_object_for_pointer(
     client_y: f32,
     camera_zoom: f32,
     camera_yaw: f32,
+    camera_top_down: bool,
     camera_pan: CameraPan,
 ) -> Option<HoveredSceneObject> {
     let pointer = canvas_pointer_input(
@@ -1242,6 +1299,7 @@ fn pick_object_for_pointer(
         client_y,
         camera_zoom,
         camera_yaw,
+        camera_top_down,
         camera_pan,
     );
     arp3d::pick_scene_object(scene_models, scene3d, pointer.view, pointer.cursor).map(|picked| {
@@ -1273,6 +1331,7 @@ fn resolve_canvas_click(
     get_creature_actions: Option<Callback<CreatureID, Vec<CreatureMenuAction>>>,
     camera_zoom: f32,
     camera_yaw: f32,
+    camera_top_down: bool,
     camera_pan: CameraPan,
 ) -> ClickResolution {
     let pointer = canvas_pointer_input(
@@ -1281,6 +1340,7 @@ fn resolve_canvas_click(
         client_y,
         camera_zoom,
         camera_yaw,
+        camera_top_down,
         camera_pan,
     );
 
@@ -1329,6 +1389,7 @@ fn resolve_canvas_click(
         client_y,
         camera_zoom,
         camera_yaw,
+        camera_top_down,
         camera_pan,
     ) else {
         return ClickResolution::CloseMenu;
@@ -1399,11 +1460,12 @@ fn canvas_pointer_input(
     client_y: f32,
     camera_zoom: f32,
     camera_yaw: f32,
+    camera_top_down: bool,
     camera_pan: CameraPan,
 ) -> CanvasPointerInput {
     let rect = canvas.get_bounding_client_rect();
     CanvasPointerInput {
-        view: canvas_view(canvas, camera_zoom, camera_yaw, camera_pan),
+        view: canvas_view(canvas, camera_zoom, camera_yaw, camera_top_down, camera_pan),
         cursor: SceneCursor {
             x: client_x - rect.left() as f32,
             y: client_y - rect.top() as f32,
@@ -1415,6 +1477,7 @@ fn canvas_view(
     canvas: &web_sys::HtmlCanvasElement,
     camera_zoom: f32,
     camera_yaw: f32,
+    camera_top_down: bool,
     camera_pan: CameraPan,
 ) -> SceneViewParams {
     SceneViewParams {
@@ -1422,6 +1485,7 @@ fn canvas_view(
         viewport_height: canvas.client_height().max(1) as u32,
         camera_zoom,
         camera_yaw,
+        top_down: camera_top_down,
         pan_x: camera_pan.x,
         pan_z: camera_pan.z,
     }

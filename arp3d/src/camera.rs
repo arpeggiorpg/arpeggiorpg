@@ -40,9 +40,13 @@ pub(crate) fn scene_mvp(
         let center = (bounds.min + bounds.max) * 0.5 + Vec3::new(view.pan_x, 0.0, view.pan_z);
         let distance = camera_distance(bounds, aspect, view.camera_zoom);
 
-        let eye_dir = orbit_eye_direction(view.camera_yaw);
-        let eye = center + eye_dir * distance;
-        let view = Mat4::look_at_rh(eye, center, Vec3::Y);
+        let (eye, up) = if view.top_down {
+            (center + Vec3::Y * distance, -Vec3::Z)
+        } else {
+            let eye_dir = orbit_eye_direction(view.camera_yaw);
+            (center + eye_dir * distance, Vec3::Y)
+        };
+        let view = Mat4::look_at_rh(eye, center, up);
         let extent = bounds.max - bounds.min;
         let radius = (extent.length() * 0.5).max(1.0);
         let near = (distance - radius * 2.2).max(0.1);
@@ -51,8 +55,13 @@ pub(crate) fn scene_mvp(
         proj * view
     } else {
         let target = Vec3::new(view.pan_x, 0.0, view.pan_z);
-        let eye = target + orbit_eye_direction(view.camera_yaw) * Vec3::new(2.2, 2.2, 2.2).length();
-        let view_matrix = Mat4::look_at_rh(eye, target, Vec3::Y);
+        let fallback_distance = Vec3::new(2.2, 2.2, 2.2).length() / view.camera_zoom.max(0.05);
+        let (eye, up) = if view.top_down {
+            (target + Vec3::Y * fallback_distance, -Vec3::Z)
+        } else {
+            (target + orbit_eye_direction(view.camera_yaw) * fallback_distance, Vec3::Y)
+        };
+        let view_matrix = Mat4::look_at_rh(eye, target, up);
         let proj = Mat4::perspective_rh(vfov, aspect, 0.1, 100.0);
         proj * view_matrix
     }
@@ -74,6 +83,10 @@ pub(crate) fn drag_pan_delta(
 
     let units_per_px_x = (2.0 * distance * (hfov * 0.5).tan()) / view.viewport_width.max(1) as f32;
     let units_per_px_y = (2.0 * distance * (vfov * 0.5).tan()) / view.viewport_height.max(1) as f32;
+
+    if view.top_down {
+        return (-delta_x * units_per_px_x, -delta_y * units_per_px_y);
+    }
 
     let forward = orbit_forward_direction(view.camera_yaw);
     let right = Vec3::new(-forward.z, 0.0, forward.x);
