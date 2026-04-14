@@ -23,7 +23,7 @@ ncollide3d = "0.33"
 nonempty = { version = "*", path = "../nonempty", features = ["use_serde"] }
 num.workspace = true
 num-traits.workspace = true
-rand = "0.8.5"
+rand = "0.9.3"
 serde = "1.0.8"
 serde_derive = "1.0.8"
 thiserror.workspace = true
