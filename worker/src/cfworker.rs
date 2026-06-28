@@ -1,6 +1,9 @@
 use arpeggio::types::PlayerID;
 use std::collections::HashSet;
+use std::sync::OnceLock;
 
+use openidconnect::core::{CoreIdToken, CoreJsonWebKey};
+use openidconnect::{ClientId, IdTokenVerifier, IssuerUrl, JsonWebKeySet, Nonce};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tracing::{error, info};
@@ -547,11 +550,67 @@ async fn oauth_redirect(req: Request, env: Env) -> Result<Response> {
     Response::redirect(frontend_url)
 }
 
-async fn validate_google_token(id_token: &str, client_id: String) -> anyhow::Result<UserID> {
-    let client = google_oauth::Client::new(client_id);
-    let payload = client
-        .validate_id_token(id_token.to_string())
+/// Google OIDC issuer and JWKS endpoints. The ID tokens issued by Google's
+/// authorization-code flow carry `iss = "https://accounts.google.com"`.
+const GOOGLE_ISSUER_URL: &str = "https://accounts.google.com";
+const GOOGLE_JWKS_URL: &str = "https://www.googleapis.com/oauth2/v3/certs";
+
+/// Google's public signing keys, fetched once per Worker isolate lifetime.
+///
+/// Cloudflare recycles Worker isolates periodically (and on every deploy), so
+/// this static naturally resets and re-fetches fresh keys without any explicit
+/// TTL or invalidation logic. If the initial fetch fails we leave this empty so
+/// the next request retries.
+static GOOGLE_JWKS_CACHE: OnceLock<JsonWebKeySet<CoreJsonWebKey>> = OnceLock::new();
+
+async fn fetch_google_jwks() -> anyhow::Result<JsonWebKeySet<CoreJsonWebKey>> {
+    let http = reqwest::Client::new();
+    let jwks = http
+        .get(GOOGLE_JWKS_URL)
+        .send()
         .await
-        .map_err(|s| anyhow::anyhow!(s))?;
-    Ok(UserID(format!("google_{}", payload.sub)))
+        .map_err(|e| anyhow::anyhow!("JWKS request failed: {e}"))?
+        .error_for_status()
+        .map_err(|e| anyhow::anyhow!("JWKS response status: {e}"))?
+        .json()
+        .await
+        .map_err(|e| anyhow::anyhow!("JWKS decode failed: {e}"))?;
+    Ok(jwks)
+}
+
+async fn validate_google_token(id_token: &str, client_id: String) -> anyhow::Result<UserID> {
+    // Use the cached JWKS if this isolate has already fetched it; otherwise fetch
+    // and populate the cache. We clone the cached set because the verifier takes
+    // ownership of the keys (cloning a handful of JWKS entries per request is
+    // negligible compared to the HTTP fetch this cache avoids). On a cache miss we
+    // populate best-effort: if another concurrent request set it first, ours is
+    // simply discarded.
+    let jwks = match GOOGLE_JWKS_CACHE.get() {
+        Some(cached) => cached.clone(),
+        None => {
+            let fetched = fetch_google_jwks().await?;
+            let _ = GOOGLE_JWKS_CACHE.set(fetched.clone());
+            fetched
+        }
+    };
+
+    let verifier = IdTokenVerifier::new_public_client(
+        ClientId::new(client_id),
+        IssuerUrl::new(GOOGLE_ISSUER_URL.to_string())
+            .map_err(|e| anyhow::anyhow!("invalid issuer url: {e}"))?,
+        jwks,
+    );
+
+    let id_token: CoreIdToken = id_token
+        .parse()
+        .map_err(|e| anyhow::anyhow!("failed to parse id token: {e}"))?;
+
+    // The frontend uses a plain authorization-code request without a nonce, so
+    // there is no worker-side nonce to compare against. Accept any nonce.
+    let claims = id_token
+        .claims(&verifier, |_: Option<&Nonce>| Ok(()))
+        .map_err(|e| anyhow::anyhow!("id token verification failed: {e}"))?;
+
+    let sub = claims.subject().as_str().to_string();
+    Ok(UserID(format!("google_{sub}")))
 }

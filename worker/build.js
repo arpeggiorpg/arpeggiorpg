@@ -7,9 +7,7 @@ const devmode = process.env.ARP_LOCAL_DEV;
 run("cargo", ["install", "-q", "worker-build"]);
 run("worker-build", devmode ? [devmode] : []);
 
-
 function run(f, args) {
-    const result = spawnSync(f, args, {stdio: 'inherit'});
-    if (result.status !== 0) process.exit(result.status);
+  const result = spawnSync(f, args, { stdio: "inherit" });
+  if (result.status !== 0) process.exit(result.status);
 }
-

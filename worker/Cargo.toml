@@ -18,7 +18,7 @@ getrandom = { workspace = true, features = ["js"] }
 # TODO: apparently workers-rs uses tokio now! We should try replacing gloo-timers with regular tokio
 # time code.
 gloo-timers = "0.3.0"
-google-oauth = { version = "1.11.3", features = ["wasm"] }
+openidconnect = { version = "4.0.1", default-features = false, features = ["reqwest", "rustls-tls"] }
 percent-encoding.workspace = true
 reqwest = { version = "0.11.22", features = ["json", "multipart"] }
 serde.workspace = true
@@ -33,6 +33,4 @@ tracing-subscriber = { version = "0.3.17", features = ["time", "json"] }
 tracing-web = "0.1.2"
 # futures-channel = "0.3.28"
 uuid = { workspace = true, features = ["js"] }
-# Depending on a git rev of workers-rs to get some unreleased changes (notably a dependency on
-# wasm-bindgen which they for some reason pin to a specific patch version)
-worker = { version = "0.7.4", features = ["d1"] }
+worker = { version = "0.8.5", features = ["d1"] }
