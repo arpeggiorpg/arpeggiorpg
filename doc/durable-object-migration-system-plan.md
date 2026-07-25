@@ -21,12 +21,15 @@ Deployment chooses between:
 Cloudflare Worker versions and the Git commit identify deployed code; Arpeggio does not add a
 separate release entity.
 
+All production games already use the current SQLite schema. That schema is the new migration
+baseline; historical KV-to-SQL and existing version migrations are not carried forward.
+
 ## Invariants
 
 - A migration and its version update commit atomically.
 - Migrations are ordered, idempotent, local to the Durable Object, and perform no external I/O.
 - Failed migration prevents game loading and leaves the previous storage version intact.
-- The complete supported migration chain remains available so games may skip releases.
+- The complete migration chain from the new baseline remains available so games may skip releases.
 - A dump records its format, source storage version, game revision, all application-owned SQL
   schema and data, application KV entries, and checksum.
 - Dump export is a consistent storage snapshot.
@@ -37,9 +40,23 @@ separate release entity.
 
 ## Phase 1: Core migrations and prereleases
 
+### Establish the baseline
+
+Delete the existing migration implementation, including the legacy KV-to-SQL migration. On first
+open under the new system:
+
+- an empty Durable Object initializes the current schema and SQL metadata table;
+- an unversioned, nonempty Durable Object must match the known production schema, then records the
+  baseline version atomically;
+- any other unversioned schema fails closed.
+
+After recording the SQL baseline version, remove the obsolete `DURABLEGAME_VERSION` KV key. Keep
+the old KV namespace unchanged as a temporary recovery artifact, but remove it from game loading
+and dump generation.
+
 ### Migration API
 
-Replace the current imperative migration code with a small migration registry and one entry point:
+Add a small migration registry and one entry point:
 
 ```rust
 migrate_storage_to_current(storage) -> Result<StorageVersion>
@@ -77,10 +94,12 @@ Durable Object SQL API. Include application tables and preserve SQLite's `NULL`,
 text, and BLOB values. Create tables first, insert rows, then create indexes, triggers, and views.
 Quote identifiers and values correctly.
 
+Keep dump encoding, checksums, export, and atomic restore in the reusable `worker-sqlite-dump`
+crate. Authentication, transport, migration policy, and domain validation remain in `worker`.
+
 Exclude Cloudflare and SQLite internal objects. Export application KV separately because
-Cloudflare's hidden `__cf_kv` table is not readable through SQL. Move the migration version and new
-application metadata into an ordinary SQL metadata table; retain KV import compatibility for
-existing games.
+Cloudflare's hidden `__cf_kv` table is not readable through SQL. Store migration and new application
+metadata in an ordinary SQL metadata table.
 
 Add authenticated internal operations to:
 
@@ -121,6 +140,8 @@ Replace the legacy `[[migrations]]` Durable Object lifecycle history with Cloudf
   environment.
 
 This changes namespace lifecycle configuration only; it does not migrate game data.
+The retained legacy namespace is not bound into normal runtime operations and may be retired
+separately after the new workflow has been verified.
 
 ### Phase 1 commands
 
