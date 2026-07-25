@@ -1,4 +1,5 @@
 .criterion
+.wrangler
 target
 saved-game.yaml
 tasks.json
