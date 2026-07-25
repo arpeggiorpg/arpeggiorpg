@@ -27,9 +27,12 @@ separate release entity.
 - Migrations are ordered, idempotent, local to the Durable Object, and perform no external I/O.
 - Failed migration prevents game loading and leaves the previous storage version intact.
 - The complete supported migration chain remains available so games may skip releases.
-- A dump records its storage version, game revision, logical storage contents, and checksum.
+- A dump records its format, source storage version, game revision, all application-owned SQL
+  schema and data, application KV entries, and checksum.
+- Dump export is a consistent storage snapshot.
 - Restoring a dump is allowed only into an empty Durable Object.
-- Restore reconstructs storage at the dump version, then invokes the normal migration chain.
+- Restore is atomic, reconstructs storage at the dump version, verifies it, then invokes the
+  normal migration chain.
 - Production game logic only observes current-version storage.
 
 ## Phase 1: Core migrations and prereleases
@@ -51,11 +54,33 @@ Add tests for:
 - migration across multiple skipped versions;
 - retry after failure;
 - atomic rollback;
-- equivalence between opening existing storage and restoring the same storage from a dump.
+- equivalence between opening existing storage and restoring the same storage from a dump;
+- dump round trips for `NULL`, integer, real, text, BLOB, quoted identifiers, and application KV.
 
 ### Versioned dumps
 
-Define a logical, versioned `GameDump`; do not execute SQL supplied by a dump.
+Define a versioned storage envelope:
+
+```rust
+struct DurableObjectDump {
+    dump_format: u32,
+    source_storage_version: StorageVersion,
+    game_revision: GameRevision,
+    sql: Vec<String>,
+    kv: Vec<KvEntry>,
+    checksum: Checksum,
+}
+```
+
+Generate the ordered SQL statements by introspecting `sqlite_schema` and reading rows through the
+Durable Object SQL API. Include application tables and preserve SQLite's `NULL`, integer, real,
+text, and BLOB values. Create tables first, insert rows, then create indexes, triggers, and views.
+Quote identifiers and values correctly.
+
+Exclude Cloudflare and SQLite internal objects. Export application KV separately because
+Cloudflare's hidden `__cf_kv` table is not readable through SQL. Move the migration version and new
+application metadata into an ordinary SQL metadata table; retain KV import compatibility for
+existing games.
 
 Add authenticated internal operations to:
 
@@ -64,8 +89,10 @@ Add authenticated internal operations to:
 - migrate and validate the imported game;
 - return its resulting version, revision, and checksum.
 
-The importer creates the schema through the dump's version, restores its rows, then runs the
-remaining migrations in one transaction.
+Export runs as one storage transaction while the Durable Object briefly gates mutations. Import
+validates the envelope, checksum, empty target, and statement limits; restores SQL and KV
+atomically; verifies the restored source-version checksum; then runs the remaining migrations and
+domain validation. It is an internal dump protocol, not a general SQL upload endpoint.
 
 ### Prerelease environment
 
@@ -76,9 +103,9 @@ reference a production Durable Object namespace.
 Deploy the Dioxus frontend to a preprod Pages branch configured for that Worker. Production and
 preprod D1 databases retain Cloudflare Time Travel as an operational recovery backstop.
 
-`copy-game-to-preprod` authenticates to production, exports a consistent dump, imports it into
+`copy-game-to-preprod` authenticates to production, exports a point-in-time dump, imports it into
 preprod, grants only the requesting administrator access, and prints the playable URL and migration
-result. Production remains writable because this is a point-in-time test copy.
+result. Production resumes mutations immediately after the short export transaction.
 
 Every release, including releases without migrations, should be deployed to preprod first.
 
@@ -157,8 +184,9 @@ For each game:
 2. Persistently fence mutations in the source Durable Object and close its WebSockets.
 3. Export a dump at revision `R`.
 4. Import it into a fresh target-generation Durable Object.
-5. Run the normal migration chain and validate the loaded `Game`.
-6. Compare revisions, checksums, resource counts, and domain invariants.
+5. Verify the restored source-version checksum, run the normal migration chain, and load the
+   resulting `Game`.
+6. Compare revisions and domain checksums, resource counts, and invariants.
 7. Atomically update the D1 route to the target and mark it `active`.
 8. Retain the frozen source Durable Object and its Worker generation.
 
