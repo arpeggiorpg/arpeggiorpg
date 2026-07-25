@@ -1,5 +1,13 @@
 [workspace]
-members = ["foldertree", "indexed", "nonempty", "arpeggio", "worker", "arptypes"]
+members = [
+    "foldertree",
+    "indexed",
+    "nonempty",
+    "arpeggio",
+    "worker",
+    "arptypes",
+    "worker-sqlite-dump",
+]
 exclude = ["arpui", "arp3d"]
 resolver = "2"
 

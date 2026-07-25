@@ -3578,6 +3578,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "worker-sqlite-dump"
+version = "0.1.0"
+dependencies = [
+ "js-sys",
+ "serde",
+ "serde-wasm-bindgen",
+ "serde_json",
+ "sha2",
+ "worker",
+]
+
+[[package]]
 name = "worker-sys"
 version = "0.8.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
