@@ -41,5 +41,4 @@ features = ["u32", "i64", "serde", "si"]
 
 [profile.release]
 lto = true
-strip = true
 codegen-units = 1
