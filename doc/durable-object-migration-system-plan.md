@@ -4,7 +4,8 @@
 
 In progress. The Phase 1 storage baseline, migration registry, load gate, retired KV runtime
 removal, declarative Durable Object exports, preprod Worker and D1 configuration, and target-pull
-restore path are implemented.
+restore path are implemented. The preprod Admin copy action and preprod Dioxus Pages build
+configuration are also implemented.
 
 ## Core decision
 
@@ -125,19 +126,18 @@ Object namespace, D1 database, secrets, routes, and frontend configuration. Conf
 - preprod `ARPEGGIOGAME` for its own `ArpeggioGameSql` namespace;
 - preprod `PRODUCTION_ARPEGGIOGAME` as an external Durable Object binding to
   `ArpeggioGameSql` with `script_name = "arpeggio-backend"`;
-- production `PREPROD_ARPEGGIOGAME` as an external binding to `ArpeggioGameSql` with
-  `script_name = "arpeggio-backend-preprod"`.
+- preprod `PRODUCTION_DB` as a binding to production D1 for read-only game metadata lookup.
 
 Deploy the Dioxus frontend to a preprod Pages branch configured for that Worker. Production and
 preprod D1 databases retain Cloudflare Time Travel as an operational recovery backstop.
 
-Add a **Copy to preprod** action to `arpui/src/admin_view.rs`. The production admin endpoint
-authenticates the superuser and invokes the named target through `PREPROD_ARPEGGIOGAME`, passing the
-requesting user and `GameID`. The target pulls from `PRODUCTION_ARPEGGIOGAME`, restores, migrates,
-creates the preprod D1 metadata/access for that administrator, and returns the playable URL,
-storage version, and checksum. The Admin UI displays progress, failure details, and the result.
-It also supports deleting or replacing an existing preprod copy and removes the retired KV-backed
-status fields and columns.
+Add a **Copy from production** action to the preprod `arpui/src/admin_view.rs`. The preprod admin
+endpoint authenticates the superuser, reads the game metadata through `PRODUCTION_DB`, and invokes
+the named target through its own `ARPEGGIOGAME` binding. The target pulls from
+`PRODUCTION_ARPEGGIOGAME`, restores, migrates, creates the preprod D1 metadata/access for that
+administrator, and returns the playable URL, storage version, and checksum. The Admin UI displays
+progress, failure details, and the result. It also supports deleting and recopying a preprod copy
+and removes the retired KV-backed status fields and columns.
 
 Production is never mutated or paused for a preprod copy; the source dump transaction supplies a
 point-in-time snapshot.
@@ -151,7 +151,7 @@ Durable Object lifecycle history:
 
 - declare the existing `ArpeggioGameSql` namespace as `sqlite`;
 - declare preprod's new namespaces as `sqlite`;
-- configure the own-namespace and cross-environment Durable Object bindings above;
+- configure preprod's own namespace plus its production Durable Object and D1 source bindings;
 - configure D1 bindings, variables, and secrets explicitly per environment.
 
 This changes namespace lifecycle configuration only; it does not migrate game data. Do not add a
@@ -163,6 +163,7 @@ permanently delete that namespace and its data on deployment.
 ```text
 just migration-test
 just deploy-to-preprod
+just deploy-dioxus-preprod
 just show-game-storage-version GAME_ID environment="production"
 just deploy-to-production
 ```

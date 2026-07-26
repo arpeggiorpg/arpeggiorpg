@@ -70,6 +70,8 @@ pub async fn restore_from_source(
     let source_dump = fetch_from_source(env, request.source, game_id).await?;
     let (version, game_storage) = restore_dump(state.clone(), source_dump).await?;
     let target_dump = worker_sqlite_dump::export(state.storage()).await?;
+    let frontend_url = env.var("FRONTEND_URL")?.to_string();
+    let game_url = format!("{}/gm/{game_id}", frontend_url.trim_end_matches('/'));
 
     storage::upsert_copied_game(env, game_id, request.user_id, request.metadata.name).await?;
 
@@ -77,6 +79,7 @@ pub async fn restore_from_source(
         CopyToPreprodResult {
             storage_version: version.0,
             checksum: target_dump.checksum,
+            game_url,
         },
         game_storage,
     ))

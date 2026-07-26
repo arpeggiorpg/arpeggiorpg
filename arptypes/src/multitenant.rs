@@ -29,6 +29,7 @@ pub struct GameMetadata {
 pub struct CopyToPreprodResult {
     pub storage_version: u32,
     pub checksum: String,
+    pub game_url: String,
 }
 
 #[derive(Clone, PartialEq, Serialize, Deserialize, Debug)]

@@ -17,7 +17,7 @@ use wasm_cookies::CookieOptions;
 use crate::{GAME_LOGS, GAME_SOURCE, GameSource};
 use arptypes::{
     Game, GameLog, SerializedGame, SerializedPlayerGame,
-    multitenant::{self, GameID, GameIndex, RPIGameRequest, Role},
+    multitenant::{self, CopyToPreprodResult, GameID, GameIndex, RPIGameRequest, Role},
 };
 
 pub static AUTH_TOKEN: GlobalSignal<String> = Signal::global(String::new);
@@ -37,6 +37,16 @@ pub fn rpi_url() -> String {
         .expect("meta RPI_URL tag must exist in index.html (2)");
     meta.get_attribute("content")
         .expect("meta RPI_URL tag must have content")
+}
+
+pub fn is_preprod() -> bool {
+    let Some(document) = web_sys::window().and_then(|window| window.document()) else {
+        return false;
+    };
+    let Ok(Some(meta)) = document.query_selector("meta[name='ARPEGGIO_ENVIRONMENT']") else {
+        return false;
+    };
+    meta.get_attribute("content").as_deref() == Some("preprod")
 }
 
 fn websocket_base_url() -> anyhow::Result<String> {
@@ -73,6 +83,18 @@ pub async fn create_game(name: String) -> Result<GameID, anyhow::Error> {
     }
     let resp: CreateGameResponse = rpi_post("g/create", &name).await?;
     Ok(resp.game_id)
+}
+
+pub async fn copy_game_from_production(
+    game_id: &str,
+) -> Result<CopyToPreprodResult, anyhow::Error> {
+    rpi_post(&format!("superuser/copy-from-production/{game_id}"), &()).await
+}
+
+pub async fn delete_preprod_copy(game_id: &str) -> Result<(), anyhow::Error> {
+    let _: serde_json::Value =
+        rpi_post(&format!("superuser/delete-preprod-copy/{game_id}"), &()).await?;
+    Ok(())
 }
 
 pub use arptypes::multitenant::InvitationCheck;
@@ -286,7 +308,7 @@ fn logout_for_auth_failure() {
     wasm_cookies::set("arpeggio-token", "", &options.with_path("/"));
 }
 
-async fn ensure_authorized_response(
+async fn ensure_successful_response(
     response: reqwest::Response,
     context: &str,
 ) -> Result<reqwest::Response, anyhow::Error> {
@@ -294,6 +316,10 @@ async fn ensure_authorized_response(
     if status == StatusCode::UNAUTHORIZED || status == StatusCode::FORBIDDEN {
         let body = response.text().await.unwrap_or_default();
         logout_for_auth_failure();
+        return Err(anyhow::anyhow!("{context} failed with {status}: {body}"));
+    }
+    if !status.is_success() {
+        let body = response.text().await.unwrap_or_default();
         return Err(anyhow::anyhow!("{context} failed with {status}: {body}"));
     }
     Ok(response)
@@ -310,7 +336,7 @@ pub(crate) async fn rpi_get<T: serde::de::DeserializeOwned>(
         .header("x-arpeggio-auth", AUTH_TOKEN())
         .send()
         .await?;
-    let response = ensure_authorized_response(response, "GET request").await?;
+    let response = ensure_successful_response(response, "GET request").await?;
     response.json().await.map_err(|e| e.into())
 }
 
@@ -327,6 +353,6 @@ async fn rpi_post<B: serde::Serialize, T: serde::de::DeserializeOwned>(
         .json(body)
         .send()
         .await?;
-    let response = ensure_authorized_response(response, "POST request").await?;
+    let response = ensure_successful_response(response, "POST request").await?;
     response.json().await.map_err(|e| e.into())
 }

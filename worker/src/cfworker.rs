@@ -122,8 +122,11 @@ async fn superuser_routes(
 ) -> Result<Response> {
     match path {
         ["games"] => superuser_games(env).await,
-        ["copy-to-preprod", game_id] if req.method() == Method::Post => {
-            copy_game_to_preprod(env, user_id, game_id).await
+        ["copy-from-production", game_id] if req.method() == Method::Post => {
+            copy_game_from_production(env, user_id, game_id).await
+        }
+        ["delete-preprod-copy", game_id] if req.method() == Method::Post => {
+            delete_preprod_copy(env, game_id).await
         }
         ["dump", game_id] => {
             let game_id: GameID = game_id.parse().map_err(rust_error)?;
@@ -137,12 +140,12 @@ async fn superuser_routes(
     }
 }
 
-/// Copy a game to the preprod namespace.
-async fn copy_game_to_preprod(env: Env, user_id: UserID, game_id: &str) -> Result<Response> {
+/// Pull a production game into this Worker's own namespace.
+async fn copy_game_from_production(env: Env, user_id: UserID, game_id: &str) -> Result<Response> {
     let game_id: GameID = game_id.parse().map_err(rust_error)?;
-    let metadata = storage::get_game_metadata(&env, game_id)
+    let metadata = storage::get_game_metadata_from_binding(&env, "PRODUCTION_DB", game_id)
         .await?
-        .ok_or_else(|| rust_error(format!("Game {game_id} does not exist")))?;
+        .ok_or_else(|| rust_error(format!("Production game {game_id} does not exist")))?;
     let payload = serde_json::to_string(&RestoreFromSourceRequest {
         source: DumpSource::Production,
         user_id,
@@ -157,13 +160,32 @@ async fn copy_game_to_preprod(env: Env, user_id: UserID, game_id: &str) -> Resul
         &init,
     )?;
 
-    let namespace = env.durable_object("PREPROD_ARPEGGIOGAME")?;
+    let namespace = env.durable_object("ARPEGGIOGAME")?;
     let id = namespace.id_from_name(&game_id.to_string())?;
     id.get_stub()?.fetch_with_request(request).await
 }
 
+async fn delete_preprod_copy(env: Env, game_id: &str) -> Result<Response> {
+    // This binding exists only in preprod and prevents exposing this operation in production.
+    env.d1("PRODUCTION_DB")?;
+    let game_id: GameID = game_id.parse().map_err(rust_error)?;
+    let stub = durable_object(&env, &game_id.to_string())?;
+    let response = stub
+        .fetch_with_str(&format!("https://internal/superuser/destroy/{game_id}"))
+        .await?;
+    if !(200..300).contains(&response.status_code()) {
+        return Ok(response);
+    }
+    storage::delete_game_records(&env, game_id).await?;
+    Response::from_json(&json!({"status": "deleted"}))
+}
+
 async fn superuser_games(env: Env) -> Result<Response> {
-    let games = storage::list_all_games(&env).await?;
+    let games = if env.d1("PRODUCTION_DB").is_ok() {
+        storage::list_all_games_from_binding(&env, "PRODUCTION_DB").await?
+    } else {
+        storage::list_all_games(&env).await?
+    };
 
     let account_id = env.var("CF_ACCOUNT_ID")?.to_string();
     let api_token = env.var("CF_API_TOKEN")?.to_string();

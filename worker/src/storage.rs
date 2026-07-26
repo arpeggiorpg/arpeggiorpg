@@ -16,7 +16,14 @@ pub async fn check_superuser(env: &Env, user_id: &UserID) -> worker::Result<bool
 }
 
 pub async fn list_all_games(env: &Env) -> worker::Result<Vec<(GameID, GameMetadata)>> {
-    let db = env.d1("DB")?;
+    list_all_games_from_binding(env, "DB").await
+}
+
+pub async fn list_all_games_from_binding(
+    env: &Env,
+    binding: &str,
+) -> worker::Result<Vec<(GameID, GameMetadata)>> {
+    let db = env.d1(binding)?;
     // TODO: pagination
     let statement = db.prepare("SELECT game_id, name FROM game_metadata LIMIT 1000");
     let games: Vec<GameMetadataTable> = statement.all().await?.results()?;
@@ -46,7 +53,15 @@ pub async fn list_games_with_names(env: &Env, user_id: UserID) -> worker::Result
 }
 
 pub async fn get_game_metadata(env: &Env, game_id: GameID) -> worker::Result<Option<GameMetadata>> {
-    let db = env.d1("DB")?;
+    get_game_metadata_from_binding(env, "DB", game_id).await
+}
+
+pub async fn get_game_metadata_from_binding(
+    env: &Env,
+    binding: &str,
+    game_id: GameID,
+) -> worker::Result<Option<GameMetadata>> {
+    let db = env.d1(binding)?;
     let statement = db.prepare("SELECT meta.name FROM game_metadata meta WHERE meta.game_id = ?");
     let statement = statement.bind(&[game_id.to_string().into()])?;
     let meta: Option<GameMetadata> = statement.first(None).await?;
@@ -98,6 +113,18 @@ pub async fn upsert_copied_game(
         )
         .bind(&[user_id.to_string().into(), game_id.to_string().into()])?;
     db.batch(vec![metadata, access]).await?;
+    Ok(())
+}
+
+pub async fn delete_game_records(env: &Env, game_id: GameID) -> worker::Result<()> {
+    let db = env.d1("DB")?;
+    let access = db
+        .prepare("DELETE FROM user_games WHERE game_id = ?")
+        .bind(&[game_id.to_string().into()])?;
+    let metadata = db
+        .prepare("DELETE FROM game_metadata WHERE game_id = ?")
+        .bind(&[game_id.to_string().into()])?;
+    db.batch(vec![access, metadata]).await?;
     Ok(())
 }
 

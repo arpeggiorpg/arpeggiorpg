@@ -1,6 +1,6 @@
 use std::collections::{HashMap, HashSet};
 
-use arptypes::multitenant::GameMetadata;
+use arptypes::multitenant::{CopyToPreprodResult, GameMetadata};
 use dioxus::prelude::*;
 use serde::Deserialize;
 use tracing::info;
@@ -10,7 +10,7 @@ use crate::{
         button::{Button, ButtonVariant},
         modal::Modal,
     },
-    rpi::{current_user, rpi_get},
+    rpi::{copy_game_from_production, current_user, delete_preprod_copy, rpi_get},
 };
 
 #[derive(Clone, Debug, Deserialize)]
@@ -43,7 +43,6 @@ struct SuperuserGamesResponse {
     do_namespaces: NamespacesResponse,
     do_objects: HashMap<String, CloudflareApiResponse>,
     arpeggiogame_ids: HashMap<String, String>,
-    arpeggiogame_legacy_ids: HashMap<String, String>,
 }
 
 #[derive(Clone, Debug)]
@@ -55,10 +54,8 @@ struct OrphanDo {
 
 #[derive(Clone, Copy)]
 struct DoStatus {
-    has_legacy: bool,
-    has_sql: bool,
-    legacy_has_data: bool,
-    sql_has_data: bool,
+    present: bool,
+    has_data: bool,
 }
 
 #[component]
@@ -97,11 +94,37 @@ pub fn AdminPage() -> Element {
 
 #[component]
 fn SuperuserAdminPage() -> Element {
+    let is_preprod = crate::rpi::is_preprod();
     let mut reload_nonce = use_signal(|| 0u32);
     let mut status_message = use_signal(|| None::<String>);
     let mut error_message = use_signal(|| None::<String>);
     let mut last_dump = use_signal(|| None::<String>);
     let mut destroy_target = use_signal(|| None::<(String, String)>);
+    let mut copying_game_id = use_signal(|| None::<String>);
+    let mut copy_result = use_signal(|| None::<(String, CopyToPreprodResult)>);
+    let mut copy_action = use_action(move |(game_id, game_name): (String, String)| async move {
+        copying_game_id.set(Some(game_id.clone()));
+        copy_result.set(None);
+        error_message.set(None);
+        status_message.set(Some(format!("Copying {game_name} from production...")));
+
+        match copy_game_from_production(&game_id).await {
+            Ok(result) => {
+                status_message.set(Some(format!("Copied {game_name} from production.")));
+                copy_result.set(Some((game_name, result)));
+                reload_nonce.set(reload_nonce() + 1);
+            }
+            Err(err) => {
+                status_message.set(None);
+                error_message.set(Some(format!(
+                    "Copy from production failed for {game_name}: {err}"
+                )));
+            }
+        }
+
+        copying_game_id.set(None);
+        Ok::<(), anyhow::Error>(())
+    });
 
     let data: Resource<anyhow::Result<SuperuserGamesResponse>> = use_resource(move || async move {
         let _ = reload_nonce();
@@ -110,7 +133,11 @@ fn SuperuserAdminPage() -> Element {
 
     match &*data.read() {
         Some(Ok(data)) => {
-            let orphan_dos = find_orphan_dos(data);
+            let orphan_dos = if is_preprod {
+                Vec::new()
+            } else {
+                find_orphan_dos(data)
+            };
             rsx! {
                 div {
                     class: "p-6 space-y-6",
@@ -138,12 +165,43 @@ fn SuperuserAdminPage() -> Element {
                             "{msg}"
                         }
                     }
+                    if let Some((game_name, result)) = copy_result() {
+                        div {
+                            class: "rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-900",
+                            div {
+                                class: "font-medium",
+                                "Preprod copy ready: {game_name}"
+                            }
+                            div {
+                                class: "mt-1",
+                                "Storage version: {result.storage_version}"
+                            }
+                            div {
+                                class: "mt-1 break-all font-mono text-xs",
+                                "Checksum: {result.checksum}"
+                            }
+                            a {
+                                class: "mt-2 inline-block font-medium text-blue-700 underline",
+                                href: "{result.game_url}",
+                                target: "_blank",
+                                rel: "noopener noreferrer",
+                                "Open preprod game"
+                            }
+                        }
+                    }
 
                     div {
                         class: "rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden",
                         div {
                             class: "border-b border-gray-200 px-4 py-3",
-                            h2 { class: "font-medium text-gray-900", "All Games in game_metadata" }
+                            h2 {
+                                class: "font-medium text-gray-900",
+                                if is_preprod {
+                                    "Production games"
+                                } else {
+                                    "All Games in game_metadata"
+                                }
+                            }
                         }
                         div {
                             class: "overflow-x-auto",
@@ -154,8 +212,7 @@ fn SuperuserAdminPage() -> Element {
                                     tr {
                                         th { class: "px-4 py-3 text-left font-medium", "Game ID" }
                                         th { class: "px-4 py-3 text-left font-medium", "Name" }
-                                        th { class: "px-4 py-3 text-center font-medium", "Legacy DO" }
-                                        th { class: "px-4 py-3 text-center font-medium", "SQL DO" }
+                                        th { class: "px-4 py-3 text-center font-medium", "Game DO" }
                                         th { class: "px-4 py-3 text-center font-medium", "Actions" }
                                     }
                                 }
@@ -170,6 +227,10 @@ fn SuperuserAdminPage() -> Element {
                                             let game_name_for_dump = game_name.clone();
                                             let game_id_for_destroy = game_id.clone();
                                             let game_name_for_destroy = game_name.clone();
+                                            let game_id_for_copy = game_id.clone();
+                                            let game_name_for_copy = game_name.clone();
+                                            let is_copying = copy_action.pending()
+                                                && copying_game_id().as_deref() == Some(game_id.as_str());
                                             rsx! {
                                                 tr {
                                                     key: "{game_id}",
@@ -184,52 +245,70 @@ fn SuperuserAdminPage() -> Element {
                                                     td {
                                                         class: "px-4 py-3 text-center",
                                                         StatusPill {
-                                                            present: do_status.has_legacy,
-                                                            has_data: do_status.legacy_has_data,
-                                                        }
-                                                    }
-                                                    td {
-                                                        class: "px-4 py-3 text-center",
-                                                        StatusPill {
-                                                            present: do_status.has_sql,
-                                                            has_data: do_status.sql_has_data,
+                                                            present: do_status.present,
+                                                            has_data: do_status.has_data,
                                                         }
                                                     }
                                                     td {
                                                         class: "px-4 py-3",
                                                         div {
                                                             class: "flex items-center justify-center gap-2",
-                                                            Button {
-                                                                variant: ButtonVariant::Ghost,
-                                                                onclick: move |_| {
-                                                                    let game_id = game_id_for_dump.clone();
-                                                                    let game_name = game_name_for_dump.clone();
-                                                                    async move {
-                                                                        status_message.set(Some(format!("Dumping {game_name}...")));
-                                                                        error_message.set(None);
-                                                                        match rpi_get::<serde_json::Value>(&format!("superuser/dump/{game_id}")).await {
-                                                                            Ok(value) => {
-                                                                                let pretty = serde_json::to_string_pretty(&value)
-                                                                                    .unwrap_or_else(|_| value.to_string());
-                                                                                info!(game_id, game_name, dump=?value, "superuser dump");
-                                                                                status_message.set(Some(format!("Dumped {game_name}. Output is shown below and logged.")));
-                                                                                last_dump.set(Some(pretty));
-                                                                            }
-                                                                            Err(err) => {
-                                                                                error_message.set(Some(format!("Dump failed for {game_name}: {err}")));
+                                                            if is_preprod {
+                                                                Button {
+                                                                    variant: ButtonVariant::Outline,
+                                                                    disabled: copy_action.pending() || do_status.has_data,
+                                                                    onclick: move |_| {
+                                                                        copy_action.call((
+                                                                            game_id_for_copy.clone(),
+                                                                            game_name_for_copy.clone(),
+                                                                        ));
+                                                                    },
+                                                                    if is_copying {
+                                                                        "Copying..."
+                                                                    } else if do_status.has_data {
+                                                                        "Copied"
+                                                                    } else {
+                                                                        "Copy from production"
+                                                                    }
+                                                                }
+                                                            }
+                                                            if do_status.has_data {
+                                                                Button {
+                                                                    variant: ButtonVariant::Ghost,
+                                                                    onclick: move |_| {
+                                                                        let game_id = game_id_for_dump.clone();
+                                                                        let game_name = game_name_for_dump.clone();
+                                                                        async move {
+                                                                            status_message.set(Some(format!("Dumping {game_name}...")));
+                                                                            error_message.set(None);
+                                                                            match rpi_get::<serde_json::Value>(&format!("superuser/dump/{game_id}")).await {
+                                                                                Ok(value) => {
+                                                                                    let pretty = serde_json::to_string_pretty(&value)
+                                                                                        .unwrap_or_else(|_| value.to_string());
+                                                                                    info!(game_id, game_name, dump=?value, "superuser dump");
+                                                                                    status_message.set(Some(format!("Dumped {game_name}. Output is shown below and logged.")));
+                                                                                    last_dump.set(Some(pretty));
+                                                                                }
+                                                                                Err(err) => {
+                                                                                    error_message.set(Some(format!("Dump failed for {game_name}: {err}")));
+                                                                                }
                                                                             }
                                                                         }
-                                                                    }
-                                                                },
-                                                                "Dump"
-                                                            }
-                                                            Button {
-                                                                variant: ButtonVariant::Ghost,
-                                                                class: "text-red-700 hover:text-red-800".to_string(),
+                                                                    },
+                                                                    "Dump"
+                                                                }
+                                                                Button {
+                                                                    variant: ButtonVariant::Ghost,
+                                                                    class: "text-red-700 hover:text-red-800".to_string(),
                                                                 onclick: move |_| {
                                                                     destroy_target.set(Some((game_id_for_destroy.clone(), game_name_for_destroy.clone())));
                                                                 },
-                                                                "Destroy"
+                                                                    if is_preprod {
+                                                                        "Delete copy"
+                                                                    } else {
+                                                                        "Destroy"
+                                                                    }
+                                                                }
                                                             }
                                                         }
                                                     }
@@ -312,20 +391,36 @@ fn SuperuserAdminPage() -> Element {
                             class: "p-5 space-y-4",
                             h3 {
                                 class: "text-lg font-semibold text-gray-900",
-                                "Destroy Game"
+                                if is_preprod {
+                                    "Delete preprod copy"
+                                } else {
+                                    "Destroy Game"
+                                }
                             }
                             if let Some((game_id, game_name)) = destroy_target() {
                                 p {
                                     class: "text-sm text-gray-700",
-                                    "This will permanently destroy "
+                                    if is_preprod {
+                                        "This will delete the preprod copy of "
+                                    } else {
+                                        "This will permanently destroy "
+                                    }
                                     span { class: "font-semibold", "{game_name}" }
                                     " ("
                                     span { class: "font-mono text-xs", "{game_id}" }
                                     ")."
                                 }
                                 p {
-                                    class: "text-sm text-red-700",
-                                    "This action is irreversible."
+                                    class: if is_preprod {
+                                        "text-sm text-gray-700"
+                                    } else {
+                                        "text-sm text-red-700"
+                                    },
+                                    if is_preprod {
+                                        "Production is not changed. You can copy the game again afterward."
+                                    } else {
+                                        "This action is irreversible."
+                                    }
                                 }
                                 div {
                                     class: "flex justify-end gap-2",
@@ -342,22 +437,46 @@ fn SuperuserAdminPage() -> Element {
                                             let game_name = game_name.clone();
                                             async move {
                                                 error_message.set(None);
-                                                status_message.set(Some(format!("Destroying {game_name}...")));
-                                                match rpi_get::<serde_json::Value>(&format!("superuser/destroy/{game_id}")).await {
+                                                status_message.set(Some(if is_preprod {
+                                                    format!("Deleting the preprod copy of {game_name}...")
+                                                } else {
+                                                    format!("Destroying {game_name}...")
+                                                }));
+                                                let result = if is_preprod {
+                                                    delete_preprod_copy(&game_id).await
+                                                } else {
+                                                    rpi_get::<serde_json::Value>(&format!("superuser/destroy/{game_id}"))
+                                                        .await
+                                                        .map(|_| ())
+                                                };
+                                                match result {
                                                     Ok(result) => {
                                                         info!(game_id, game_name, destroy=?result, "superuser destroy");
-                                                        status_message.set(Some(format!("Destroyed {game_name}.")));
+                                                        status_message.set(Some(if is_preprod {
+                                                            format!("Deleted the preprod copy of {game_name}.")
+                                                        } else {
+                                                            format!("Destroyed {game_name}.")
+                                                        }));
                                                         destroy_target.set(None);
                                                         last_dump.set(None);
+                                                        copy_result.set(None);
                                                         reload_nonce.set(reload_nonce() + 1);
                                                     }
                                                     Err(err) => {
-                                                        error_message.set(Some(format!("Destroy failed for {game_name}: {err}")));
+                                                        error_message.set(Some(if is_preprod {
+                                                            format!("Deleting the preprod copy failed for {game_name}: {err}")
+                                                        } else {
+                                                            format!("Destroy failed for {game_name}: {err}")
+                                                        }));
                                                     }
                                                 }
                                             }
                                         },
-                                        "Destroy Game"
+                                        if is_preprod {
+                                            "Delete copy"
+                                        } else {
+                                            "Destroy Game"
+                                        }
                                     }
                                 }
                             }
@@ -413,41 +532,27 @@ fn render_has_data(has_stored_data: Option<bool>) -> String {
 }
 
 fn get_do_status(game_id: &str, data: &SuperuserGamesResponse) -> DoStatus {
-    let has_legacy = data.arpeggiogame_legacy_ids.contains_key(game_id);
-    let has_sql = data.arpeggiogame_ids.contains_key(game_id);
-
-    let legacy_do_id = data.arpeggiogame_legacy_ids.get(game_id);
-    let sql_do_id = data.arpeggiogame_ids.get(game_id);
-
-    let mut legacy_has_data = false;
-    let mut sql_has_data = false;
+    let do_id = data.arpeggiogame_ids.get(game_id);
+    let mut present = false;
+    let mut has_data = false;
 
     for objects_response in data.do_objects.values() {
         let Some(objects) = &objects_response.result else {
             continue;
         };
         for obj in objects {
-            if Some(&obj.id) == legacy_do_id {
-                legacy_has_data = obj.has_stored_data.unwrap_or(false);
-            }
-            if Some(&obj.id) == sql_do_id {
-                sql_has_data = obj.has_stored_data.unwrap_or(false);
+            if Some(&obj.id) == do_id {
+                present = true;
+                has_data = obj.has_stored_data.unwrap_or(false);
             }
         }
     }
 
-    DoStatus {
-        has_legacy,
-        has_sql,
-        legacy_has_data,
-        sql_has_data,
-    }
+    DoStatus { present, has_data }
 }
 
 fn find_orphan_dos(data: &SuperuserGamesResponse) -> Vec<OrphanDo> {
-    let known_legacy_do_ids: HashSet<String> =
-        data.arpeggiogame_legacy_ids.values().cloned().collect();
-    let known_sql_do_ids: HashSet<String> = data.arpeggiogame_ids.values().cloned().collect();
+    let known_do_ids: HashSet<String> = data.arpeggiogame_ids.values().cloned().collect();
 
     let mut namespace_id_to_name: HashMap<String, String> = HashMap::new();
     if let Some(namespaces) = &data.do_namespaces.result {
@@ -464,7 +569,7 @@ fn find_orphan_dos(data: &SuperuserGamesResponse) -> Vec<OrphanDo> {
             continue;
         };
         for obj in objects {
-            if known_legacy_do_ids.contains(&obj.id) || known_sql_do_ids.contains(&obj.id) {
+            if known_do_ids.contains(&obj.id) {
                 continue;
             }
             let namespace = namespace_id_to_name

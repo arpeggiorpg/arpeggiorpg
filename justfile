@@ -1,5 +1,7 @@
 set windows-shell := ["powershell.exe", "-NoLogo", "-Command"]
 
+dioxus_bundle_dir := `cd arpui && cargo metadata --format-version 1 --no-deps | jq -r '.target_directory + "/dx/arpui/release/web/public"'`
+
 default:
     just --list
 
@@ -23,8 +25,15 @@ deploy-ui:
 
 deploy-dioxus branch="dioxus":
     cd arpui; cp index.prod.html index.html
-    cd arpui; dx build --release
-    cd arpui; ../worker/node_modules/.bin/wrangler pages deploy ./target/dx/arpui/release/web/public --project-name arpeggio --branch {{branch}} --commit-dirty=true
+    # debug-symbols=false is a workaround for some DWARF error from dx. hopefully this can be removed after upgrading
+    cd arpui; dx build --release --debug-symbols=false
+    cd arpui; ../worker/node_modules/.bin/wrangler pages deploy "{{ dioxus_bundle_dir }}" --project-name arpeggio --branch {{ branch }} --commit-dirty=true
+
+deploy-dioxus-preprod:
+    cd arpui; cp index.preprod.html index.html
+    # debug-symbols=false is a workaround for some DWARF error from dx. hopefully this can be removed after upgrading
+    cd arpui; dx build --release --debug-symbols=false
+    cd arpui; ../worker/node_modules/.bin/wrangler pages deploy "{{ dioxus_bundle_dir }}" --project-name arpeggio --branch preprod --commit-dirty=true
 
 deploy-backend:
     just deploy-to-production

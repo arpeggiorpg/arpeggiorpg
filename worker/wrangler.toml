@@ -9,8 +9,7 @@ command = "node ./build.js"
 
 [durable_objects]
 bindings = [
-  { name = "ARPEGGIOGAME", class_name = "ArpeggioGameSql" },
-  { name = "PREPROD_ARPEGGIOGAME", class_name = "ArpeggioGameSql", script_name = "arpeggio-backend-preprod" }
+  { name = "ARPEGGIOGAME", class_name = "ArpeggioGameSql" }
 ]
 
 [exports.ArpeggioGameSql]
@@ -60,3 +59,8 @@ required = ["GOOGLE_CLIENT_SECRET", "CF_IMAGES_TOKEN", "CF_API_TOKEN"]
 binding = "DB"
 database_name = "arpeggio-users-preprod"
 database_id = "e69f6947-b1cb-45ab-b91d-1b5dc0ad2cc8"
+
+[[env.preprod.d1_databases]]
+binding = "PRODUCTION_DB"
+database_name = "arpeggio-users"
+database_id = "9bbbb737-cabc-44cb-bd76-44c3a5625759"
