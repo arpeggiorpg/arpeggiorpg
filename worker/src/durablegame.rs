@@ -282,6 +282,7 @@ impl ArpeggioGameSql {
                 "test_snapshot_creation_multilog": report(test_snapshot_creation_multilog(self.state.clone()).await),
                 "test_fresh_game_initialization": report(test_fresh_game_initialization(self.state.clone()).await),
                 "test_concurrent_game_storage_initialization": report(self.test_concurrent_game_storage_initialization().await),
+                "test_full_storage_dump": report(dump::test_full_storage_dump(&self.state).await),
             },
             "status": "completed"
         }))?)
