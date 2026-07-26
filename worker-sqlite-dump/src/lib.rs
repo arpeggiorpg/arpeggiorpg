@@ -8,13 +8,12 @@ use std::{cell::RefCell, collections::BTreeMap, rc::Rc};
 use js_sys::Map;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use sha2::{Digest, Sha256};
 use worker::{
     wasm_bindgen::JsValue, Error, Result, SqlStorage, SqlStorageValue, Storage, Transaction,
 };
 
 /// The dump envelope format emitted by this version of the crate.
-pub const DUMP_FORMAT: u32 = 1;
+pub const DUMP_FORMAT: u32 = 2;
 
 const MAX_FINITE_DOUBLE: &str = "1.7976931348623157e308";
 
@@ -34,55 +33,59 @@ impl KvEntry {
     }
 }
 
-#[derive(Serialize)]
-struct DumpPayload<'a> {
-    dump_format: u32,
-    sql: &'a [String],
-    kv: &'a [KvEntry],
+/// One SQLite value represented without embedding application data in SQL text.
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
+#[serde(rename_all = "snake_case", tag = "type", content = "value")]
+pub enum SqlValue {
+    Null,
+    Integer(String),
+    Real(String),
+    /// The exact bytes of a SQLite TEXT value, encoded as hexadecimal.
+    Text(String),
+    /// The bytes of a SQLite BLOB value, encoded as hexadecimal.
+    Blob(String),
 }
 
-/// A portable, checksummed logical snapshot of one Durable Object's application storage.
+/// One ordered operation in a logical SQLite dump.
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
+#[serde(rename_all = "snake_case", tag = "type")]
+pub enum SqlOperation {
+    Statement {
+        sql: String,
+    },
+    Insert {
+        table: String,
+        columns: Vec<String>,
+        rows: Vec<Vec<SqlValue>>,
+    },
+}
+
+/// A portable logical snapshot of one Durable Object's application storage.
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 pub struct Dump {
     pub dump_format: u32,
-    pub sql: Vec<String>,
+    pub sql: Vec<SqlOperation>,
     pub kv: Vec<KvEntry>,
-    pub checksum: String,
 }
 
 impl Dump {
-    /// Builds and checksums a dump from ordered SQL statements and application KV entries.
-    pub fn new(sql: Vec<String>, kv: Vec<KvEntry>) -> Result<Self> {
-        let mut dump = Self {
+    /// Builds a dump from ordered SQL operations and application KV entries.
+    pub fn new(sql: Vec<SqlOperation>, kv: Vec<KvEntry>) -> Self {
+        Self {
             dump_format: DUMP_FORMAT,
             sql,
             kv,
-            checksum: String::new(),
-        };
-        dump.refresh_checksum()?;
-        Ok(dump)
+        }
     }
 
-    /// Verifies the format version and checksum before a dump is accepted.
-    pub fn verify(&self) -> Result<()> {
+    /// Rejects dump envelopes whose representation this crate does not understand.
+    pub fn validate_format(&self) -> Result<()> {
         if self.dump_format != DUMP_FORMAT {
             return Err(rust_error(format!(
                 "Unsupported dump format: {}",
                 self.dump_format
             )));
         }
-        if payload_checksum(self)? != self.checksum {
-            return Err(rust_error("Dump checksum mismatch"));
-        }
-        Ok(())
-    }
-
-    /// Recomputes the checksum after deliberately editing a dump.
-    ///
-    /// Normal exports are already checksummed. This is primarily useful for tests and explicit
-    /// dump transformations.
-    pub fn refresh_checksum(&mut self) -> Result<()> {
-        self.checksum = payload_checksum(self)?;
         Ok(())
     }
 }
@@ -110,23 +113,12 @@ struct CountRow {
 
 #[derive(Debug, Deserialize)]
 struct SequenceRow {
-    name_literal: String,
-    seq_literal: String,
+    name_hex: String,
+    seq: String,
 }
 
 fn rust_error(message: impl ToString) -> Error {
     Error::RustError(message.to_string())
-}
-
-fn payload_checksum(dump: &Dump) -> Result<String> {
-    let payload = DumpPayload {
-        dump_format: dump.dump_format,
-        sql: &dump.sql,
-        kv: &dump.kv,
-    };
-    let encoded = serde_json::to_vec(&payload).map_err(rust_error)?;
-    let digest = Sha256::digest(encoded);
-    Ok(digest.iter().map(|byte| format!("{byte:02x}")).collect())
 }
 
 fn quote_identifier(identifier: &str) -> String {
@@ -142,19 +134,19 @@ fn terminate_statement(statement: &str) -> String {
     }
 }
 
-fn sql_literal_expression(column_name: &str) -> String {
+fn encoded_value_expression(column_name: &str) -> String {
     let column = quote_identifier(column_name);
     format!(
         "CASE typeof({column})
-            WHEN 'null' THEN 'NULL'
+            WHEN 'null' THEN NULL
             WHEN 'integer' THEN CAST({column} AS TEXT)
             WHEN 'real' THEN CASE
                 WHEN {column} > {MAX_FINITE_DOUBLE} THEN '9.0e+999'
                 WHEN {column} < -{MAX_FINITE_DOUBLE} THEN '-9.0e+999'
                 ELSE printf('%!.17g', {column})
             END
-            WHEN 'text' THEN 'CAST(X''' || hex(CAST({column} AS BLOB)) || ''' AS TEXT)'
-            WHEN 'blob' THEN 'X''' || hex({column}) || ''''
+            WHEN 'text' THEN hex(CAST({column} AS BLOB))
+            WHEN 'blob' THEN hex({column})
             ELSE NULL
         END"
     )
@@ -194,21 +186,24 @@ fn table_columns(sql: &SqlStorage, table_name: &str) -> Result<Vec<TableColumn>>
     Ok(columns)
 }
 
-fn dump_table_rows(sql: &SqlStorage, table: &SchemaEntry) -> Result<Vec<String>> {
+fn dump_table_rows(sql: &SqlStorage, table: &SchemaEntry) -> Result<Option<SqlOperation>> {
     let columns = table_columns(sql, &table.name)?;
     if columns.is_empty() {
-        return Ok(Vec::new());
+        return Ok(None);
     }
 
-    let column_list = columns
-        .iter()
-        .map(|column| quote_identifier(&column.name))
-        .collect::<Vec<_>>()
-        .join(", ");
     let value_expressions = columns
         .iter()
         .enumerate()
-        .map(|(index, column)| format!("{} AS value_{index}", sql_literal_expression(&column.name)))
+        .flat_map(|(index, column)| {
+            [
+                format!("typeof({}) AS type_{index}", quote_identifier(&column.name)),
+                format!(
+                    "{} AS value_{index}",
+                    encoded_value_expression(&column.name)
+                ),
+            ]
+        })
         .collect::<Vec<_>>()
         .join(", ");
 
@@ -234,29 +229,60 @@ fn dump_table_rows(sql: &SqlStorage, table: &SchemaEntry) -> Result<Vec<String>>
         quote_identifier(&table.name)
     );
 
-    sql.exec(&query, None)?
+    let rows = sql
+        .exec(&query, None)?
         .raw()
         .map(|row| {
-            let values = row?
-                .into_iter()
-                .map(|value| match value {
-                    SqlStorageValue::String(value) => Ok(value),
-                    other => Err(rust_error(format!(
-                        "Could not encode value in table {}: {other:?}",
-                        table.name
-                    ))),
-                })
-                .collect::<Result<Vec<_>>>()?;
-            Ok(format!(
-                "INSERT INTO {} ({column_list}) VALUES ({});",
-                quote_identifier(&table.name),
-                values.join(", ")
-            ))
+            let encoded = row?;
+            if encoded.len() != columns.len() * 2 {
+                return Err(rust_error(format!(
+                    "Unexpected encoded column count in table {}",
+                    table.name
+                )));
+            }
+            encoded
+                .chunks_exact(2)
+                .map(|pair| decode_sql_value(&table.name, &pair[0], &pair[1]))
+                .collect()
         })
-        .collect()
+        .collect::<Result<Vec<_>>>()?;
+
+    Ok((!rows.is_empty()).then(|| SqlOperation::Insert {
+        table: table.name.clone(),
+        columns: columns.into_iter().map(|column| column.name).collect(),
+        rows,
+    }))
 }
 
-fn dump_sequence(sql: &SqlStorage) -> Result<Vec<String>> {
+fn decode_sql_value(
+    table_name: &str,
+    kind: &SqlStorageValue,
+    encoded: &SqlStorageValue,
+) -> Result<SqlValue> {
+    let SqlStorageValue::String(kind) = kind else {
+        return Err(rust_error(format!(
+            "Could not read SQLite value type in table {table_name}: {kind:?}"
+        )));
+    };
+    let encoded_string = || match encoded {
+        SqlStorageValue::String(value) => Ok(value.clone()),
+        other => Err(rust_error(format!(
+            "Could not encode {kind} value in table {table_name}: {other:?}"
+        ))),
+    };
+    match kind.as_str() {
+        "null" => Ok(SqlValue::Null),
+        "integer" => Ok(SqlValue::Integer(encoded_string()?)),
+        "real" => Ok(SqlValue::Real(encoded_string()?)),
+        "text" => Ok(SqlValue::Text(encoded_string()?)),
+        "blob" => Ok(SqlValue::Blob(encoded_string()?)),
+        other => Err(rust_error(format!(
+            "Unsupported SQLite value type in table {table_name}: {other}"
+        ))),
+    }
+}
+
+fn dump_sequence(sql: &SqlStorage) -> Result<Vec<SqlOperation>> {
     let has_sequence: CountRow = sql
         .exec(
             "SELECT count(*) AS count
@@ -272,8 +298,8 @@ fn dump_sequence(sql: &SqlStorage) -> Result<Vec<String>> {
     let rows: Vec<SequenceRow> = sql
         .exec(
             "SELECT
-               'CAST(X''' || hex(CAST(name AS BLOB)) || ''' AS TEXT)' AS name_literal,
-               CAST(seq AS TEXT) AS seq_literal
+               hex(CAST(name AS BLOB)) AS name_hex,
+               CAST(seq AS TEXT) AS seq
              FROM sqlite_sequence
              ORDER BY name",
             None,
@@ -283,17 +309,26 @@ fn dump_sequence(sql: &SqlStorage) -> Result<Vec<String>> {
         return Ok(Vec::new());
     }
 
-    let mut statements = vec!["DELETE FROM sqlite_sequence;".to_string()];
-    statements.extend(rows.into_iter().map(|row| {
-        format!(
-            "INSERT INTO sqlite_sequence (name, seq) VALUES ({}, {});",
-            row.name_literal, row.seq_literal
-        )
-    }));
-    Ok(statements)
+    Ok(vec![
+        SqlOperation::Statement {
+            sql: "DELETE FROM sqlite_sequence;".to_string(),
+        },
+        SqlOperation::Insert {
+            table: "sqlite_sequence".to_string(),
+            columns: vec!["name".to_string(), "seq".to_string()],
+            rows: rows
+                .into_iter()
+                .map(|row| vec![SqlValue::Text(row.name_hex), SqlValue::Integer(row.seq)])
+                .collect(),
+        },
+    ])
 }
 
-fn build_sql_dump(sql: &SqlStorage) -> Result<Vec<String>> {
+fn statement(sql: impl Into<String>) -> SqlOperation {
+    SqlOperation::Statement { sql: sql.into() }
+}
+
+fn build_sql_dump(sql: &SqlStorage) -> Result<Vec<SqlOperation>> {
     let schema = application_schema(sql)?;
     let tables = schema
         .iter()
@@ -316,7 +351,7 @@ fn build_sql_dump(sql: &SqlStorage) -> Result<Vec<String>> {
 
     let mut statements = tables
         .iter()
-        .map(|table| terminate_statement(&table.sql))
+        .map(|table| statement(terminate_statement(&table.sql)))
         .collect::<Vec<_>>();
     for table in tables {
         statements.extend(dump_table_rows(sql, table)?);
@@ -328,7 +363,7 @@ fn build_sql_dump(sql: &SqlStorage) -> Result<Vec<String>> {
             schema
                 .iter()
                 .filter(|entry| entry.kind == kind)
-                .map(|entry| terminate_statement(&entry.sql)),
+                .map(|entry| statement(terminate_statement(&entry.sql))),
         );
     }
     Ok(statements)
@@ -389,7 +424,7 @@ pub async fn export(storage: Storage) -> Result<Dump> {
         .borrow_mut()
         .take()
         .ok_or_else(|| rust_error("Dump transaction produced no output"))?;
-    Dump::new(sql, kv)
+    Ok(Dump::new(sql, kv))
 }
 
 /// Restores a verified dump into an empty Durable Object in one storage transaction.
@@ -405,7 +440,7 @@ pub async fn restore_and_validate<F>(storage: Storage, dump: Dump, validate: F) 
 where
     F: FnOnce(&SqlStorage) -> Result<()> + 'static,
 {
-    dump.verify()?;
+    dump.validate_format()?;
     let sql = storage.sql();
     let dump = Rc::new(dump);
 
@@ -417,8 +452,8 @@ where
                 if !sql_is_empty(&sql)? || !transaction_is_empty(&transaction).await? {
                     return Err(rust_error("Target Durable Object is not empty"));
                 }
-                for statement in &dump.sql {
-                    sql.exec(statement, None)?;
+                for operation in &dump.sql {
+                    restore_sql_operation(&sql, operation)?;
                 }
                 for entry in &dump.kv {
                     transaction.put(&entry.key, &entry.value).await?;
@@ -430,35 +465,144 @@ where
         .await
 }
 
+fn restore_sql_operation(sql: &SqlStorage, operation: &SqlOperation) -> Result<()> {
+    match operation {
+        SqlOperation::Statement { sql: statement } => {
+            sql.exec(statement, None)?;
+        }
+        SqlOperation::Insert {
+            table,
+            columns,
+            rows,
+        } => {
+            for row in rows {
+                let (statement, bindings) = prepare_insert(table, columns, row)?;
+                sql.exec(&statement, Some(bindings))?;
+            }
+        }
+    }
+    Ok(())
+}
+
+fn prepare_insert(
+    table: &str,
+    columns: &[String],
+    row: &[SqlValue],
+) -> Result<(String, Vec<SqlStorageValue>)> {
+    if columns.len() != row.len() || columns.is_empty() {
+        return Err(rust_error(format!(
+            "Invalid row width for table {table}: {} columns and {} values",
+            columns.len(),
+            row.len()
+        )));
+    }
+
+    let mut bindings = Vec::new();
+    let expressions = row
+        .iter()
+        .map(|value| match value {
+            SqlValue::Null => Ok("NULL".to_string()),
+            SqlValue::Integer(value) => {
+                let value = value.parse::<i64>().map_err(rust_error)?;
+                Ok(value.to_string())
+            }
+            SqlValue::Real(value) => {
+                validate_real_literal(value)?;
+                Ok(value.clone())
+            }
+            SqlValue::Text(value) => {
+                bindings.push(SqlStorageValue::Blob(decode_hex(value)?));
+                Ok("CAST(? AS TEXT)".to_string())
+            }
+            SqlValue::Blob(value) => {
+                bindings.push(SqlStorageValue::Blob(decode_hex(value)?));
+                Ok("?".to_string())
+            }
+        })
+        .collect::<Result<Vec<_>>>()?;
+
+    let columns = columns
+        .iter()
+        .map(|column| quote_identifier(column))
+        .collect::<Vec<_>>()
+        .join(", ");
+    Ok((
+        format!(
+            "INSERT INTO {} ({columns}) VALUES ({})",
+            quote_identifier(table),
+            expressions.join(", ")
+        ),
+        bindings,
+    ))
+}
+
+fn validate_real_literal(value: &str) -> Result<()> {
+    if matches!(value, "9.0e+999" | "-9.0e+999") {
+        return Ok(());
+    }
+    let parsed = value.parse::<f64>().map_err(rust_error)?;
+    if !parsed.is_finite() {
+        return Err(rust_error(format!("Invalid SQLite real value: {value}")));
+    }
+    Ok(())
+}
+
+fn decode_hex(value: &str) -> Result<Vec<u8>> {
+    if !value.len().is_multiple_of(2) {
+        return Err(rust_error("Invalid hexadecimal SQLite value"));
+    }
+    value
+        .as_bytes()
+        .chunks_exact(2)
+        .map(|pair| {
+            let pair = std::str::from_utf8(pair).map_err(rust_error)?;
+            u8::from_str_radix(pair, 16).map_err(rust_error)
+        })
+        .collect()
+}
+
 #[cfg(test)]
 mod tests {
     use serde_json::json;
+    use worker::SqlStorageValue;
 
-    use super::{Dump, KvEntry};
+    use super::{prepare_insert, Dump, KvEntry, SqlOperation, SqlValue, DUMP_FORMAT};
 
     #[test]
-    fn checksum_detects_changes() {
-        let mut dump = Dump::new(
-            vec!["CREATE TABLE example (value INTEGER);".to_string()],
+    fn dump_uses_current_format() {
+        let dump = Dump::new(
+            vec![SqlOperation::Statement {
+                sql: "CREATE TABLE example (value INTEGER);".to_string(),
+            }],
             vec![KvEntry::new("version", json!(1))],
-        )
-        .unwrap();
-
-        dump.verify().unwrap();
-        dump.sql.push("INSERT INTO example VALUES (1);".to_string());
-        assert!(dump.verify().is_err());
-        dump.refresh_checksum().unwrap();
-        dump.verify().unwrap();
+        );
+        assert_eq!(dump.dump_format, DUMP_FORMAT);
+        dump.validate_format().unwrap();
     }
 
     #[test]
-    fn checksum_is_deterministic() {
-        let sql = vec!["CREATE TABLE example (value INTEGER);".to_string()];
-        let kv = vec![KvEntry::new("version", json!(1))];
+    fn large_values_are_bound_instead_of_embedded_in_sql() {
+        let value = vec![b'x'; 256 * 1024];
+        let (statement, bindings) = prepare_insert(
+            "example",
+            &["text".to_string(), "blob".to_string()],
+            &[
+                SqlValue::Text(value.iter().map(|byte| format!("{byte:02X}")).collect()),
+                SqlValue::Blob(value.iter().map(|byte| format!("{byte:02X}")).collect()),
+            ],
+        )
+        .unwrap();
 
         assert_eq!(
-            Dump::new(sql.clone(), kv.clone()).unwrap().checksum,
-            Dump::new(sql, kv).unwrap().checksum
+            statement,
+            "INSERT INTO \"example\" (\"text\", \"blob\") VALUES (CAST(? AS TEXT), ?)"
+        );
+        assert_eq!(
+            bindings,
+            vec![
+                SqlStorageValue::Blob(value.clone()),
+                SqlStorageValue::Blob(value)
+            ]
         );
     }
 }
