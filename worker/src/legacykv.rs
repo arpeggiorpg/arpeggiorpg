@@ -116,18 +116,6 @@ pub async fn fetch_raw_legacy_dump_str(
     Ok(Some(resp.text().await?))
 }
 
-pub async fn fetch_raw_legacy_dump(
-    env: Env,
-    game_id: GameID,
-) -> anyhow::Result<Option<serde_json::Value>> {
-    let text = fetch_raw_legacy_dump_str(env, game_id).await?;
-    if let Some(text) = text {
-        let json = serde_json::from_str(&text)?;
-        return Ok(Some(json));
-    }
-    Ok(None)
-}
-
 pub async fn fetch_legacy_dump(
     env: Env,
     game_id: GameID,

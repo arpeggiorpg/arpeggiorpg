@@ -173,10 +173,7 @@ impl ArpeggioGameSql {
         info!(event="request", method=?req.method(), path=?path, "Request (MESSAGE)");
 
         match path.split('/').collect::<Vec<_>>()[1..] {
-            ["superuser", "dump", game_id] => {
-                let game_id = game_id.parse::<GameID>()?;
-                dump::dump_storage(&self.state, &self.env, game_id).await
-            }
+            ["superuser", "dump", _game_id] => dump::dump_storage(&self.state).await,
             ["superuser", "destroy", _game_id] => {
                 self.state.storage().delete_all().await?;
                 Ok(Response::from_json(
@@ -250,6 +247,7 @@ impl ArpeggioGameSql {
                 "test_snapshot_creation": report(test_snapshot_creation(self.state.clone()).await),
                 "test_snapshot_creation_multilog": report(test_snapshot_creation_multilog(self.state.clone()).await),
                 "test_fresh_game_initialization": report(test_fresh_game_initialization(self.state.clone(), self.env.clone()).await),
+                "test_full_storage_dump": report(dump::test_full_storage_dump(&self.state).await),
             },
             "status": "completed"
         }))?)
