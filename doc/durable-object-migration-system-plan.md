@@ -3,7 +3,8 @@
 ## Status
 
 In progress. The Phase 1 storage baseline, migration registry, load gate, retired KV runtime
-removal, and declarative production Durable Object export are implemented.
+removal, declarative Durable Object exports, preprod Worker and D1 configuration, and target-pull
+restore path are implemented.
 
 ## Core decision
 

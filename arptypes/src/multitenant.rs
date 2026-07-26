@@ -25,6 +25,12 @@ pub struct GameMetadata {
     pub name: String,
 }
 
+#[derive(Clone, PartialEq, Eq, Serialize, Deserialize, Debug)]
+pub struct CopyToPreprodResult {
+    pub storage_version: u32,
+    pub checksum: String,
+}
+
 #[derive(Clone, PartialEq, Serialize, Deserialize, Debug)]
 pub struct GameAndMetadata {
     pub game: crate::SerializedGame,

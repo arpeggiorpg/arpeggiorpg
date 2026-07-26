@@ -9,6 +9,7 @@ mod dump;
 mod durablegame;
 mod durablestorage;
 mod images;
+mod restore;
 mod sqlite;
 mod storage;
 mod tests;

@@ -4,7 +4,7 @@ use worker::Env;
 use arpeggio::types::PlayerID;
 use arptypes::multitenant::{GameID, GameMetadata, GameProfile, Role, UserID};
 
-pub async fn check_superuser(env: &Env, user_id: UserID) -> worker::Result<bool> {
+pub async fn check_superuser(env: &Env, user_id: &UserID) -> worker::Result<bool> {
     let db = env.d1("DB")?;
     let statement = db.prepare("SELECT 1 is_su FROM superusers WHERE user_id = ?");
     let statement = statement.bind(&[user_id.to_string().into()])?;
@@ -73,6 +73,31 @@ pub async fn create_game(
     let statement = db.prepare("INSERT INTO game_metadata (game_id, name) VALUES (?, ?)");
     let statement = statement.bind(&[game_id.to_string().into(), name.into()])?;
     statement.run().await?;
+    Ok(())
+}
+
+pub async fn upsert_copied_game(
+    env: &Env,
+    game_id: GameID,
+    user_id: UserID,
+    name: String,
+) -> worker::Result<()> {
+    let db = env.d1("DB")?;
+    let metadata = db
+        .prepare(
+            "INSERT INTO game_metadata (game_id, name) VALUES (?, ?)
+             ON CONFLICT (game_id) DO UPDATE SET name = excluded.name",
+        )
+        .bind(&[game_id.to_string().into(), name.into()])?;
+    let access = db
+        .prepare(
+            "INSERT INTO user_games (user_id, game_id, profile_name, role)
+             VALUES (?, ?, 'GM', 'GM')
+             ON CONFLICT (user_id, game_id, role)
+             DO UPDATE SET profile_name = excluded.profile_name",
+        )
+        .bind(&[user_id.to_string().into(), game_id.to_string().into()])?;
+    db.batch(vec![metadata, access]).await?;
     Ok(())
 }
 

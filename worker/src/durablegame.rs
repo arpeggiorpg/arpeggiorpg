@@ -22,9 +22,10 @@ use crate::{
         test_empty_storage_baseline, test_migration_chain_and_rollback,
         test_production_schema_adoption, test_untrusted_unversioned_storage_rejected,
     },
-    dump::{self},
+    dump,
     durablestorage::GameStorage,
     images::CFImageService,
+    restore::{self, RestoreFromSourceRequest},
     rust_error, storage, wsrpi,
 };
 
@@ -186,6 +187,10 @@ impl ArpeggioGameSql {
 
         match path.split('/').collect::<Vec<_>>()[1..] {
             ["superuser", "dump", _game_id] => dump::dump_storage(&self.state).await,
+            ["internal", "restore-from-source", game_id] if req.method() == Method::Post => {
+                let game_id = game_id.parse::<GameID>()?;
+                self.restore_from_source(req, game_id).await
+            }
             ["superuser", "destroy", _game_id] => {
                 let _initialization_guard = self.game_storage_initialization.lock().await;
                 self.state.storage().delete_all().await?;
@@ -245,6 +250,20 @@ impl ArpeggioGameSql {
         }
     }
 
+    async fn restore_from_source(
+        &self,
+        mut req: Request,
+        game_id: GameID,
+    ) -> anyhow::Result<Response> {
+        let restore_request: RestoreFromSourceRequest = req.json().await?;
+        let _initialization_guard = self.game_storage_initialization.lock().await;
+        let (result, game_storage) =
+            restore::restore_from_source(&self.env, self.state.clone(), game_id, restore_request)
+                .await?;
+        *self.game_storage.borrow_mut() = Some(game_storage);
+        Ok(Response::from_json(&result)?)
+    }
+
     async fn check_invitation(&self, invitation_id: &str) -> anyhow::Result<Response> {
         let invitation_id = invitation_id.parse()?;
         let game_storage = self.get_game_storage().await?;
@@ -271,6 +290,12 @@ impl ArpeggioGameSql {
         Ok(())
     }
 
+    async fn test_dump_restore_and_load(&self) -> anyhow::Result<()> {
+        let _initialization_guard = self.game_storage_initialization.lock().await;
+        *self.game_storage.borrow_mut() = None;
+        restore::test_dump_restore_and_load(self.state.clone()).await
+    }
+
     async fn run_tests(&self) -> anyhow::Result<Response> {
         Ok(Response::from_json(&json!({
             "results": {
@@ -283,6 +308,7 @@ impl ArpeggioGameSql {
                 "test_fresh_game_initialization": report(test_fresh_game_initialization(self.state.clone()).await),
                 "test_concurrent_game_storage_initialization": report(self.test_concurrent_game_storage_initialization().await),
                 "test_full_storage_dump": report(dump::test_full_storage_dump(&self.state).await),
+                "test_dump_restore_and_load": report(self.test_dump_restore_and_load().await),
             },
             "status": "completed"
         }))?)

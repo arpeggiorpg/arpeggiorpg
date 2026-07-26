@@ -27,13 +27,22 @@ deploy-dioxus branch="dioxus":
     cd arpui; ../worker/node_modules/.bin/wrangler pages deploy ./target/dx/arpui/release/web/public --project-name arpeggio --branch {{branch}} --commit-dirty=true
 
 deploy-backend:
-    cd worker;  ./node_modules/.bin/wrangler deploy
+    just deploy-to-production
+
+deploy-to-preprod:
+    cd worker; ./node_modules/.bin/wrangler deploy --env preprod
+
+deploy-to-production:
+    cd worker; ./node_modules/.bin/wrangler deploy --env=""
 
 create-schema-local:
     cd worker; ./node_modules/.bin/wrangler d1 execute DB --local --file=./schema.sql
 
 create-schema-production:
-    cd worker; ./node_modules/.bin/wrangler d1 execute DB --file=./schema.sql
+    cd worker; ./node_modules/.bin/wrangler d1 execute DB --env="" --remote --file=./schema.sql
+
+create-schema-preprod:
+    cd worker; ./node_modules/.bin/wrangler d1 execute DB --env preprod --remote --file=./schema.sql
 
 worker-tests:
     curl http://localhost:8787/test

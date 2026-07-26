@@ -8,9 +8,15 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tracing::{error, info};
 use uuid::Uuid;
-use worker::{event, Context, Cors, Env, Method, Request, Response, Result};
+use worker::{
+    event, wasm_bindgen::JsValue, Context, Cors, Env, Method, Request, RequestInit, Response,
+    Result,
+};
 
-use crate::{rust_error, storage};
+use crate::{
+    restore::{DumpSource, RestoreFromSourceRequest},
+    rust_error, storage,
+};
 use arptypes::multitenant::{
     GameID, GameList, GameMetadata, GameProfile, InvitationCheck, Role, UserID,
 };
@@ -72,10 +78,10 @@ async fn http_routes(req: Request, env: Env) -> Result<Response> {
     match parts {
         ["me"] => current_user(env, user_id).await,
         ["superuser", rest @ ..] => {
-            if !storage::check_superuser(&env, user_id).await? {
+            if !storage::check_superuser(&env, &user_id).await? {
                 return Response::error("You ain't super", 401);
             }
-            superuser_routes(req, env, rest).await
+            superuser_routes(req, env, user_id, rest).await
         }
         ["request-websocket", game_id, role] => {
             request_websocket(req, env, game_id, user_id, role).await
@@ -94,7 +100,7 @@ async fn http_routes(req: Request, env: Env) -> Result<Response> {
 }
 
 async fn current_user(env: Env, user_id: UserID) -> Result<Response> {
-    let is_superuser = storage::check_superuser(&env, user_id).await?;
+    let is_superuser = storage::check_superuser(&env, &user_id).await?;
     Response::from_json(&CurrentUserResponse { is_superuser })
 }
 
@@ -108,9 +114,17 @@ async fn test_endpoint(req: Request, env: Env) -> Result<Response> {
     forward_to_do(req, env, test_game_id).await
 }
 
-async fn superuser_routes(req: Request, env: Env, path: &[&str]) -> Result<Response> {
+async fn superuser_routes(
+    req: Request,
+    env: Env,
+    user_id: UserID,
+    path: &[&str],
+) -> Result<Response> {
     match path {
         ["games"] => superuser_games(env).await,
+        ["copy-to-preprod", game_id] if req.method() == Method::Post => {
+            copy_game_to_preprod(env, user_id, game_id).await
+        }
         ["dump", game_id] => {
             let game_id: GameID = game_id.parse().map_err(rust_error)?;
             forward_to_do(req, env, game_id).await
@@ -121,6 +135,31 @@ async fn superuser_routes(req: Request, env: Env, path: &[&str]) -> Result<Respo
         }
         _ => Response::error(format!("No route matched {path:?}"), 404),
     }
+}
+
+/// Copy a game to the preprod namespace.
+async fn copy_game_to_preprod(env: Env, user_id: UserID, game_id: &str) -> Result<Response> {
+    let game_id: GameID = game_id.parse().map_err(rust_error)?;
+    let metadata = storage::get_game_metadata(&env, game_id)
+        .await?
+        .ok_or_else(|| rust_error(format!("Game {game_id} does not exist")))?;
+    let payload = serde_json::to_string(&RestoreFromSourceRequest {
+        source: DumpSource::Production,
+        user_id,
+        metadata,
+    })
+    .map_err(rust_error)?;
+    let mut init = RequestInit::new();
+    init.with_method(Method::Post)
+        .with_body(Some(JsValue::from_str(&payload)));
+    let request = Request::new_with_init(
+        &format!("https://internal/internal/restore-from-source/{game_id}"),
+        &init,
+    )?;
+
+    let namespace = env.durable_object("PREPROD_ARPEGGIOGAME")?;
+    let id = namespace.id_from_name(&game_id.to_string())?;
+    id.get_stub()?.fetch_with_request(request).await
 }
 
 async fn superuser_games(env: Env) -> Result<Response> {
