@@ -2,7 +2,8 @@
 
 ## Status
 
-In progress. The Phase 1 storage baseline, migration registry, and load gate are implemented.
+In progress. The Phase 1 storage baseline, migration registry, load gate, retired KV runtime
+removal, and declarative production Durable Object export are implemented.
 
 ## Core decision
 
@@ -42,17 +43,16 @@ baseline; historical KV-to-SQL and existing version migrations are not carried f
 
 ### Establish the baseline
 
-Delete the existing migration implementation, including the legacy KV-to-SQL migration. On first
-open under the new system:
+Delete the old KV-backed Durable Object class, binding, and KV-to-SQL migration. The provisioned
+namespace remains unbound; deleting its stored data is a separate, explicitly reviewed Cloudflare
+lifecycle operation.
+
+On first open under the new system:
 
 - an empty Durable Object initializes the current schema and SQL metadata table;
-- an unversioned, nonempty Durable Object must match the known production schema, then records the
-  baseline version atomically;
-- any other unversioned schema fails closed.
-
-After recording the SQL baseline version, remove the obsolete `DURABLEGAME_VERSION` KV key. Keep
-the old KV namespace unchanged as a temporary recovery artifact, but remove it from game loading
-and dump generation.
+- an existing SQLite Durable Object with `DURABLEGAME_VERSION == 1` records SQL baseline version 1
+  and removes that obsolete KV key atomically;
+- other unversioned, nonempty storage fails closed.
 
 ### Migration API
 
@@ -130,18 +130,17 @@ Every release, including releases without migrations, should be deployed to prep
 
 ### Wrangler configuration
 
-Replace the legacy `[[migrations]]` Durable Object lifecycle history with Cloudflare's declarative
-`[exports]` configuration:
+Use Cloudflare's declarative `[exports]` configuration instead of the legacy `[[migrations]]`
+Durable Object lifecycle history:
 
-- retain the existing `ArpeggioGame` namespace as `legacy-kv`;
-- retain `ArpeggioGameSql` as `sqlite`;
+- declare the existing `ArpeggioGameSql` namespace as `sqlite`;
 - declare preprod's new namespaces as `sqlite`;
 - configure Durable Object bindings, D1 bindings, variables, and secrets explicitly per
   environment.
 
-This changes namespace lifecycle configuration only; it does not migrate game data.
-The retained legacy namespace is not bound into normal runtime operations and may be retired
-separately after the new workflow has been verified.
+This changes namespace lifecycle configuration only; it does not migrate game data. Do not add a
+`deleted` tombstone for the retired KV-backed class as part of this phase: Cloudflare would
+permanently delete that namespace and its data on deployment.
 
 ### Phase 1 commands
 

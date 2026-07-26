@@ -176,7 +176,6 @@ async fn superuser_games(env: Env) -> Result<Response> {
 
     // Create mapping of GameIDs to Durable Object IDs
     let mut arpeggiogame_ids = json!({});
-    let mut arpeggiogame_legacy_ids = json!({});
 
     for game in &games {
         let game_id_str = game.0.to_string();
@@ -187,21 +186,13 @@ async fn superuser_games(env: Env) -> Result<Response> {
                 arpeggiogame_ids[&game_id_str] = json!(do_id.to_string());
             }
         }
-
-        // Get ARPEGGIOGAME_LEGACY durable object ID
-        if let Ok(namespace) = env.durable_object("ARPEGGIOGAME_LEGACY") {
-            if let Ok(do_id) = namespace.id_from_name(&game_id_str) {
-                arpeggiogame_legacy_ids[&game_id_str] = json!(do_id.to_string());
-            }
-        }
     }
 
     Response::from_json(&json!({
         "games": games,
         "do_objects": do_objects,
         "do_namespaces": do_namespaces,
-        "arpeggiogame_ids": arpeggiogame_ids,
-        "arpeggiogame_legacy_ids": arpeggiogame_legacy_ids
+        "arpeggiogame_ids": arpeggiogame_ids
     }))
 }
 
@@ -310,7 +301,7 @@ fn durable_object(env: &Env, game_id: &str) -> Result<worker::Stub> {
     id.get_stub()
 }
 
-/// Forward a simple request to the ArpeggioGame durable object
+/// Forward a simple request to the SQLite-backed game Durable Object.
 async fn forward_to_do(req: Request, env: Env, game_id: GameID) -> Result<Response> {
     let stub = durable_object(&env, &game_id.to_string())?;
     stub.fetch_with_request(req).await

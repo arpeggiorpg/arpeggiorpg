@@ -9,7 +9,6 @@ mod dump;
 mod durablegame;
 mod durablestorage;
 mod images;
-mod legacykv;
 mod sqlite;
 mod storage;
 mod tests;
