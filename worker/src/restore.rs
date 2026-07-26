@@ -5,7 +5,7 @@ use std::rc::Rc;
 use arptypes::multitenant::{CopyToPreprodResult, GameID, GameMetadata, UserID};
 use serde::{Deserialize, Serialize};
 use worker::{Env, Error, State};
-use worker_sqlite_dump::Dump;
+use worker_sqlite_dump::{Dump, SqlOperation};
 
 use crate::{domigrations::StorageVersion, durablestorage::GameStorage, storage};
 
@@ -45,7 +45,7 @@ async fn fetch_from_source(env: &Env, source: DumpSource, game_id: GameID) -> wo
         )));
     }
     let dump: Dump = response.json().await?;
-    dump.verify()?;
+    dump.validate_format()?;
     Ok(dump)
 }
 
@@ -69,7 +69,6 @@ pub async fn restore_from_source(
 ) -> anyhow::Result<(CopyToPreprodResult, Rc<GameStorage>)> {
     let source_dump = fetch_from_source(env, request.source, game_id).await?;
     let (version, game_storage) = restore_dump(state.clone(), source_dump).await?;
-    let target_dump = worker_sqlite_dump::export(state.storage()).await?;
     let frontend_url = env.var("FRONTEND_URL")?.to_string();
     let game_url = format!("{}/gm/{game_id}", frontend_url.trim_end_matches('/'));
 
@@ -78,7 +77,6 @@ pub async fn restore_from_source(
     Ok((
         CopyToPreprodResult {
             storage_version: version.0,
-            checksum: target_dump.checksum,
             game_url,
         },
         game_storage,
@@ -96,8 +94,9 @@ pub async fn test_dump_restore_and_load(state: Rc<State>) -> anyhow::Result<()> 
 
     state.storage().delete_all().await?;
     let mut broken_dump = source_dump.clone();
-    broken_dump.sql.push("THIS IS NOT VALID SQL;".to_string());
-    broken_dump.refresh_checksum()?;
+    broken_dump.sql.push(SqlOperation::Statement {
+        sql: "THIS IS NOT VALID SQL;".to_string(),
+    });
     anyhow::ensure!(
         restore_dump(state.clone(), broken_dump).await.is_err(),
         "invalid dump unexpectedly restored"

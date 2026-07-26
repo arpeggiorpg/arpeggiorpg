@@ -33,8 +33,8 @@ baseline; historical KV-to-SQL and existing version migrations are not carried f
 - Migrations are ordered, idempotent, local to the Durable Object, and perform no external I/O.
 - Failed migration prevents game loading and leaves the previous storage version intact.
 - The complete migration chain from the new baseline remains available so games may skip releases.
-- A dump records its format, all application-owned SQL schema and data, application KV entries,
-  and checksum. Its storage version is contained in the dumped storage metadata.
+- A dump records its format, all application-owned SQL schema and data, and application KV
+  entries. Its storage version is contained in the dumped storage metadata.
 - Dump export is a consistent storage snapshot.
 - Restoring a dump is allowed only into an empty Durable Object.
 - Restore is atomic, reconstructs storage at the dump version, verifies it, then invokes the
@@ -85,22 +85,21 @@ Use the reusable crate's existing dump:
 ```rust
 struct Dump {
     dump_format: u32,
-    sql: Vec<String>,
+    sql: Vec<SqlOperation>,
     kv: Vec<KvEntry>,
-    checksum: String,
 }
 ```
 
-Generate the ordered SQL statements by introspecting `sqlite_schema` and reading rows through the
-Durable Object SQL API. Include application tables and preserve SQLite's `NULL`, integer, real,
-text, and BLOB values. Create tables first, insert rows, then create indexes, triggers, and views.
-Quote identifiers and values correctly.
+Generate ordered schema statements and structured table rows by introspecting `sqlite_schema` and
+reading rows through the Durable Object SQL API. Include application tables and preserve SQLite's
+`NULL`, integer, real, text, and BLOB values. Create tables first, insert rows using bound
+parameters, then create indexes, triggers, and views. Quote identifiers correctly.
 
-Keep dump encoding, checksums, export, and atomic restore in the reusable `worker-sqlite-dump`
-crate. Authentication, transport, migration policy, and domain validation remain in `worker`.
-Reuse the full-state debug dump endpoint as the source export operation. Do not duplicate storage
-version or game revision in the dump envelope: migration metadata is part of the dumped SQL or KV,
-and revision fencing belongs to Phase 2.
+Keep dump encoding, export, and atomic restore in the reusable `worker-sqlite-dump` crate.
+Authentication, transport, migration policy, and domain validation remain in `worker`. Reuse the
+full-state debug dump endpoint as the source export operation. Do not duplicate storage version or
+game revision in the dump envelope: migration metadata is part of the dumped SQL or KV, and
+revision fencing belongs to Phase 2.
 
 Exclude Cloudflare and SQLite internal objects. Export application KV separately because
 Cloudflare's hidden `__cf_kv` table is not readable through SQL. Store migration and new application
@@ -110,10 +109,10 @@ Add a target operation that accepts an allowlisted source binding and logical `G
 
 1. obtains the source stub from that binding using the same named `GameID`;
 2. fetches the dump directly from the source Durable Object;
-3. verifies the checksum and requires empty target storage;
+3. requires empty target storage;
 4. restores SQL and KV atomically;
 5. runs `migrate_storage_to_current` and loads the game to validate deserialization and log replay;
-6. returns the resulting storage version and checksum.
+6. returns the resulting storage version.
 
 The coordinator never downloads or uploads the dump. A failed target remains unrouted and may be
 deleted and retried.
@@ -135,9 +134,9 @@ Add a **Copy from production** action to the preprod `arpui/src/admin_view.rs`. 
 endpoint authenticates the superuser, reads the game metadata through `PRODUCTION_DB`, and invokes
 the named target through its own `ARPEGGIOGAME` binding. The target pulls from
 `PRODUCTION_ARPEGGIOGAME`, restores, migrates, creates the preprod D1 metadata/access for that
-administrator, and returns the playable URL, storage version, and checksum. The Admin UI displays
-progress, failure details, and the result. It also supports deleting and recopying a preprod copy
-and removes the retired KV-backed status fields and columns.
+administrator, and returns the playable URL and storage version. The Admin UI displays progress,
+failure details, and the result. It also supports deleting and recopying a preprod copy and removes
+the retired KV-backed status fields and columns.
 
 Production is never mutated or paused for a preprod copy; the source dump transaction supplies a
 point-in-time snapshot.
@@ -214,8 +213,8 @@ game_id, generation, durable_object_id, state, migration_id
 `state` is at least `active` or `migrating`. Conditional D1 updates prevent concurrent migrations
 and block new connections while a game is migrating.
 
-Record migration runs with source and target generations, object IDs, revisions, checksums, code
-version, status, and error.
+Record migration runs with source and target generations, object IDs, revisions, code version,
+status, and error.
 
 ### Generation migration
 
@@ -228,7 +227,7 @@ For each game:
    `GameID` to pull.
 5. The target fetches the dump directly, restores it, runs the normal migration chain, and loads
    the resulting `Game`.
-6. Compare revisions and domain checksums, resource counts, and invariants.
+6. Compare revisions, resource counts, and invariants.
 7. Atomically update the D1 route to the target and mark it `active`.
 8. Retain the frozen source Durable Object and its Worker generation.
 

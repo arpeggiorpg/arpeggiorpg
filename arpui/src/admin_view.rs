@@ -176,10 +176,6 @@ fn SuperuserAdminPage() -> Element {
                                 class: "mt-1",
                                 "Storage version: {result.storage_version}"
                             }
-                            div {
-                                class: "mt-1 break-all font-mono text-xs",
-                                "Checksum: {result.checksum}"
-                            }
                             a {
                                 class: "mt-2 inline-block font-medium text-blue-700 underline",
                                 href: "{result.game_url}",
