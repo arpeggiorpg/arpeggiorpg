@@ -4,6 +4,7 @@ use std::{cell::RefCell, collections::HashMap, rc::Rc};
 use anyhow::anyhow;
 use arpeggio::types::PlayerID;
 use arptypes::multitenant::{GameID, GameMetadata, Role};
+use futures_util::lock::Mutex;
 use serde_json::json;
 use tracing::{error, info};
 use uuid::Uuid;
@@ -17,7 +18,14 @@ use crate::durablestorage::{
     test_fresh_game_initialization, test_snapshot_creation, test_snapshot_creation_multilog,
 };
 use crate::{
-    dump, durablestorage::GameStorage, images::CFImageService, rust_error, storage, wsrpi,
+    domigrations::{
+        test_empty_storage_baseline, test_migration_chain_and_rollback,
+        test_production_schema_adoption, test_untrusted_unversioned_storage_rejected,
+    },
+    dump::{self},
+    durablestorage::GameStorage,
+    images::CFImageService,
+    rust_error, storage, wsrpi,
 };
 
 /// Durable Object for Arpeggio Games, using SQLite-backend storage.
@@ -25,6 +33,7 @@ use crate::{
 pub struct ArpeggioGameSql {
     state: Rc<State>,
     game_storage: RefCell<Option<Rc<GameStorage>>>,
+    game_storage_initialization: Mutex<()>,
     ws_tokens: RefCell<HashMap<Uuid, WSUser>>,
     metadata: RefCell<Option<GameMetadata>>,
     env: Env,
@@ -40,6 +49,7 @@ impl DurableObject for ArpeggioGameSql {
     fn new(state: State, env: Env) -> Self {
         Self {
             game_storage: RefCell::new(None),
+            game_storage_initialization: Mutex::new(()),
             state: Rc::new(state),
             ws_tokens: RefCell::new(HashMap::new()),
             metadata: RefCell::new(None),
@@ -76,7 +86,7 @@ impl DurableObject for ArpeggioGameSql {
                 metadata
             }
         };
-        let game_storage = self.get_game_storage(game_id).await.map_err(rust_error)?;
+        let game_storage = self.get_game_storage().await.map_err(rust_error)?;
 
         let player_id =
             get_tag("player_id:", &self.state, &ws).ok_or("No player_id tag found on WebSocket")?;
@@ -152,20 +162,22 @@ pub fn get_tag(prefix: &str, state: &State, ws: &WebSocket) -> Option<String> {
 }
 
 impl ArpeggioGameSql {
-    async fn get_game_storage(&self, game_id: GameID) -> anyhow::Result<Rc<GameStorage>> {
-        crate::domigrations::migrate(self.env.clone(), &self.state, game_id)
-            .await
-            .map_err(rust_error)?;
-        let game_storage = self.game_storage.borrow().clone();
-        match game_storage {
-            Some(game_storage) => Ok(game_storage),
-            None => {
-                let storage = GameStorage::load(self.state.clone()).map_err(rust_error)?;
-                let rc_storage = Rc::new(storage);
-                *self.game_storage.borrow_mut() = Some(rc_storage.clone());
-                Ok(rc_storage)
-            }
+    async fn get_game_storage(&self) -> anyhow::Result<Rc<GameStorage>> {
+        if let Some(game_storage) = self.game_storage.borrow().clone() {
+            return Ok(game_storage);
         }
+
+        let _initialization_guard = self.game_storage_initialization.lock().await;
+        if let Some(game_storage) = self.game_storage.borrow().clone() {
+            return Ok(game_storage);
+        }
+
+        crate::domigrations::migrate_storage_to_current(self.state.storage())
+            .await
+            .map_err(crate::anydbg)?;
+        let game_storage = Rc::new(GameStorage::load(self.state.clone())?);
+        *self.game_storage.borrow_mut() = Some(game_storage.clone());
+        Ok(game_storage)
     }
 
     async fn route(&self, req: Request) -> anyhow::Result<Response> {
@@ -173,12 +185,11 @@ impl ArpeggioGameSql {
         info!(event="request", method=?req.method(), path=?path, "Request (MESSAGE)");
 
         match path.split('/').collect::<Vec<_>>()[1..] {
-            ["superuser", "dump", game_id] => {
-                let game_id = game_id.parse::<GameID>()?;
-                dump::dump_storage(&self.state, &self.env, game_id).await
-            }
+            ["superuser", "dump", _game_id] => dump::dump_storage(&self.state).await,
             ["superuser", "destroy", _game_id] => {
+                let _initialization_guard = self.game_storage_initialization.lock().await;
                 self.state.storage().delete_all().await?;
+                *self.game_storage.borrow_mut() = None;
                 Ok(Response::from_json(
                     &serde_json::json!({"status": "deleted"}),
                 )?)
@@ -207,6 +218,7 @@ impl ArpeggioGameSql {
                 };
                 info!(event = "ws-connect", ?path, ?game_id);
                 let game_id = game_id.parse::<GameID>()?;
+                self.get_game_storage().await?;
 
                 let pair = WebSocketPair::new()?;
                 let server = pair.server;
@@ -223,8 +235,8 @@ impl ArpeggioGameSql {
                 Ok(Response::from_websocket(pair.client)?)
             }
             ["g", "invitations", game_id, invitation_id] if req.method() == Method::Get => {
-                let game_id = game_id.parse::<GameID>()?;
-                self.check_invitation(game_id, invitation_id).await
+                game_id.parse::<GameID>()?;
+                self.check_invitation(invitation_id).await
             }
             _ => {
                 error!(event = "unknown-route", ?path);
@@ -233,29 +245,49 @@ impl ArpeggioGameSql {
         }
     }
 
-    async fn check_invitation(
-        &self,
-        game_id: GameID,
-        invitation_id: &str,
-    ) -> anyhow::Result<Response> {
+    async fn check_invitation(&self, invitation_id: &str) -> anyhow::Result<Response> {
         let invitation_id = invitation_id.parse()?;
-        let game_storage = self.get_game_storage(game_id).await?;
+        let game_storage = self.get_game_storage().await?;
         let exists = game_storage.check_invitation(invitation_id)?;
         Ok(Response::from_json(&json!(exists))?)
+    }
+
+    async fn test_concurrent_game_storage_initialization(&self) -> anyhow::Result<()> {
+        {
+            let _initialization_guard = self.game_storage_initialization.lock().await;
+            self.state.storage().delete_all().await?;
+            *self.game_storage.borrow_mut() = None;
+        }
+
+        let (first, second) =
+            futures_util::future::join(self.get_game_storage(), self.get_game_storage()).await;
+        let first = first?;
+        let second = second?;
+        if !Rc::ptr_eq(&first, &second) {
+            return Err(anyhow!(
+                "Concurrent initialization created multiple GameStorage instances"
+            ));
+        }
+        Ok(())
     }
 
     async fn run_tests(&self) -> anyhow::Result<Response> {
         Ok(Response::from_json(&json!({
             "results": {
+                "test_empty_storage_baseline": report(test_empty_storage_baseline(&self.state).await),
+                "test_production_schema_adoption": report(test_production_schema_adoption(&self.state).await),
+                "test_untrusted_unversioned_storage_rejected": report(test_untrusted_unversioned_storage_rejected(&self.state).await),
+                "test_migration_chain_and_rollback": report(test_migration_chain_and_rollback(&self.state).await),
                 "test_snapshot_creation": report(test_snapshot_creation(self.state.clone()).await),
                 "test_snapshot_creation_multilog": report(test_snapshot_creation_multilog(self.state.clone()).await),
-                "test_fresh_game_initialization": report(test_fresh_game_initialization(self.state.clone(), self.env.clone()).await),
+                "test_fresh_game_initialization": report(test_fresh_game_initialization(self.state.clone()).await),
+                "test_concurrent_game_storage_initialization": report(self.test_concurrent_game_storage_initialization().await),
             },
             "status": "completed"
         }))?)
     }
 }
-fn report(r: anyhow::Result<()>) -> String {
+fn report<E: std::fmt::Debug>(r: std::result::Result<(), E>) -> String {
     match r {
         Ok(()) => "Ok!".to_string(),
         Err(e) => format!("Test failed: {e:?}"),

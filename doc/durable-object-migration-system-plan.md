@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed.
+In progress. The Phase 1 storage baseline, migration registry, and load gate are implemented.
 
 ## Core decision
 

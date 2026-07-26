@@ -1,7 +1,7 @@
 use tracing::info;
-use worker::SqlStorage;
+use worker::{Result, SqlStorage};
 
-pub async fn initialize_sqlite_tables(sql: &SqlStorage) -> anyhow::Result<()> {
+pub fn initialize_sqlite_tables(sql: &SqlStorage) -> Result<()> {
     info!(event = "initializing-sqlite-tables");
 
     // Create logs table

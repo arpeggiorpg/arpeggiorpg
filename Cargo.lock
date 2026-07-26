@@ -3566,7 +3566,6 @@ dependencies = [
  "serde",
  "serde-wasm-bindgen",
  "serde_json",
- "serde_path_to_error",
  "strum 0.25.0",
  "thiserror 1.0.69",
  "time",
@@ -3575,6 +3574,7 @@ dependencies = [
  "tracing-web",
  "uuid",
  "worker",
+ "worker-sqlite-dump",
 ]
 
 [[package]]

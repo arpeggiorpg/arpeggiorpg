@@ -13,7 +13,7 @@ use arpeggio::{
     types::{ChangedGame, Game, GameLog},
 };
 use arptypes::{
-    multitenant::{GameID, GameIndex, ImageType, InvitationID},
+    multitenant::{GameIndex, ImageType, InvitationID},
     GMCommand,
 };
 
@@ -435,19 +435,15 @@ pub async fn test_snapshot_creation_multilog(state: Rc<State>) -> anyhow::Result
 
 /// Test that a brand-new game DO can be initialized from scratch, exercising the full
 /// migration + load path that `get_game_storage` uses.
-#[tracing::instrument(skip(state, env))]
-pub async fn test_fresh_game_initialization(
-    state: Rc<State>,
-    env: worker::Env,
-) -> anyhow::Result<()> {
+#[tracing::instrument(skip(state))]
+pub async fn test_fresh_game_initialization(state: Rc<State>) -> anyhow::Result<()> {
     // Wipe everything to simulate a brand-new Durable Object
     state.storage().delete_all().await?;
 
-    // Use a test game ID (same max UUID that the /test endpoint uses)
-    let test_game_id = GameID(uuid::Uuid::max());
-
     // Run the full migration path, just like get_game_storage does
-    crate::domigrations::migrate(env, &state, test_game_id).await?;
+    crate::domigrations::migrate_storage_to_current(state.storage())
+        .await
+        .map_err(crate::anydbg)?;
 
     // Now load GameStorage, which should create a default game snapshot
     let game_storage = GameStorage::load(state.clone())?;
