@@ -160,10 +160,8 @@ permanently delete that namespace and its data on deployment.
 ### Phase 1 commands
 
 ```text
-just migration-test
 just deploy-to-preprod
 just deploy-dioxus-preprod
-just show-game-storage-version GAME_ID environment="production"
 just deploy-to-production
 ```
 
