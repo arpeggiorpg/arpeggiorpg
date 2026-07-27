@@ -566,7 +566,18 @@ mod tests {
     use serde_json::json;
     use worker::SqlStorageValue;
 
-    use super::{prepare_insert, Dump, KvEntry, SqlOperation, SqlValue, DUMP_FORMAT};
+    use super::{
+        decode_sql_value, prepare_insert, Dump, KvEntry, SqlOperation, SqlValue, DUMP_FORMAT,
+    };
+
+    fn encoded(kind: &str, value: SqlStorageValue) -> SqlValue {
+        decode_sql_value(
+            "test table",
+            &SqlStorageValue::String(kind.to_string()),
+            &value,
+        )
+        .unwrap()
+    }
 
     #[test]
     fn dump_uses_current_format() {
@@ -603,6 +614,67 @@ mod tests {
                 SqlStorageValue::Blob(value.clone()),
                 SqlStorageValue::Blob(value)
             ]
+        );
+    }
+
+    #[test]
+    fn every_sql_value_type_translates_from_dump_to_restore() {
+        let text = "quoted text \0 🎵".as_bytes().to_vec();
+        let blob = vec![0x00, 0x01, 0x7f, 0x80, 0xfe, 0xff];
+        let to_hex = |bytes: &[u8]| {
+            bytes
+                .iter()
+                .map(|byte| format!("{byte:02X}"))
+                .collect::<String>()
+        };
+        let row = vec![
+            encoded("null", SqlStorageValue::Null),
+            encoded("integer", SqlStorageValue::String(i64::MIN.to_string())),
+            encoded(
+                "real",
+                SqlStorageValue::String("3.1415926535897931".to_string()),
+            ),
+            encoded("real", SqlStorageValue::String("9.0e+999".to_string())),
+            encoded("real", SqlStorageValue::String("-9.0e+999".to_string())),
+            encoded("text", SqlStorageValue::String(to_hex(&text))),
+            encoded("blob", SqlStorageValue::String(to_hex(&blob))),
+        ];
+
+        assert_eq!(
+            row,
+            vec![
+                SqlValue::Null,
+                SqlValue::Integer(i64::MIN.to_string()),
+                SqlValue::Real("3.1415926535897931".to_string()),
+                SqlValue::Real("9.0e+999".to_string()),
+                SqlValue::Real("-9.0e+999".to_string()),
+                SqlValue::Text(to_hex(&text)),
+                SqlValue::Blob(to_hex(&blob)),
+            ]
+        );
+
+        let columns = [
+            "null",
+            "integer",
+            "real",
+            "positive infinity",
+            "negative infinity",
+            "text \"column",
+            "blob",
+        ]
+        .map(str::to_string);
+        let (statement, bindings) = prepare_insert("table \"name", &columns, &row).unwrap();
+
+        assert_eq!(
+            statement,
+            "INSERT INTO \"table \"\"name\" (\"null\", \"integer\", \"real\", \
+             \"positive infinity\", \"negative infinity\", \"text \"\"column\", \"blob\") \
+             VALUES (NULL, -9223372036854775808, 3.1415926535897931, 9.0e+999, \
+             -9.0e+999, CAST(? AS TEXT), ?)"
+        );
+        assert_eq!(
+            bindings,
+            vec![SqlStorageValue::Blob(text), SqlStorageValue::Blob(blob)]
         );
     }
 }
