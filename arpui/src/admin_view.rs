@@ -40,6 +40,7 @@ struct NamespacesResponse {
 #[derive(Clone, Debug, Deserialize)]
 struct SuperuserGamesResponse {
     games: Vec<(String, GameMetadata)>,
+    preprod_games: Option<Vec<(String, GameMetadata)>>,
     do_namespaces: NamespacesResponse,
     do_objects: HashMap<String, CloudflareApiResponse>,
     arpeggiogame_ids: HashMap<String, String>,
@@ -208,7 +209,14 @@ fn SuperuserAdminPage() -> Element {
                                     tr {
                                         th { class: "px-4 py-3 text-left font-medium", "Game ID" }
                                         th { class: "px-4 py-3 text-left font-medium", "Name" }
-                                        th { class: "px-4 py-3 text-center font-medium", "Game DO" }
+                                        th {
+                                            class: "px-4 py-3 text-center font-medium",
+                                            if is_preprod {
+                                                "Preprod DO"
+                                            } else {
+                                                "Game DO"
+                                            }
+                                        }
                                         th { class: "px-4 py-3 text-center font-medium", "Actions" }
                                     }
                                 }
@@ -219,12 +227,27 @@ fn SuperuserAdminPage() -> Element {
                                             let game_id = game_id.clone();
                                             let game_name = meta.name.clone();
                                             let do_status = get_do_status(&game_id, data);
+                                            let is_registered_in_preprod =
+                                                is_preprod_game_registered(&game_id, data);
+                                            let is_present = if is_preprod {
+                                                is_registered_in_preprod
+                                            } else {
+                                                do_status.present
+                                            };
+                                            let is_available = if is_preprod {
+                                                is_registered_in_preprod
+                                            } else {
+                                                do_status.has_data
+                                            };
                                             let game_id_for_dump = game_id.clone();
                                             let game_name_for_dump = game_name.clone();
                                             let game_id_for_destroy = game_id.clone();
                                             let game_name_for_destroy = game_name.clone();
                                             let game_id_for_copy = game_id.clone();
                                             let game_name_for_copy = game_name.clone();
+                                            let production_game_url =
+                                                format!("https://arpeggiogame.com/gm/{game_id}");
+                                            let preprod_game_url = format!("/gm/{game_id}");
                                             let is_copying = copy_action.pending()
                                                 && copying_game_id().as_deref() == Some(game_id.as_str());
                                             rsx! {
@@ -235,13 +258,35 @@ fn SuperuserAdminPage() -> Element {
                                                         "{game_id}"
                                                     }
                                                     td {
-                                                        class: "px-4 py-3 text-gray-900",
-                                                        "{game_name}"
+                                                        class: "px-4 py-3",
+                                                        div {
+                                                            class: "font-medium text-gray-900",
+                                                            "{game_name}"
+                                                        }
+                                                        div {
+                                                            class: "mt-1 flex items-center gap-3 text-xs",
+                                                            a {
+                                                                class: "font-medium text-blue-700 underline",
+                                                                href: "{production_game_url}",
+                                                                target: "_blank",
+                                                                rel: "noopener noreferrer",
+                                                                "Prod"
+                                                            }
+                                                            if is_preprod && is_registered_in_preprod {
+                                                                a {
+                                                                    class: "font-medium text-blue-700 underline",
+                                                                    href: "{preprod_game_url}",
+                                                                    target: "_blank",
+                                                                    rel: "noopener noreferrer",
+                                                                    "Preprod"
+                                                                }
+                                                            }
+                                                        }
                                                     }
                                                     td {
                                                         class: "px-4 py-3 text-center",
                                                         StatusPill {
-                                                            present: do_status.present,
+                                                            present: is_present,
                                                             has_data: do_status.has_data,
                                                         }
                                                     }
@@ -249,10 +294,10 @@ fn SuperuserAdminPage() -> Element {
                                                         class: "px-4 py-3",
                                                         div {
                                                             class: "flex items-center justify-center gap-2",
-                                                            if is_preprod {
+                                                            if is_preprod && !is_registered_in_preprod {
                                                                 Button {
                                                                     variant: ButtonVariant::Outline,
-                                                                    disabled: copy_action.pending() || do_status.has_data,
+                                                                    disabled: copy_action.pending(),
                                                                     onclick: move |_| {
                                                                         copy_action.call((
                                                                             game_id_for_copy.clone(),
@@ -261,14 +306,12 @@ fn SuperuserAdminPage() -> Element {
                                                                     },
                                                                     if is_copying {
                                                                         "Copying..."
-                                                                    } else if do_status.has_data {
-                                                                        "Copied"
                                                                     } else {
                                                                         "Copy from production"
                                                                     }
                                                                 }
                                                             }
-                                                            if do_status.has_data {
+                                                            if is_available {
                                                                 Button {
                                                                     variant: ButtonVariant::Ghost,
                                                                     onclick: move |_| {
@@ -545,6 +588,12 @@ fn get_do_status(game_id: &str, data: &SuperuserGamesResponse) -> DoStatus {
     }
 
     DoStatus { present, has_data }
+}
+
+fn is_preprod_game_registered(game_id: &str, data: &SuperuserGamesResponse) -> bool {
+    data.preprod_games
+        .as_ref()
+        .is_some_and(|games| games.iter().any(|(id, _)| id == game_id))
 }
 
 fn find_orphan_dos(data: &SuperuserGamesResponse) -> Vec<OrphanDo> {

@@ -181,10 +181,13 @@ async fn delete_preprod_copy(env: Env, game_id: &str) -> Result<Response> {
 }
 
 async fn superuser_games(env: Env) -> Result<Response> {
-    let games = if env.d1("PRODUCTION_DB").is_ok() {
-        storage::list_all_games_from_binding(&env, "PRODUCTION_DB").await?
+    let (games, preprod_games) = if env.d1("PRODUCTION_DB").is_ok() {
+        (
+            storage::list_all_games_from_binding(&env, "PRODUCTION_DB").await?,
+            Some(storage::list_all_games(&env).await?),
+        )
     } else {
-        storage::list_all_games(&env).await?
+        (storage::list_all_games(&env).await?, None)
     };
 
     let account_id = env.var("CF_ACCOUNT_ID")?.to_string();
@@ -251,6 +254,7 @@ async fn superuser_games(env: Env) -> Result<Response> {
 
     Response::from_json(&json!({
         "games": games,
+        "preprod_games": preprod_games,
         "do_objects": do_objects,
         "do_namespaces": do_namespaces,
         "arpeggiogame_ids": arpeggiogame_ids
