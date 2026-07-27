@@ -2,7 +2,7 @@
 
 use tracing::info;
 use worker::{Response, SqlStorageValue, State};
-use worker_sqlite_dump::{Dump, SqlOperation};
+use worker_sqlite_dump::{Dump, EncodedBytes, SqlOperation, SqlValue};
 
 #[derive(serde::Deserialize)]
 struct IdRow {
@@ -78,6 +78,30 @@ pub async fn test_full_storage_dump(state: &State) -> anyhow::Result<()> {
         ]),
     )?;
     let dump = create_dump(state).await?;
+    anyhow::ensure!(
+        dump.sql.iter().any(|operation| matches!(
+            operation,
+            SqlOperation::Insert { table, rows, .. }
+                if table == "invitations"
+                    && rows.iter().flatten().any(|value| matches!(
+                        value,
+                        SqlValue::Text(EncodedBytes::Utf8(text)) if text == &large_value
+                    ))
+        )),
+        "large UTF-8 SQL value was not stored compactly"
+    );
+    anyhow::ensure!(
+        dump.sql.iter().any(|operation| matches!(
+            operation,
+            SqlOperation::Insert { table, rows, .. }
+                if table == "game_snapshots"
+                    && rows.iter().flatten().any(|value| matches!(
+                        value,
+                        SqlValue::Blob(EncodedBytes::Hex(_))
+                    ))
+        )),
+        "non-UTF-8 SQL blob did not fall back to hexadecimal"
+    );
     state.storage().delete_all().await?;
     worker_sqlite_dump::restore(state.storage(), dump).await?;
     let restored: IdRow = state
