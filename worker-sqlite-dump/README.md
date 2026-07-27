@@ -16,11 +16,10 @@ async fn copy_in(storage: Storage, dump: Dump) -> Result<()> {
 ```
 
 The dump is a serializable envelope containing ordered schema statements, structured table rows,
-JSON-compatible application KV entries, and a format version. TEXT and BLOB bytes use UTF-8 when
-that is valid and more compact in JSON, falling back to hexadecimal otherwise. Export and restore
-each run inside a Durable Object storage transaction. Restore requires an empty target and restores
-SQL and KV atomically. Row values are restored through bound parameters so large values do not
-produce oversized SQL statements.
+JSON-compatible application KV entries, and a format version. Export and restore each run inside a
+Durable Object storage transaction. Restore requires an empty target and restores SQL and KV
+atomically. Row values are restored through bound parameters so large values do not produce
+oversized SQL statements.
 
 The crate preserves SQLite `NULL`, integers, real values, text bytes, BLOBs, generated columns,
 indexes, views, triggers, and `sqlite_sequence`. It excludes Cloudflare and SQLite internal
