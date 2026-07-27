@@ -13,7 +13,7 @@ use worker::{
 };
 
 /// The dump envelope format emitted by this version of the crate.
-pub const DUMP_FORMAT: u32 = 3;
+pub const DUMP_FORMAT: u32 = 2;
 
 const MAX_FINITE_DOUBLE: &str = "1.7976931348623157e308";
 
@@ -33,16 +33,6 @@ impl KvEntry {
     }
 }
 
-/// The byte representation used for a SQLite TEXT or BLOB value.
-#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
-#[serde(rename_all = "snake_case", tag = "encoding", content = "value")]
-pub enum EncodedBytes {
-    /// Valid UTF-8 whose JSON representation is smaller than hexadecimal.
-    Utf8(String),
-    /// Exact bytes encoded as hexadecimal.
-    Hex(String),
-}
-
 /// One SQLite value represented without embedding application data in SQL text.
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 #[serde(rename_all = "snake_case", tag = "type", content = "value")]
@@ -50,10 +40,10 @@ pub enum SqlValue {
     Null,
     Integer(String),
     Real(String),
-    /// The exact bytes and SQLite storage class of a TEXT value.
-    Text(EncodedBytes),
-    /// The exact bytes and SQLite storage class of a BLOB value.
-    Blob(EncodedBytes),
+    /// The exact bytes of a SQLite TEXT value, encoded as hexadecimal.
+    Text(String),
+    /// The bytes of a SQLite BLOB value, encoded as hexadecimal.
+    Blob(String),
 }
 
 /// One ordered operation in a logical SQLite dump.
@@ -284,8 +274,8 @@ fn decode_sql_value(
         "null" => Ok(SqlValue::Null),
         "integer" => Ok(SqlValue::Integer(encoded_string()?)),
         "real" => Ok(SqlValue::Real(encoded_string()?)),
-        "text" => Ok(SqlValue::Text(encode_bytes(encoded_string()?)?)),
-        "blob" => Ok(SqlValue::Blob(encode_bytes(encoded_string()?)?)),
+        "text" => Ok(SqlValue::Text(encoded_string()?)),
+        "blob" => Ok(SqlValue::Blob(encoded_string()?)),
         other => Err(rust_error(format!(
             "Unsupported SQLite value type in table {table_name}: {other}"
         ))),
@@ -328,13 +318,8 @@ fn dump_sequence(sql: &SqlStorage) -> Result<Vec<SqlOperation>> {
             columns: vec!["name".to_string(), "seq".to_string()],
             rows: rows
                 .into_iter()
-                .map(|row| {
-                    Ok(vec![
-                        SqlValue::Text(encode_bytes(row.name_hex)?),
-                        SqlValue::Integer(row.seq),
-                    ])
-                })
-                .collect::<Result<Vec<_>>>()?,
+                .map(|row| vec![SqlValue::Text(row.name_hex), SqlValue::Integer(row.seq)])
+                .collect(),
         },
     ])
 }
@@ -526,11 +511,11 @@ fn prepare_insert(
                 Ok(value.clone())
             }
             SqlValue::Text(value) => {
-                bindings.push(SqlStorageValue::Blob(decode_bytes(value)?));
+                bindings.push(SqlStorageValue::Blob(decode_hex(value)?));
                 Ok("CAST(? AS TEXT)".to_string())
             }
             SqlValue::Blob(value) => {
-                bindings.push(SqlStorageValue::Blob(decode_bytes(value)?));
+                bindings.push(SqlStorageValue::Blob(decode_hex(value)?));
                 Ok("?".to_string())
             }
         })
@@ -562,29 +547,6 @@ fn validate_real_literal(value: &str) -> Result<()> {
     Ok(())
 }
 
-fn encode_bytes(hex: String) -> Result<EncodedBytes> {
-    let bytes = decode_hex(&hex)?;
-    let Ok(text) = String::from_utf8(bytes) else {
-        return Ok(EncodedBytes::Hex(hex));
-    };
-
-    // The encoding name "utf8" is one byte longer than "hex".
-    let utf8_json_length = serde_json::to_string(&text).map_err(rust_error)?.len() + 1;
-    let hex_json_length = hex.len() + 2; // JSON string quotes.
-    if utf8_json_length < hex_json_length {
-        Ok(EncodedBytes::Utf8(text))
-    } else {
-        Ok(EncodedBytes::Hex(hex))
-    }
-}
-
-fn decode_bytes(value: &EncodedBytes) -> Result<Vec<u8>> {
-    match value {
-        EncodedBytes::Utf8(value) => Ok(value.as_bytes().to_vec()),
-        EncodedBytes::Hex(value) => decode_hex(value),
-    }
-}
-
 fn decode_hex(value: &str) -> Result<Vec<u8>> {
     if !value.len().is_multiple_of(2) {
         return Err(rust_error("Invalid hexadecimal SQLite value"));
@@ -604,10 +566,7 @@ mod tests {
     use serde_json::json;
     use worker::SqlStorageValue;
 
-    use super::{
-        encode_bytes, prepare_insert, Dump, EncodedBytes, KvEntry, SqlOperation, SqlValue,
-        DUMP_FORMAT,
-    };
+    use super::{prepare_insert, Dump, KvEntry, SqlOperation, SqlValue, DUMP_FORMAT};
 
     #[test]
     fn dump_uses_current_format() {
@@ -628,12 +587,8 @@ mod tests {
             "example",
             &["text".to_string(), "blob".to_string()],
             &[
-                SqlValue::Text(EncodedBytes::Utf8(
-                    String::from_utf8(value.clone()).unwrap(),
-                )),
-                SqlValue::Blob(EncodedBytes::Hex(
-                    value.iter().map(|byte| format!("{byte:02X}")).collect(),
-                )),
+                SqlValue::Text(value.iter().map(|byte| format!("{byte:02X}")).collect()),
+                SqlValue::Blob(value.iter().map(|byte| format!("{byte:02X}")).collect()),
             ],
         )
         .unwrap();
@@ -648,26 +603,6 @@ mod tests {
                 SqlStorageValue::Blob(value.clone()),
                 SqlStorageValue::Blob(value)
             ]
-        );
-    }
-
-    #[test]
-    fn byte_encoding_prefers_compact_utf8() {
-        assert_eq!(
-            encode_bytes("48656C6C6F2C20776F726C6421".to_string()).unwrap(),
-            EncodedBytes::Utf8("Hello, world!".to_string())
-        );
-    }
-
-    #[test]
-    fn byte_encoding_falls_back_to_hex() {
-        assert_eq!(
-            encode_bytes("FF".to_string()).unwrap(),
-            EncodedBytes::Hex("FF".to_string())
-        );
-        assert_eq!(
-            encode_bytes("00".to_string()).unwrap(),
-            EncodedBytes::Hex("00".to_string())
         );
     }
 }
