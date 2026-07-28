@@ -7,8 +7,6 @@ use arptypes::multitenant as MT;
 pub fn main() -> Result<(), anyhow::Error> {
     let mut file = File::create("../ui/src/bindings/bindings.ts")?;
     let decls = vec![
-        <foldertree::FolderPath as TS>::decl(),
-        <foldertree::FolderTree<T::Folder> as TS>::decl(),
         <MT::GameID as TS>::decl(),
         <MT::GameIndex as TS>::decl(),
         <MT::GameList as TS>::decl(),
@@ -46,8 +44,6 @@ pub fn main() -> Result<(), anyhow::Error> {
         <T::Dice as TS>::decl(),
         <T::Duration as TS>::decl(),
         <T::Energy as TS>::decl(),
-        <T::Folder as TS>::decl(),
-        <T::FolderItemID as TS>::decl(),
         <T::Game as TS>::decl(),
         <T::GameLog as TS>::decl(),
         <T::GMCommand as TS>::decl(),
@@ -55,8 +51,11 @@ pub fn main() -> Result<(), anyhow::Error> {
         <T::InventoryOwner as TS>::decl(),
         <T::Item as TS>::decl(),
         <T::ItemID as TS>::decl(),
-        <T::ModuleSource as TS>::decl(),
+        <T::Collection as TS>::decl(),
+        <T::CollectionID as TS>::decl(),
         <T::Note as TS>::decl(),
+        <T::NoteID as TS>::decl(),
+        <T::ResourceRef as TS>::decl(),
         <T::Player as TS>::decl(),
         <T::PlayerCommand as TS>::decl(),
         <T::PlayerID as TS>::decl(),

@@ -147,7 +147,8 @@ impl<'a> RPIGame<'a> {
             classes: game.classes.clone(),
             tile_system: game.tile_system,
             scenes: game.scenes.clone(),
-            campaign: game.campaign.clone(),
+            notes: game.notes.clone(),
+            collections: game.collections.clone(),
             items: game.items.clone(),
             players: game.players.clone(),
             active_scene: game.active_scene,
@@ -213,20 +214,16 @@ pub fn serialize_player_game(
         .filter_map(|&item_id| game.items.get(&item_id).cloned())
         .collect();
 
-    // Get player's notes from /Players/{PlayerID}/Notes folder
-    let mut notes = indexed::IndexedHashMap::new();
-    let player_notes_path: foldertree::FolderPath = vec![
-        "Players".to_string(),
-        player_id.0.clone(),
-        "Notes".to_string(),
-    ]
-    .into();
-
-    if let Ok(player_folder) = game.campaign.get(&player_notes_path) {
-        for note in player_folder.notes.values() {
-            notes.insert(note.clone());
-        }
-    }
+    let notes = game
+        .notes
+        .values()
+        .filter(|note| match &note.visibility {
+            NoteVisibility::GMOnly => false,
+            NoteVisibility::AllPlayers => true,
+            NoteVisibility::OwnerOnly => note.owner == NoteOwner::Player(player_id.clone()),
+        })
+        .cloned()
+        .collect();
 
     Ok(SerializedPlayerGame {
         current_combat: game.current_combat.clone(),
@@ -558,7 +555,25 @@ pub mod test {
         // Classes and items should be empty since no creatures in scope
         assert!(player_game.classes.is_empty());
         assert!(player_game.items.is_empty());
-        // Notes should be empty since no player notes folder exists
+        // Notes should be empty since this player has no notes.
         assert!(player_game.notes.is_empty());
+
+        game_with_player.notes.insert(Note {
+            id: NoteID::gen(),
+            name: "Scratch".to_string(),
+            content: "Private".to_string(),
+            owner: NoteOwner::Player(player_id.clone()),
+            visibility: NoteVisibility::OwnerOnly,
+        });
+
+        let player_game = serialize_player_game(&player_id, &game_with_player).unwrap();
+        let notes: Vec<_> = player_game.notes.values().collect();
+        assert_eq!(notes.len(), 1);
+        assert_eq!(notes[0].name, "Scratch");
+        assert_eq!(
+            notes[0].owner,
+            NoteOwner::Player(PlayerID("test_player".to_string()))
+        );
+        assert_eq!(notes[0].visibility, NoteVisibility::OwnerOnly);
     }
 }

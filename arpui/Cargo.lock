@@ -74,7 +74,6 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "derive_more",
- "foldertree",
  "indexed",
  "nonempty",
  "num",
@@ -98,7 +97,6 @@ dependencies = [
  "dioxus",
  "dioxus-logger",
  "dioxus-primitives",
- "foldertree",
  "futures",
  "futures-util",
  "getrandom 0.2.14",
@@ -1343,15 +1341,6 @@ name = "fnv"
 version = "1.0.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3f9eec918d3f24069decb9af1554cad7c880e2da24a9afd88aca000531ab82c1"
-
-[[package]]
-name = "foldertree"
-version = "0.1.0"
-dependencies = [
- "serde",
- "thiserror 1.0.58",
- "ts-rs",
-]
 
 [[package]]
 name = "foldhash"
@@ -3385,6 +3374,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "sha1_smol"
+version = "1.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bbfa15b3dddfee50a0fff136974b3e1bde555604ba463834a7eb7deb6417705d"
+
+[[package]]
 name = "sha2"
 version = "0.10.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4099,6 +4094,7 @@ checksum = "a183cf7feeba97b4dd1c0d46788634f6221d87fa961b305bed08c851829efcc0"
 dependencies = [
  "getrandom 0.2.14",
  "serde",
+ "sha1_smol",
 ]
 
 [[package]]

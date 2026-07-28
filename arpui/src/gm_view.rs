@@ -3,7 +3,6 @@ use arptypes::{
     multitenant::{GameAndMetadata, GameID, InvitationID, RPIGameRequest, Role},
 };
 use dioxus::prelude::*;
-use foldertree::FolderPath;
 use std::collections::HashSet;
 use tracing::{error, info};
 
@@ -258,39 +257,17 @@ fn Shell(game_id: GameID, initial_scene_path: Option<Vec<String>>) -> Element {
 }
 
 fn resolve_scene_id_from_route_path(game: &Game, scene_path: &[String]) -> Option<SceneID> {
-    if scene_path.is_empty() {
-        return None;
-    }
-
-    let folder_segments = scene_path[..scene_path.len() - 1].to_vec();
-    let scene_name = &scene_path[scene_path.len() - 1];
-    let folder_path = FolderPath::from_vec(folder_segments);
-    let folder = game.campaign.get(&folder_path).ok()?;
-
-    folder.scenes.iter().find_map(|scene_id| {
-        game.scenes
-            .get(scene_id)
-            .filter(|scene| &scene.name == scene_name)
-            .map(|scene| scene.id)
-    })
+    let segment = scene_path.last()?;
+    segment
+        .parse()
+        .ok()
+        .filter(|id| game.scenes.contains_key(id))
 }
 
 fn route_scene_path_for_scene_id(game: &Game, scene_id: SceneID) -> Option<Vec<String>> {
-    let scene_name = game.scenes.get(&scene_id)?.name.clone();
-    let root = FolderPath::root();
-
-    for folder_path in game.campaign.walk_paths(&root) {
-        let Ok(folder) = game.campaign.get(folder_path) else {
-            continue;
-        };
-        if folder.scenes.contains(&scene_id) {
-            let mut path: Vec<String> = folder_path.clone().into_vec();
-            path.push(scene_name);
-            return Some(path);
-        }
-    }
-
-    None
+    game.scenes
+        .contains_key(&scene_id)
+        .then(|| vec![scene_id.to_string()])
 }
 
 #[derive(Clone, PartialEq)]

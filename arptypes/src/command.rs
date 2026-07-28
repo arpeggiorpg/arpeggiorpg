@@ -1,6 +1,5 @@
 use std::collections::{HashMap, HashSet};
 
-use foldertree::FolderPath;
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
@@ -16,15 +15,14 @@ pub enum PlayerCommand {
     },
 
     CreateNote {
-        path: FolderPath,
-        note: Note,
+        name: String,
+        content: String,
     },
 
     EditNote {
-        // This FolderPath is scoped to the player's folder.
-        path: FolderPath,
-        original_name: String,
-        note: Note,
+        note_id: NoteID,
+        name: String,
+        content: String,
     },
 
     // Out-of-combat actions:
@@ -76,13 +74,6 @@ pub enum PlayerCommand {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS)]
 #[serde(tag = "t")]
 pub enum GMCommand {
-    LoadModule {
-        name: String,
-        source: ModuleSource,
-        game: Game,
-        path: FolderPath,
-    },
-
     ChatFromGM {
         message: String,
     },
@@ -92,41 +83,27 @@ pub enum GMCommand {
         attribute_check: AttributeCheck,
     },
 
-    /// Create a folder, given segments leading to it.
-    CreateFolder {
-        path: FolderPath,
+    CreateCollection {
+        name: String,
     },
-    /// Rename a folder. DEPRECATED (I think?)
-    RenameFolder {
-        path: FolderPath,
+    EditCollection {
+        collection: Collection,
+    },
+    DeleteCollection {
+        collection_id: CollectionID,
+    },
+    DeleteResource {
+        resource: ResourceRef,
+    },
+    RenameResource {
+        resource: ResourceRef,
         new_name: String,
     },
-
-    /// Move some object from one folder to another.
-    MoveFolderItem {
-        source: FolderPath,
-        item_id: FolderItemID,
-        destination: FolderPath,
-    },
-    /// Copy an object to a folder. It's okay to copy it to the same folder.
-    CopyFolderItem {
-        source: FolderPath,
-        item_id: FolderItemID,
-        dest: FolderPath,
-    },
-    DeleteFolderItem {
-        path: FolderPath,
-        item_id: FolderItemID,
-    },
-    RenameFolderItem {
-        path: FolderPath,
-        item_id: FolderItemID,
-        new_name: String,
+    CopyResource {
+        source: ResourceRef,
     },
 
-    /// Create an Item in a folder. (this will probably take an ItemCreation in the future)
     CreateItem {
-        path: FolderPath,
         name: String,
     },
     /// Edit an Item. The ID in the given Item must match an existing Item.
@@ -134,15 +111,12 @@ pub enum GMCommand {
         item: Item,
     },
 
-    /// Create a Note inside of a Folder.
     CreateNote {
-        path: FolderPath,
-        note: Note,
+        name: String,
+        content: String,
+        visibility: NoteVisibility,
     },
-    /// Edit a Note inside of a Folder.
     EditNote {
-        path: FolderPath,
-        original_name: String,
         note: Note,
     },
 
@@ -168,7 +142,6 @@ pub enum GMCommand {
     // ** Scene management **
     /// Create a Scene.
     CreateScene {
-        path: FolderPath,
         scene: SceneCreation,
     },
     EditSceneDetails {
@@ -292,14 +265,12 @@ pub enum GMCommand {
 
     // ** Classes & Abilities **
     CreateClass {
-        path: FolderPath,
         class: ClassCreation,
     },
     EditClass {
         class: Class,
     },
     CreateAbility {
-        path: FolderPath,
         ability: AbilityCreation,
     },
     EditAbility {
@@ -309,7 +280,6 @@ pub enum GMCommand {
     // ** Creature Manipulation **
     /// Create a new creature.
     CreateCreature {
-        path: FolderPath,
         creature: CreatureCreation,
     },
     /// Edit an existing creature.

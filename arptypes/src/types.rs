@@ -1,7 +1,6 @@
 use std::collections::{HashMap, HashSet};
 
 use derive_more::{Add, Display, Div, Mul, Sub};
-use foldertree::{FolderPath, FolderTree, FolderTreeError};
 use indexed::{DeriveKey, IndexedHashMap};
 use nonempty;
 use num::Saturating;
@@ -110,6 +109,8 @@ uuid_id!(ItemID);
 uuid_id!(SceneID);
 uuid_id!(AbilityID);
 uuid_id!(ClassID);
+uuid_id!(NoteID);
+uuid_id!(CollectionID);
 
 #[derive(
     Add,
@@ -232,34 +233,71 @@ pub enum TileSystem {
     DnD,
 }
 
+#[derive(Debug, Clone, Default, Serialize, Deserialize, Eq, PartialEq, TS)]
+pub enum NoteOwner {
+    #[default]
+    Game,
+    Player(PlayerID),
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize, Eq, PartialEq, TS)]
+pub enum NoteVisibility {
+    #[default]
+    GMOnly,
+    OwnerOnly,
+    AllPlayers,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq, TS)]
 pub struct Note {
+    pub id: NoteID,
     pub name: String,
     pub content: String,
+    pub owner: NoteOwner,
+    pub visibility: NoteVisibility,
 }
 
 impl DeriveKey for Note {
-    type KeyType = String;
-    fn derive_key(&self) -> String {
-        self.name.clone()
+    type KeyType = NoteID;
+    fn derive_key(&self) -> NoteID {
+        self.id
     }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq, TS)]
+pub struct Collection {
+    pub id: CollectionID,
+    pub name: String,
+    pub scenes: Vec<SceneID>,
+    pub creatures: Vec<CreatureID>,
+    pub notes: Vec<NoteID>,
+    pub items: Vec<ItemID>,
+    pub abilities: Vec<AbilityID>,
+    pub classes: Vec<ClassID>,
+}
+
+impl DeriveKey for Collection {
+    type KeyType = CollectionID;
+    fn derive_key(&self) -> CollectionID {
+        self.id
+    }
+}
+
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Serialize, Deserialize, TS)]
+#[serde(tag = "type", content = "id")]
+pub enum ResourceRef {
+    Scene(SceneID),
+    Creature(CreatureID),
+    Note(NoteID),
+    Item(ItemID),
+    Ability(AbilityID),
+    Class(ClassID),
 }
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug, Serialize, Deserialize, TS)]
 pub enum Visibility {
     GMOnly,
     AllPlayers,
-}
-
-#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize, TS)]
-pub enum FolderItemID {
-    SceneID(SceneID),
-    CreatureID(CreatureID),
-    NoteID(String),
-    ItemID(ItemID),
-    AbilityID(AbilityID),
-    ClassID(ClassID),
-    SubfolderID(String),
 }
 
 // maybe make this a trait in the future
@@ -277,12 +315,6 @@ impl InventoryOwner {
     }
 }
 
-#[derive(Debug, Copy, Clone, Eq, PartialEq, Serialize, Deserialize, TS)]
-pub enum ModuleSource {
-    Module,
-    SavedGame,
-}
-
 #[derive(Debug, Error, PartialEq)]
 pub enum GameError {
     #[error("File {0} was not found")]
@@ -291,6 +323,16 @@ pub enum GameError {
     AttributeNotFound(CreatureID, AttrID),
     #[error("The ability with ID {0:?} already exists")]
     AbilityAlreadyExists(AbilityID),
+    #[error("The collection with ID {0:?} already exists")]
+    CollectionAlreadyExists(CollectionID),
+    #[error("The collection with ID {0:?} was not found")]
+    CollectionNotFound(CollectionID),
+    #[error("The note with ID {0:?} was not found")]
+    NoteNotFound(NoteID),
+    #[error("The note with ID {0:?} already exists")]
+    NoteAlreadyExists(NoteID),
+    #[error("Collection {0:?} contains duplicate {1} ID {2}")]
+    DuplicateCollectionResource(CollectionID, String, String),
     #[error("The creature with ID {0:?} already exists")]
     CreatureAlreadyExists(CreatureID),
     #[error("The Item {0:?} already exists")]
@@ -343,8 +385,6 @@ pub enum GameError {
     CannotAct(CreatureID),
     #[error("A path can't be found.")]
     NoPathFound,
-    #[error("Path {0} already exists")]
-    FolderAlreadyExists(FolderPath),
     #[error("Can't step from {0:?} to {1:?}")]
     StepTooBig(Point3, Point3),
     #[error("Not enough energy: {0:?}")]
@@ -359,27 +399,8 @@ pub enum GameError {
     HistoryNotFound(usize, usize),
     #[error("Initiative index {0} is out of bounds.")]
     InitiativeOutOfBounds(usize),
-    #[error("The folder {0} is not empty")]
-    FolderNotEmpty(FolderPath),
-    #[error("The folder {0} does not contain {1:?}")]
-    FolderItemNotFound(FolderPath, FolderItemID),
-    #[error("Notes can't be linked or unlinked. '{0}' / '{1}'")]
-    CannotLinkNotes(FolderPath, String),
-
-    #[error("No module source found")]
-    NoModuleSource,
-
-    // Wrappers for other errors:
-    #[error("FolderTree error: {0}")]
-    FolderTreeError(#[source] FolderTreeError),
     #[error("UUID Parse Error: {0}")]
     InvalidID(String, #[source] UuidParseError),
-}
-
-impl From<FolderTreeError> for GameError {
-    fn from(error: FolderTreeError) -> Self {
-        GameError::FolderTreeError(error)
-    }
 }
 
 impl<'a> From<&'a str> for GameError {
@@ -870,7 +891,12 @@ pub struct Game {
     #[serde(default)]
     #[ts(type = "GameItems")]
     pub items: IndexedHashMap<Item>,
-    pub campaign: FolderTree<Folder>,
+    #[serde(default)]
+    #[ts(type = "GameNotes")]
+    pub notes: IndexedHashMap<Note>,
+    #[serde(default)]
+    #[ts(type = "GameCollections")]
+    pub collections: IndexedHashMap<Collection>,
     #[serde(default)]
     #[ts(type = "GamePlayers")]
     pub players: IndexedHashMap<Player>,
@@ -901,7 +927,8 @@ impl Game {
             tile_system: sg.tile_system,
             scenes: sg.scenes,
             items: sg.items,
-            campaign: sg.campaign,
+            notes: sg.notes,
+            collections: sg.collections,
             players: sg.players,
             active_scene: sg.active_scene,
         }
@@ -997,27 +1024,6 @@ impl DeriveKey for Scene {
     }
 }
 
-#[derive(Debug, Default, Clone, Serialize, Deserialize, Eq, PartialEq, TS)]
-#[ts(rename = "FolderNode")]
-pub struct Folder {
-    pub scenes: HashSet<SceneID>,
-    pub creatures: HashSet<CreatureID>,
-    #[ts(type = "Record<string, Note>")]
-    pub notes: IndexedHashMap<Note>,
-    #[serde(default)]
-    pub items: HashSet<ItemID>,
-    #[serde(default)]
-    pub abilities: HashSet<AbilityID>,
-    #[serde(default)]
-    pub classes: HashSet<ClassID>,
-}
-
-impl Folder {
-    pub fn new() -> Folder {
-        Default::default()
-    }
-}
-
 #[derive(Debug, Clone, PartialEq, TS, Serialize, Deserialize)]
 pub struct ChangedGame {
     pub game: Game,
@@ -1044,7 +1050,12 @@ pub struct SerializedGame {
     #[serde(default)]
     #[ts(type = "GameItems")]
     pub items: IndexedHashMap<Item>,
-    pub campaign: FolderTree<Folder>,
+    #[serde(default)]
+    #[ts(type = "GameNotes")]
+    pub notes: IndexedHashMap<Note>,
+    #[serde(default)]
+    #[ts(type = "GameCollections")]
+    pub collections: IndexedHashMap<Collection>,
     #[serde(default)]
     #[ts(type = "GamePlayers")]
     pub players: IndexedHashMap<Player>,
@@ -1071,7 +1082,7 @@ pub struct SerializedPlayerGame {
     pub tile_system: TileSystem,
     #[ts(type = "GamePlayers")]
     pub players: IndexedHashMap<Player>,
-    #[ts(type = "Record<string, Note>")]
+    #[ts(type = "GameNotes")]
     pub notes: IndexedHashMap<Note>,
 }
 

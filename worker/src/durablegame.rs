@@ -19,8 +19,9 @@ use crate::durablestorage::{
 };
 use crate::{
     domigrations::{
-        test_empty_storage_baseline, test_migration_chain_and_rollback,
-        test_production_schema_adoption, test_untrusted_unversioned_storage_rejected,
+        test_catalog_domain_migration, test_empty_storage_baseline,
+        test_migration_chain_and_rollback, test_production_schema_adoption,
+        test_untrusted_unversioned_storage_rejected,
     },
     dump,
     durablestorage::GameStorage,
@@ -301,6 +302,7 @@ impl ArpeggioGameSql {
             "results": {
                 "test_empty_storage_baseline": report(test_empty_storage_baseline(&self.state).await),
                 "test_production_schema_adoption": report(test_production_schema_adoption(&self.state).await),
+                "test_catalog_domain_migration": report(test_catalog_domain_migration(&self.state).await),
                 "test_untrusted_unversioned_storage_rejected": report(test_untrusted_unversioned_storage_rejected(&self.state).await),
                 "test_migration_chain_and_rollback": report(test_migration_chain_and_rollback(&self.state).await),
                 "test_snapshot_creation": report(test_snapshot_creation(self.state.clone()).await),

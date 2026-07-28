@@ -1,10 +1,9 @@
 use arptypes::{
-    Item, Note, PlayerCommand, PlayerID, SerializedCreature, SerializedPlayerGame,
+    Item, PlayerCommand, PlayerID, SerializedCreature, SerializedPlayerGame,
     multitenant::{GameID, InvitationID, PlayerGameAndMetadata, RPIGameRequest, Role},
 };
 use dioxus::prelude::*;
 
-use foldertree::FolderPath;
 use tracing::{error, info};
 
 use crate::{
@@ -271,7 +270,11 @@ fn Notes(player_id: PlayerID) -> Element {
     let ws = use_ws();
 
     let game = use_player_game();
-    let existing_note = game.notes.get("Scratch").cloned();
+    let existing_note = game
+        .notes
+        .values()
+        .find(|note| note.name == "Scratch")
+        .cloned();
 
     // Initialize draft content from existing note on first load
     use_effect({
@@ -283,34 +286,32 @@ fn Notes(player_id: PlayerID) -> Element {
         }
     });
 
-    let has_existing_note = existing_note.is_some();
     let mut save_action = use_action({
-        move |content: String| async move {
-            if content.trim().is_empty() {
-                return Ok(());
+        let existing_note = existing_note.clone();
+        move |content: String| {
+            let existing_note = existing_note.clone();
+            async move {
+                if content.trim().is_empty() {
+                    return Ok(());
+                }
+
+                let command = if let Some(note) = existing_note {
+                    PlayerCommand::EditNote {
+                        note_id: note.id,
+                        name: "Scratch".to_string(),
+                        content,
+                    }
+                } else {
+                    PlayerCommand::CreateNote {
+                        name: "Scratch".to_string(),
+                        content,
+                    }
+                };
+
+                let request = RPIGameRequest::PlayerCommand { command };
+
+                send_request::<()>(request, ws).await
             }
-
-            let note = Note {
-                name: "Scratch".to_string(),
-                content,
-            };
-            let note_path: FolderPath = vec!["Notes".to_string()].into();
-            let command = if has_existing_note {
-                PlayerCommand::EditNote {
-                    path: note_path,
-                    original_name: "Scratch".to_string(),
-                    note,
-                }
-            } else {
-                PlayerCommand::CreateNote {
-                    path: note_path,
-                    note,
-                }
-            };
-
-            let request = RPIGameRequest::PlayerCommand { command };
-
-            send_request::<()>(request, ws).await
         }
     });
 

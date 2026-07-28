@@ -1,7 +1,6 @@
 use std::{
     cmp,
     collections::{HashMap, HashSet},
-    iter::FromIterator,
 };
 
 use crate::{
@@ -11,28 +10,17 @@ use crate::{
     scene::SceneExt,
     types::*,
 };
-use foldertree::{FolderPath, FolderTreeError};
 #[cfg(test)]
 pub mod test;
 
 pub trait GameExt {
-    fn export_module(&self, export_path: &FolderPath) -> Result<Game, GameError>;
-
-    fn import_module(&mut self, import_path: &FolderPath, module: &Game) -> Result<(), GameError>;
-
-    fn validate_campaign(&self) -> Result<(), GameError>;
+    fn validate_collections(&self) -> Result<(), GameError>;
 
     fn creatures(&self) -> Result<HashMap<CreatureID, DynamicCreature<'_, '_>>, GameError>;
 
     fn get_item(&self, iid: ItemID) -> Result<&Item, GameError>;
 
     fn get_ability(&self, abid: AbilityID) -> Result<&Ability, GameError>;
-
-    fn player_path(
-        &self,
-        suffix: FolderPath,
-        player_id: &PlayerID,
-    ) -> (FolderPath, Option<GameLog>);
 
     /// Perform a PlayerCommand on the current Game.
     fn perform_player_command(
@@ -82,18 +70,6 @@ pub trait GameExt {
     ) -> Result<(ChangedGame, u32units::Length), GameError>;
 
     fn next_turn(&self) -> Result<ChangedGame, GameError>;
-
-    fn link_folder_item(
-        &mut self,
-        path: &FolderPath,
-        item_id: &FolderItemID,
-    ) -> Result<(), GameError>;
-
-    fn unlink_folder_item(
-        &mut self,
-        path: &FolderPath,
-        item_id: &FolderItemID,
-    ) -> Result<(), GameError>;
 
     fn apply_log(&self, log: &GameLog) -> Result<Game, GameError>;
 
@@ -243,156 +219,276 @@ pub trait GameExt {
     fn change_with_logs(&self, logs: Vec<GameLog>) -> Result<ChangedGame, GameError>;
 }
 
+fn remove_resource_from_collections(game: &mut Game, resource: ResourceRef) {
+    for collection_id in game.collections.keys().copied().collect::<Vec<_>>() {
+        game.collections
+            .mutate(&collection_id, |collection| match resource {
+                ResourceRef::Scene(id) => collection.scenes.retain(|candidate| *candidate != id),
+                ResourceRef::Creature(id) => {
+                    collection.creatures.retain(|candidate| *candidate != id)
+                }
+                ResourceRef::Note(id) => collection.notes.retain(|candidate| *candidate != id),
+                ResourceRef::Item(id) => collection.items.retain(|candidate| *candidate != id),
+                ResourceRef::Ability(id) => {
+                    collection.abilities.retain(|candidate| *candidate != id)
+                }
+                ResourceRef::Class(id) => collection.classes.retain(|candidate| *candidate != id),
+            });
+    }
+}
+
+fn delete_resource(game: &mut Game, resource: ResourceRef) -> Result<(), GameError> {
+    remove_resource_from_collections(game, resource);
+    match resource {
+        ResourceRef::Note(id) => {
+            game.notes.remove(&id).ok_or(GameError::NoteNotFound(id))?;
+        }
+        ResourceRef::Item(id) => {
+            for creature_id in game.creatures.keys().copied().collect::<Vec<_>>() {
+                game.creatures.mutate(&creature_id, |creature| {
+                    creature.inventory.remove(&id);
+                });
+            }
+            for scene_id in game.scenes.keys().copied().collect::<Vec<_>>() {
+                game.scenes.mutate(&scene_id, |scene| {
+                    scene.inventory.remove(&id);
+                });
+            }
+            game.items.remove(&id).ok_or(GameError::ItemNotFound(id))?;
+        }
+        ResourceRef::Creature(id) => {
+            for scene_id in game.scenes.keys().copied().collect::<Vec<_>>() {
+                game.scenes.mutate(&scene_id, |scene| {
+                    scene.creatures.remove(&id);
+                });
+            }
+            for player_id in game.players.keys().cloned().collect::<Vec<_>>() {
+                game.players.mutate(&player_id, |player| {
+                    player.creatures.remove(&id);
+                });
+            }
+            game.current_combat = if let Ok(combat) = game.get_combat() {
+                combat.remove_from_combat(id)?
+            } else {
+                None
+            };
+            game.creatures
+                .remove(&id)
+                .ok_or_else(|| GameError::CreatureNotFound(id.to_string()))?;
+        }
+        ResourceRef::Scene(id) => {
+            if game.get_combat().is_ok_and(|combat| combat.scene.id == id) {
+                return Err(GameError::SceneInUse(id));
+            }
+            game.scenes
+                .remove(&id)
+                .ok_or(GameError::SceneNotFound(id))?;
+            if game.active_scene == Some(id) {
+                game.active_scene = None;
+            }
+            for player_id in game.players.keys().cloned().collect::<Vec<_>>() {
+                game.players.mutate(&player_id, |player| {
+                    if player.scene == Some(id) {
+                        player.scene = None;
+                    }
+                });
+            }
+        }
+        ResourceRef::Ability(id) => {
+            for class_id in game.classes.keys().copied().collect::<Vec<_>>() {
+                game.classes.mutate(&class_id, |class| {
+                    class.abilities.retain(|candidate| *candidate != id);
+                });
+            }
+            for creature_id in game.creatures.keys().copied().collect::<Vec<_>>() {
+                game.creatures.mutate(&creature_id, |creature| {
+                    creature.abilities.remove(&id);
+                });
+            }
+            game.abilities.remove(&id).ok_or(GameError::NoAbility(id))?;
+        }
+        ResourceRef::Class(id) => {
+            if game.creatures.values().any(|creature| creature.class == id) {
+                return Err(GameError::BuggyProgram("Class in use!".to_string()));
+            }
+            game.classes
+                .remove(&id)
+                .ok_or(GameError::ClassNotFound(id))?;
+        }
+    }
+    Ok(())
+}
+
+fn rename_resource(
+    game: &mut Game,
+    resource: ResourceRef,
+    new_name: &str,
+) -> Result<(), GameError> {
+    let found = match resource {
+        ResourceRef::Scene(id) => game
+            .scenes
+            .mutate(&id, |value| value.name = new_name.to_string()),
+        ResourceRef::Creature(id) => game
+            .creatures
+            .mutate(&id, |value| value.name = new_name.to_string()),
+        ResourceRef::Note(id) => game
+            .notes
+            .mutate(&id, |value| value.name = new_name.to_string()),
+        ResourceRef::Item(id) => game
+            .items
+            .mutate(&id, |value| value.name = new_name.to_string()),
+        ResourceRef::Ability(id) => game
+            .abilities
+            .mutate(&id, |value| value.name = new_name.to_string()),
+        ResourceRef::Class(id) => game
+            .classes
+            .mutate(&id, |value| value.name = new_name.to_string()),
+    };
+    if found.is_none() {
+        return Err(match resource {
+            ResourceRef::Scene(id) => GameError::SceneNotFound(id),
+            ResourceRef::Creature(id) => GameError::CreatureNotFound(id.to_string()),
+            ResourceRef::Note(id) => GameError::NoteNotFound(id),
+            ResourceRef::Item(id) => GameError::ItemNotFound(id),
+            ResourceRef::Ability(id) => GameError::NoAbility(id),
+            ResourceRef::Class(id) => GameError::ClassNotFound(id),
+        });
+    }
+    Ok(())
+}
+
+fn copy_resource(
+    game: &mut Game,
+    source: ResourceRef,
+    destination: ResourceRef,
+) -> Result<(), GameError> {
+    match (source, destination) {
+        (ResourceRef::Scene(source), ResourceRef::Scene(destination)) => {
+            let mut value = game.get_scene(source)?.clone();
+            value.id = destination;
+            game.scenes
+                .try_insert(value)
+                .ok_or(GameError::SceneAlreadyExists(destination))?;
+        }
+        (ResourceRef::Creature(source), ResourceRef::Creature(destination)) => {
+            let mut value = game.get_creature(source)?.creature.clone();
+            value.id = destination;
+            game.creatures
+                .try_insert(value)
+                .ok_or(GameError::CreatureAlreadyExists(destination))?;
+        }
+        (ResourceRef::Note(source), ResourceRef::Note(destination)) => {
+            let mut value = game
+                .notes
+                .get(&source)
+                .ok_or(GameError::NoteNotFound(source))?
+                .clone();
+            value.id = destination;
+            game.notes
+                .try_insert(value)
+                .ok_or(GameError::NoteAlreadyExists(destination))?;
+        }
+        (ResourceRef::Item(source), ResourceRef::Item(destination)) => {
+            let mut value = game.get_item(source)?.clone();
+            value.id = destination;
+            game.items
+                .try_insert(value)
+                .ok_or(GameError::ItemAlreadyExists(destination))?;
+        }
+        (ResourceRef::Ability(source), ResourceRef::Ability(destination)) => {
+            let mut value = game.get_ability(source)?.clone();
+            value.id = destination;
+            game.abilities
+                .try_insert(value)
+                .ok_or(GameError::AbilityAlreadyExists(destination))?;
+        }
+        (ResourceRef::Class(source), ResourceRef::Class(destination)) => {
+            let mut value = game.get_class(source)?.clone();
+            value.id = destination;
+            game.classes
+                .try_insert(value)
+                .ok_or(GameError::ClassAlreadyExists(destination))?;
+        }
+        _ => {
+            return Err(GameError::BuggyProgram(
+                "Cannot copy a resource into a different resource type".to_string(),
+            ))
+        }
+    }
+    Ok(())
+}
+
 impl GameExt for Game {
-    fn export_module(&self, export_path: &FolderPath) -> Result<Game, GameError> {
-        let mut new_game: Game = Game {
-            tile_system: self.tile_system,
-            // First the easy part: create a subtree of the campaign to use as the new campaign folder tree.
-            campaign: self.campaign.subtree(export_path)?,
-            ..Default::default()
-        };
-        // Now, walk that campaign and copy over the actual data to the new game.
-        for path in new_game.campaign.walk_paths(&FolderPath::root()) {
-            let folder = new_game
-                .campaign
-                .get(path)
-                .expect("folder we're walking must exist");
-            for abid in &folder.abilities {
-                new_game.abilities.insert(self.get_ability(*abid)?.clone());
+    fn validate_collections(&self) -> Result<(), GameError> {
+        fn validate_ids<ID>(
+            collection_id: CollectionID,
+            kind: &str,
+            ids: &[ID],
+            exists: impl Fn(&ID) -> bool,
+            not_found: impl Fn(ID) -> GameError,
+        ) -> Result<(), GameError>
+        where
+            ID: Copy + Eq + std::hash::Hash + ToString,
+        {
+            let mut seen = HashSet::new();
+            for id in ids {
+                if !seen.insert(*id) {
+                    return Err(GameError::DuplicateCollectionResource(
+                        collection_id,
+                        kind.to_string(),
+                        id.to_string(),
+                    ));
+                }
+                if !exists(id) {
+                    return Err(not_found(*id));
+                }
             }
-            for classid in &folder.classes {
-                new_game.classes.insert(self.get_class(*classid)?.clone());
-            }
-            for cid in &folder.creatures {
-                new_game
-                    .creatures
-                    .insert(self.get_creature(*cid)?.creature.clone());
-            }
-            for iid in &folder.items {
-                new_game.items.insert(self.get_item(*iid)?.clone());
-            }
-            for sid in &folder.scenes {
-                new_game.scenes.insert(self.get_scene(*sid)?.clone());
-            }
+            Ok(())
         }
 
-        // TODO FIXME RADIX: There are *other* references to game objects that we need to consider. This
-        // may be something we should actually surface to the user as a warning when exporting a folder
-        // as a module. At the very least, it would be better to fail during export rather than
-        // exporting a module that can't be loaded (or which can be loaded and then breaks
-        // serialization).
-        // - Creatures inside the module may have classes outside of the module.
-        // - Scenes inside the module may have hotspots to other scenes outside of the module.
-
-        new_game.validate_campaign()?;
-        Ok(new_game)
-    }
-
-    fn import_module(&mut self, import_path: &FolderPath, module: &Game) -> Result<(), GameError> {
-        // go through all the basic owned contents of the `module`, copy them to self
-        for ability in &module.abilities {
-            self.abilities.insert(ability.clone());
-        }
-        for class in &module.classes {
-            self.classes.insert(class.clone());
-        }
-        for creature in &module.creatures {
-            self.creatures.insert(creature.clone());
-        }
-        for item in &module.items {
-            self.items.insert(item.clone());
-        }
-        for scene in &module.scenes {
-            self.scenes.insert(scene.clone());
-        }
-        self.campaign
-            .copy_from_tree(import_path, &module.campaign)?;
-        self.validate_campaign()?;
-        Ok(())
-    }
-
-    fn validate_campaign(&self) -> Result<(), GameError> {
-        let mut all_abilities = HashSet::new();
-        let mut all_creatures = HashSet::new();
-        let mut all_scenes = HashSet::new();
-        let mut all_items = HashSet::new();
-        let mut all_classes = HashSet::new();
-        for folder_path in self.campaign.walk_paths(&FolderPath::root()) {
-            let folder = self
-                .campaign
-                .get(folder_path)
-                .expect("walk_paths must return valid path");
-            for sid in &folder.scenes {
-                if all_scenes.contains(sid) {
-                    return Err(GameError::SceneAlreadyExists(*sid));
-                }
-                if !self.scenes.contains_key(sid) {
-                    return Err(GameError::SceneNotFound(*sid));
-                }
-                all_scenes.insert(*sid);
-            }
-            for cid in &folder.creatures {
-                if all_creatures.contains(cid) {
-                    return Err(GameError::CreatureAlreadyExists(*cid));
-                }
-                if !self.creatures.contains_key(cid) {
-                    return Err(GameError::CreatureNotFound(cid.to_string()));
-                }
-                all_creatures.insert(*cid);
-            }
-            for iid in &folder.items {
-                if all_items.contains(iid) {
-                    return Err(GameError::ItemAlreadyExists(*iid));
-                }
-                if !self.items.contains_key(iid) {
-                    return Err(GameError::ItemNotFound(*iid));
-                }
-                all_items.insert(*iid);
-            }
-            for abid in &folder.abilities {
-                if all_abilities.contains(abid) {
-                    return Err(GameError::AbilityAlreadyExists(*abid));
-                }
-                if !self.abilities.contains_key(abid) {
-                    return Err(GameError::NoAbility(*abid));
-                }
-                all_abilities.insert(*abid);
-            }
-            for classid in &folder.classes {
-                if all_classes.contains(classid) {
-                    return Err(GameError::ClassAlreadyExists(*classid));
-                }
-                if !self.classes.contains_key(classid) {
-                    return Err(GameError::ClassNotFound(*classid));
-                }
-                all_classes.insert(*classid);
-            }
-        }
-        if all_scenes != HashSet::from_iter(self.scenes.keys().cloned()) {
-            return Err(GameError::BuggyProgram(
-                "Not all scenes were in the campaign!".to_string(),
-            ));
-        }
-        if all_creatures != HashSet::from_iter(self.creatures.keys().cloned()) {
-            return Err(GameError::BuggyProgram(
-                "Not all creatures were in the campaign!".to_string(),
-            ));
-        }
-        if all_items != HashSet::from_iter(self.items.keys().cloned()) {
-            return Err(GameError::BuggyProgram(
-                "Not all items were in the campaign!".to_string(),
-            ));
-        }
-        let game_abilities = HashSet::from_iter(self.abilities.keys().cloned());
-        if all_abilities != game_abilities {
-            return Err(GameError::BuggyProgram(format!(
-                "Not all abilities were in the campaign! {all_abilities:?} VS {game_abilities:?}"
-            )));
-        }
-        if all_classes != HashSet::from_iter(self.classes.keys().cloned()) {
-            return Err(GameError::BuggyProgram(
-                "Not all classes were in the campaign!".to_string(),
-            ));
+        for collection in self.collections.values() {
+            validate_ids(
+                collection.id,
+                "scene",
+                &collection.scenes,
+                |id| self.scenes.contains_key(id),
+                GameError::SceneNotFound,
+            )?;
+            validate_ids(
+                collection.id,
+                "creature",
+                &collection.creatures,
+                |id| self.creatures.contains_key(id),
+                |id| GameError::CreatureNotFound(id.to_string()),
+            )?;
+            validate_ids(
+                collection.id,
+                "note",
+                &collection.notes,
+                |id| self.notes.contains_key(id),
+                GameError::NoteNotFound,
+            )?;
+            validate_ids(
+                collection.id,
+                "item",
+                &collection.items,
+                |id| self.items.contains_key(id),
+                GameError::ItemNotFound,
+            )?;
+            validate_ids(
+                collection.id,
+                "ability",
+                &collection.abilities,
+                |id| self.abilities.contains_key(id),
+                GameError::NoAbility,
+            )?;
+            validate_ids(
+                collection.id,
+                "class",
+                &collection.classes,
+                |id| self.classes.contains_key(id),
+                GameError::ClassNotFound,
+            )?;
         }
         Ok(())
     }
@@ -417,22 +513,6 @@ impl GameExt for Game {
             .ok_or_else(|| GameError::NoAbility(abid))
     }
 
-    fn player_path(
-        &self,
-        suffix: FolderPath,
-        player_id: &PlayerID,
-    ) -> (FolderPath, Option<GameLog>) {
-        let mut path = vec!["Players".to_string(), player_id.0.clone()];
-        path.extend(suffix.into_vec());
-        let path: FolderPath = path.into();
-
-        if let Err(FolderTreeError::FolderNotFound(_)) = self.campaign.get(&path) {
-            (path.clone(), Some(GameLog::CreateFolder { path }))
-        } else {
-            (path, None)
-        }
-    }
-
     /// Perform a PlayerCommand on the current Game.
     fn perform_player_command(
         &self,
@@ -450,30 +530,34 @@ impl GameExt for Game {
                 player_id,
                 message: message.to_owned(),
             }),
-            CreateNote { path, note } => {
-                let (path, log) = self.player_path(path, &player_id);
-                let mut logs = log.into_iter().collect::<Vec<_>>();
-                logs.push(GameLog::CreateNote {
-                    path: path.clone(),
-                    note,
-                });
-                self.change_with_logs(logs)
-            }
+            CreateNote { name, content } => self.change_with(GameLog::CreateNote {
+                note: Note {
+                    id: NoteID::gen(),
+                    name,
+                    content,
+                    owner: NoteOwner::Player(player_id),
+                    visibility: NoteVisibility::OwnerOnly,
+                },
+            }),
             EditNote {
-                path,
-                original_name,
-                note,
+                note_id,
+                name,
+                content,
             } => {
-                let (path, log) = self.player_path(path, &player_id);
-                // we *could* add a new log called PlayerEditNote that includes the player_id, but that's
-                // not strictly necessary; it would only be for informational purposes.
-                let mut logs = vec![GameLog::EditNote {
-                    path,
-                    original_name,
-                    note,
-                }];
-                logs.extend(log);
-                self.change_with_logs(logs)
+                let existing = self
+                    .notes
+                    .get(&note_id)
+                    .filter(|note| note.owner == NoteOwner::Player(player_id.clone()))
+                    .ok_or(GameError::NoteNotFound(note_id))?;
+                self.change_with(GameLog::EditNote {
+                    note: Note {
+                        id: note_id,
+                        name,
+                        content,
+                        owner: existing.owner.clone(),
+                        visibility: existing.visibility.clone(),
+                    },
+                })
             }
             PathCreature {
                 creature_id,
@@ -589,17 +673,6 @@ impl GameExt for Game {
     fn perform_gm_command(&self, cmd: GMCommand) -> Result<ChangedGame, GameError> {
         use self::GMCommand::*;
         let change = match cmd {
-            LoadModule {
-                ref name,
-                ref path,
-                source,
-                game,
-            } => self.change_with(GameLog::LoadModule {
-                name: name.clone(),
-                module: game,
-                path: path.clone(),
-                source,
-            }),
             SetActiveScene { id } => self.change_with(GameLog::SetActiveScene { id }),
             // ** Player Management **
             RegisterPlayer { ref id } => {
@@ -640,72 +713,66 @@ impl GameExt for Game {
                 creature_id,
                 attribute_check,
             } => self.attribute_check(creature_id, &attribute_check),
-            // ** Folder Management **
-            CreateFolder { path } => self.change_with(GameLog::CreateFolder { path }),
-            RenameFolder { path, new_name } => {
-                self.change_with(GameLog::RenameFolder { path, new_name })
-            }
-            MoveFolderItem {
-                source,
-                item_id,
-                destination,
-            } => self.change_with(GameLog::MoveFolderItem {
-                source,
-                item_id,
-                destination,
+            CreateCollection { name } => self.change_with(GameLog::CreateCollection {
+                collection: Collection {
+                    id: CollectionID::gen(),
+                    name,
+                    scenes: vec![],
+                    creatures: vec![],
+                    notes: vec![],
+                    items: vec![],
+                    abilities: vec![],
+                    classes: vec![],
+                },
             }),
-            CopyFolderItem {
-                source,
-                item_id,
-                dest,
-            } => {
-                let new_item_id = match item_id {
-                    FolderItemID::CreatureID(_) => FolderItemID::CreatureID(CreatureID::gen()),
-                    FolderItemID::SceneID(_) => FolderItemID::SceneID(SceneID::gen()),
-                    FolderItemID::ItemID(_) => FolderItemID::ItemID(ItemID::gen()),
-                    FolderItemID::AbilityID(_) => FolderItemID::AbilityID(AbilityID::gen()),
-                    FolderItemID::ClassID(_) => FolderItemID::ClassID(ClassID::gen()),
-                    FolderItemID::NoteID(_) | FolderItemID::SubfolderID(_) => item_id.clone(),
+            EditCollection { collection } => {
+                self.change_with(GameLog::EditCollection { collection })
+            }
+            DeleteCollection { collection_id } => {
+                self.change_with(GameLog::DeleteCollection { collection_id })
+            }
+            DeleteResource { resource } => self.change_with(GameLog::DeleteResource { resource }),
+            RenameResource { resource, new_name } => {
+                self.change_with(GameLog::RenameResource { resource, new_name })
+            }
+            CopyResource { source } => {
+                let destination = match source {
+                    ResourceRef::Scene(_) => ResourceRef::Scene(SceneID::gen()),
+                    ResourceRef::Creature(_) => ResourceRef::Creature(CreatureID::gen()),
+                    ResourceRef::Note(_) => ResourceRef::Note(NoteID::gen()),
+                    ResourceRef::Item(_) => ResourceRef::Item(ItemID::gen()),
+                    ResourceRef::Ability(_) => ResourceRef::Ability(AbilityID::gen()),
+                    ResourceRef::Class(_) => ResourceRef::Class(ClassID::gen()),
                 };
-                self.change_with(GameLog::CopyFolderItem {
+                self.change_with(GameLog::CopyResource {
                     source,
-                    item_id,
-                    dest,
-                    new_item_id,
+                    destination,
                 })
             }
-            DeleteFolderItem { path, item_id } => {
-                self.change_with(GameLog::DeleteFolderItem { path, item_id })
-            }
-            RenameFolderItem {
-                path,
-                item_id,
-                new_name,
-            } => self.change_with(GameLog::RenameFolderItem {
-                path,
-                item_id,
-                new_name,
-            }),
 
-            CreateItem { path, name } => {
+            CreateItem { name } => {
                 let item = Item {
                     id: ItemID::gen(),
                     name,
                 };
-                self.change_with(GameLog::CreateItem { path, item })
+                self.change_with(GameLog::CreateItem { item })
             }
             EditItem { item } => self.change_with(GameLog::EditItem { item }),
 
-            CreateNote { path, note } => self.change_with(GameLog::CreateNote { path, note }),
-            EditNote {
-                path,
-                original_name,
-                note,
-            } => self.change_with(GameLog::EditNote {
-                path,
-                original_name,
-                note,
+            CreateNote {
+                name,
+                content,
+                visibility,
+            } => self.change_with(GameLog::CreateNote {
+                note: Note {
+                    id: NoteID::gen(),
+                    name,
+                    content,
+                    owner: NoteOwner::Game,
+                    visibility,
+                },
             }),
+            EditNote { note } => self.change_with(GameLog::EditNote { note }),
 
             // ** Inventory Management **
             TransferItem {
@@ -739,9 +806,9 @@ impl GameExt for Game {
                 count,
             }),
 
-            CreateScene { path, scene } => {
+            CreateScene { scene } => {
                 let scene = Scene::create(scene);
-                self.change_with(GameLog::CreateScene { path, scene })
+                self.change_with(GameLog::CreateScene { scene })
             }
             EditSceneDetails { scene_id, details } => {
                 self.change_with(GameLog::EditSceneDetails { scene_id, details })
@@ -803,7 +870,7 @@ impl GameExt for Game {
             }),
 
             // ** Classes & Abilities **
-            CreateClass { path, class } => {
+            CreateClass { class } => {
                 let id = ClassID::gen();
                 let class = Class {
                     id,
@@ -813,10 +880,10 @@ impl GameExt for Game {
                     color: class.color.clone(),
                     emoji: class.emoji.clone(),
                 };
-                self.change_with(GameLog::CreateClass { path, class })
+                self.change_with(GameLog::CreateClass { class })
             }
             EditClass { class } => self.change_with(GameLog::EditClass { class }),
-            CreateAbility { path, ability } => {
+            CreateAbility { ability } => {
                 let id = AbilityID::gen();
                 let ability = Ability {
                     id,
@@ -825,13 +892,13 @@ impl GameExt for Game {
                     action: ability.action.clone(),
                     usable_ooc: ability.usable_ooc,
                 };
-                self.change_with(GameLog::CreateAbility { path, ability })
+                self.change_with(GameLog::CreateAbility { ability })
             }
             EditAbility { ability } => self.change_with(GameLog::EditAbility { ability }),
 
-            CreateCreature { path, creature } => {
+            CreateCreature { creature } => {
                 let creature = Creature::create(&creature);
-                self.change_with(GameLog::CreateCreature { path, creature })
+                self.change_with(GameLog::CreateCreature { creature })
             }
             EditCreatureDetails { creature } => {
                 self.change_with(GameLog::EditCreature { creature })
@@ -1011,65 +1078,6 @@ impl GameExt for Game {
         )
     }
 
-    fn link_folder_item(
-        &mut self,
-        path: &FolderPath,
-        item_id: &FolderItemID,
-    ) -> Result<(), GameError> {
-        let node = self.campaign.get_mut(path)?;
-        match *item_id {
-            FolderItemID::CreatureID(cid) => node.creatures.insert(cid),
-            FolderItemID::SceneID(sid) => node.scenes.insert(sid),
-            FolderItemID::ItemID(iid) => node.items.insert(iid),
-            FolderItemID::AbilityID(abid) => node.abilities.insert(abid),
-            FolderItemID::ClassID(classid) => node.classes.insert(classid),
-            FolderItemID::SubfolderID(_) => {
-                return Err(GameError::BuggyProgram("Cannot link folders.".to_string()))
-            }
-            FolderItemID::NoteID(ref nid) => {
-                return Err(GameError::CannotLinkNotes(path.clone(), nid.clone()))
-            }
-        };
-        Ok(())
-    }
-
-    fn unlink_folder_item(
-        &mut self,
-        path: &FolderPath,
-        item_id: &FolderItemID,
-    ) -> Result<(), GameError> {
-        fn remove_set<T: ::std::hash::Hash + Eq>(
-            path: &FolderPath,
-            item: &FolderItemID,
-            s: &mut HashSet<T>,
-            key: &T,
-        ) -> Result<(), GameError> {
-            if !s.remove(key) {
-                return Err(GameError::FolderItemNotFound(path.clone(), item.clone()));
-            }
-            Ok(())
-        }
-        let node = self.campaign.get_mut(path)?;
-        match *item_id {
-            FolderItemID::CreatureID(cid) => remove_set(path, item_id, &mut node.creatures, &cid)?,
-            FolderItemID::SceneID(sid) => remove_set(path, item_id, &mut node.scenes, &sid)?,
-            FolderItemID::ItemID(iid) => remove_set(path, item_id, &mut node.items, &iid)?,
-            FolderItemID::AbilityID(abid) => remove_set(path, item_id, &mut node.abilities, &abid)?,
-            FolderItemID::ClassID(classid) => {
-                remove_set(path, item_id, &mut node.classes, &classid)?
-            }
-            FolderItemID::SubfolderID(_) => {
-                return Err(GameError::BuggyProgram(
-                    "Cannot unlink folders.".to_string(),
-                ))
-            }
-            FolderItemID::NoteID(ref nid) => {
-                return Err(GameError::CannotLinkNotes(path.clone(), nid.clone()))
-            }
-        };
-        Ok(())
-    }
-
     fn apply_log(&self, log: &GameLog) -> Result<Game, GameError> {
         let mut newgame = self.clone();
         newgame.apply_log_mut(log)?;
@@ -1130,18 +1138,6 @@ impl GameExt for Game {
         // function MUST be purely deterministic.
         use self::GameLog::*;
         match *log {
-            LoadModule {
-                ref module,
-                ref path,
-                ..
-            } => {
-                if self.campaign.get(path).is_ok() {
-                    return Err(GameError::FolderAlreadyExists(path.clone()));
-                } else {
-                    self.import_module(path, module)?;
-                }
-            }
-
             SetActiveScene { id } => self.active_scene = id,
 
             // Player stuff
@@ -1196,317 +1192,39 @@ impl GameExt for Game {
             // purely informational
             ChatFromGM { .. } | ChatFromPlayer { .. } | AttributeCheckResult { .. } => {}
 
-            // purely informational
-            CreateFolder { ref path } => self.campaign.make_folders(path, Folder::new()),
-            RenameFolder {
-                ref path,
-                ref new_name,
-            } => self.campaign.rename_folder(path, new_name.clone())?,
-            MoveFolderItem {
-                ref source,
-                ref item_id,
-                ref destination,
-            } => match *item_id {
-                FolderItemID::NoteID(ref name) => {
-                    let note = self
-                        .campaign
-                        .get_mut(source)?
-                        .notes
-                        .remove(name)
-                        .ok_or_else(|| {
-                            GameError::FolderItemNotFound(
-                                source.clone(),
-                                FolderItemID::NoteID(name.clone()),
-                            )
-                        })?;
-                    self.campaign.get_mut(destination)?.notes.insert(note);
-                }
-                FolderItemID::SubfolderID(ref name) => {
-                    self.campaign
-                        .move_folder(&source.child(name.clone()), destination)?;
-                }
-                _ => {
-                    self.unlink_folder_item(source, item_id)?;
-                    self.link_folder_item(destination, item_id)?;
-                }
-            },
-            CopyFolderItem {
-                ref item_id,
-                ref dest,
-                ref new_item_id,
-                ..
-            } => match (item_id, new_item_id) {
-                (&FolderItemID::CreatureID(id), &FolderItemID::CreatureID(new_id)) => {
-                    let mut creature = self.get_creature(id)?.creature.clone();
-                    creature.id = new_id;
-                    self.apply_log_mut(&CreateCreature {
-                        path: dest.clone(),
-                        creature,
-                    })?;
-                }
-                (&FolderItemID::CreatureID(_), _) => panic!("Mismatched folder item ID!"),
-                (&FolderItemID::SceneID(id), &FolderItemID::SceneID(new_id)) => {
-                    let mut scene = self.get_scene(id)?.clone();
-                    scene.id = new_id;
-                    self.apply_log_mut(&CreateScene {
-                        path: dest.clone(),
-                        scene,
-                    })?;
-                }
-                (&FolderItemID::SceneID(_), _) => panic!("Mismatched folder item ID!"),
-                (&FolderItemID::ItemID(id), &FolderItemID::ItemID(new_id)) => {
-                    let mut item = self.get_item(id)?.clone();
-                    item.id = new_id;
-                    self.apply_log_mut(&CreateItem {
-                        path: dest.clone(),
-                        item,
-                    })?;
-                }
-                (&FolderItemID::ItemID(_), _) => panic!("Mismatched folder item ID!"),
-                (&FolderItemID::AbilityID(id), &FolderItemID::AbilityID(new_id)) => {
-                    let mut ability = self
-                        .abilities
-                        .get(&id)
-                        .ok_or_else(|| GameError::NoAbility(id))?
-                        .clone();
-                    ability.id = new_id;
-                    self.abilities
-                        .try_insert(ability)
-                        .ok_or_else(|| GameError::AbilityAlreadyExists(new_id))?;
-                    self.link_folder_item(dest, &FolderItemID::AbilityID(new_id))?;
-                }
-                (&FolderItemID::AbilityID(_), _) => panic!("Mismatched folder item ID!"),
-                (&FolderItemID::ClassID(id), &FolderItemID::ClassID(new_id)) => {
-                    let mut new_class = self
-                        .classes
-                        .get(&id)
-                        .ok_or_else(|| GameError::ClassNotFound(id))?
-                        .clone();
-                    new_class.id = new_id;
-                    self.classes
-                        .try_insert(new_class)
-                        .ok_or_else(|| GameError::ClassAlreadyExists(new_id))?;
-                    self.link_folder_item(dest, &FolderItemID::ClassID(new_id))?;
-                }
-                (&FolderItemID::ClassID(_), _) => panic!("Mismatched folder item ID!"),
-                (&FolderItemID::SubfolderID(_), _) => unimplemented!("Can't Copy subfolders"),
-                (&FolderItemID::NoteID(_), _) => unimplemented!("Can't clone notes... yet?"),
-            },
-            DeleteFolderItem {
-                ref path,
-                ref item_id,
-            } => {
-                // because we're being paranoid, we're walking ALL folder paths and checking if the given
-                // item ID is found in ANY of them and cleaning it up.
-                let all_folders: Vec<FolderPath> = self
-                    .campaign
-                    .walk_paths(&FolderPath::root())
-                    .cloned()
-                    .collect();
-                match *item_id {
-                    FolderItemID::NoteID(ref name) => {
-                        self.campaign.get_mut(path)?.notes.remove(name);
-                    }
-                    FolderItemID::ItemID(iid) => {
-                        for folder in all_folders {
-                            self.campaign.get_mut(&folder)?.items.remove(&iid);
-                        }
-                        // Also delete the item from all creature inventory slots
-                        let cids: Vec<CreatureID> = self.creatures.keys().cloned().collect();
-                        for cid in cids {
-                            self.creatures
-                                .mutate(&cid, |c| {
-                                    c.inventory.remove(&iid);
-                                })
-                                .ok_or_else(|| GameError::CreatureNotFound(cid.to_string()))?;
-                        }
-                        // Also delete the item from all scene inventory slots
-                        let sids: Vec<SceneID> = self.scenes.keys().cloned().collect();
-                        for sid in sids {
-                            self.scenes
-                                .mutate(&sid, |s| {
-                                    s.inventory.remove(&iid);
-                                })
-                                .ok_or_else(|| GameError::SceneNotFound(sid))?;
-                        }
-                        // Also delete the item from the core item DB!
-                        self.items.remove(&iid);
-                    }
-                    FolderItemID::CreatureID(cid) => {
-                        for path in all_folders {
-                            let node = self.campaign.get_mut(&path)?;
-                            node.creatures.remove(&cid);
-                        }
-                        let scenes_with_this_creature: Vec<SceneID> = self
-                            .scenes
-                            .values()
-                            .filter_map(|s| {
-                                if s.creatures.contains_key(&cid) {
-                                    Some(s.id)
-                                } else {
-                                    None
-                                }
-                            })
-                            .collect();
-                        for sid in scenes_with_this_creature {
-                            self.scenes.mutate(&sid, |sc| {
-                                sc.creatures.remove(&cid);
-                            });
-                        }
-                        self.current_combat = {
-                            if let Ok(combat) = self.get_combat() {
-                                combat.remove_from_combat(cid)?
-                            } else {
-                                None
-                            }
-                        };
-
-                        self.creatures
-                            .remove(&cid)
-                            .ok_or_else(|| GameError::CreatureNotFound(cid.to_string()))?;
-                    }
-                    FolderItemID::SceneID(sid) => {
-                        // TODO: Figure out how to deal with players referencing this scene.
-                        // - disallow deleting if in combat
-                        if let Ok(combat) = self.get_combat() {
-                            if combat.scene.id == sid {
-                                return Err(GameError::SceneInUse(sid));
-                            }
-                        }
-                        for path in all_folders {
-                            let node = self.campaign.get_mut(&path)?;
-                            node.scenes.remove(&sid);
-                        }
-                        self.scenes.remove(&sid);
-                    }
-                    FolderItemID::AbilityID(abid) => {
-                        for path in all_folders {
-                            let node = self.campaign.get_mut(&path)?;
-                            node.abilities.remove(&abid);
-                        }
-                        for class_id in self.classes.keys().cloned().collect::<Vec<_>>() {
-                            self.classes
-                                .mutate(&class_id, |c| {
-                                    c.abilities.retain(|el| *el == abid);
-                                })
-                                .expect("iterating classes...");
-                        }
-                        for cid in self.creatures.keys().cloned().collect::<Vec<CreatureID>>() {
-                            self.creatures
-                                .mutate(&cid, |c| {
-                                    c.abilities.remove(&abid);
-                                })
-                                .expect("Must exist");
-                        }
-                        self.abilities.remove(&abid);
-                    }
-                    FolderItemID::ClassID(classid) => {
-                        for cid in self.creatures.keys().cloned().collect::<Vec<CreatureID>>() {
-                            if self.get_creature(cid)?.creature.class == classid {
-                                return Err(GameError::BuggyProgram("Class in use!".to_string()));
-                            }
-                        }
-                        for path in all_folders {
-                            let node = self.campaign.get_mut(&path)?;
-                            node.classes.remove(&classid);
-                        }
-                        self.classes.remove(&classid);
-                    }
-                    FolderItemID::SubfolderID(ref name) => {
-                        // basically we delete everything by simulating GameLog::DeleteFolderItem for each
-                        // child. Order may matter here in case some objects can't be deleted before their
-                        // referents are cleaned up.
-                        let path = path.child(name.to_string());
-                        for child_folder in self.campaign.get_children(&path)?.clone() {
-                            self.apply_log_mut(&DeleteFolderItem {
-                                path: path.clone(),
-                                item_id: FolderItemID::SubfolderID(child_folder.clone()),
-                            })?;
-                        }
-                        let node = self.campaign.get(&path)?.clone();
-                        for scene_id in node.scenes {
-                            self.apply_log_mut(&DeleteFolderItem {
-                                path: path.clone(),
-                                item_id: FolderItemID::SceneID(scene_id),
-                            })?;
-                        }
-                        for cid in node.creatures {
-                            self.apply_log_mut(&DeleteFolderItem {
-                                path: path.clone(),
-                                item_id: FolderItemID::CreatureID(cid),
-                            })?;
-                        }
-                        for iid in node.items {
-                            self.apply_log_mut(&DeleteFolderItem {
-                                path: path.clone(),
-                                item_id: FolderItemID::ItemID(iid),
-                            })?;
-                        }
-                        for abid in node.abilities {
-                            self.apply_log_mut(&DeleteFolderItem {
-                                path: path.clone(),
-                                item_id: FolderItemID::AbilityID(abid),
-                            })?;
-                        }
-                        for classid in node.classes {
-                            self.apply_log_mut(&DeleteFolderItem {
-                                path: path.clone(),
-                                item_id: FolderItemID::ClassID(classid),
-                            })?;
-                        }
-                        for nname in node.notes.keys() {
-                            self.apply_log_mut(&DeleteFolderItem {
-                                path: path.clone(),
-                                item_id: FolderItemID::NoteID(nname.clone()),
-                            })?;
-                        }
-                        self.campaign.remove(&path)?;
-                    }
-                }
+            CreateCollection { ref collection } => {
+                self.collections
+                    .try_insert(collection.clone())
+                    .ok_or(GameError::CollectionAlreadyExists(collection.id))?;
+                self.validate_collections()?;
             }
-
-            RenameFolderItem {
-                ref path,
-                ref item_id,
+            EditCollection { ref collection } => {
+                if !self.collections.contains_key(&collection.id) {
+                    return Err(GameError::CollectionNotFound(collection.id));
+                }
+                self.collections.insert(collection.clone());
+                self.validate_collections()?;
+            }
+            DeleteCollection { collection_id } => {
+                self.collections
+                    .remove(&collection_id)
+                    .ok_or(GameError::CollectionNotFound(collection_id))?;
+            }
+            DeleteResource { resource } => delete_resource(self, resource)?,
+            RenameResource {
+                resource,
                 ref new_name,
-            } => match item_id {
-                FolderItemID::SceneID(id) => {
-                    self.scenes.mutate(id, |s| s.name = new_name.clone());
-                }
-                FolderItemID::CreatureID(id) => {
-                    self.creatures.mutate(id, |c| c.name = new_name.clone());
-                }
-                FolderItemID::NoteID(original_name) => {
-                    let node = self.campaign.get_mut(path)?;
-                    node.notes
-                        .mutate(original_name, move |note| note.name = new_name.clone());
-                }
-                FolderItemID::ItemID(id) => {
-                    self.items.mutate(id, |i| i.name = new_name.clone());
-                }
-                FolderItemID::AbilityID(id) => {
-                    self.abilities.mutate(id, |ab| ab.name = new_name.clone());
-                }
-                FolderItemID::ClassID(id) => {
-                    self.classes.mutate(id, |c| c.name = new_name.clone());
-                }
-                FolderItemID::SubfolderID(id) => {
-                    let mut full_path: Vec<String> = path.clone().into();
-                    full_path.push(id.clone());
-                    let full_path = FolderPath::from_vec(full_path);
-                    self.campaign.rename_folder(&full_path, new_name.clone())?
-                }
-            },
+            } => rename_resource(self, resource, new_name)?,
+            CopyResource {
+                source,
+                destination,
+            } => copy_resource(self, source, destination)?,
 
-            CreateItem {
-                ref path,
-                item: ref ritem,
-            } => {
+            CreateItem { item: ref ritem } => {
                 let item = ritem.clone();
                 self.items
                     .try_insert(item)
                     .ok_or_else(|| GameError::ItemAlreadyExists(ritem.id))?;
-                self.link_folder_item(path, &FolderItemID::ItemID(ritem.id))?;
             }
             EditItem { ref item } => {
                 self.items
@@ -1514,23 +1232,15 @@ impl GameExt for Game {
                     .ok_or_else(|| GameError::ItemNotFound(item.id))?;
             }
 
-            CreateNote { ref path, ref note } => {
-                self.campaign.get_mut(path)?.notes.insert(note.clone());
+            CreateNote { ref note } => {
+                self.notes
+                    .try_insert(note.clone())
+                    .ok_or(GameError::NoteAlreadyExists(note.id))?;
             }
-            EditNote {
-                ref path,
-                ref original_name,
-                note: ref new_note,
-            } => {
-                let node = self.campaign.get_mut(path)?;
-                node.notes
-                    .mutate(original_name, move |note| *note = new_note.clone())
-                    .ok_or_else(|| {
-                        GameError::FolderItemNotFound(
-                            path.clone(),
-                            FolderItemID::NoteID(original_name.to_string()),
-                        )
-                    })?;
+            EditNote { ref note } => {
+                self.notes
+                    .mutate(&note.id, |existing| *existing = note.clone())
+                    .ok_or(GameError::NoteNotFound(note.id))?;
             }
 
             // ** Inventory Management **
@@ -1565,15 +1275,11 @@ impl GameExt for Game {
             }
 
             // ** Scenes **
-            CreateScene {
-                ref path,
-                scene: ref rscene,
-            } => {
+            CreateScene { scene: ref rscene } => {
                 let scene = rscene.clone();
                 self.scenes
                     .try_insert(scene)
                     .ok_or_else(|| GameError::SceneAlreadyExists(rscene.id))?;
-                self.link_folder_item(path, &FolderItemID::SceneID(rscene.id))?;
             }
             EditSceneDetails {
                 scene_id,
@@ -1719,12 +1425,8 @@ impl GameExt for Game {
             }
 
             // ** Classes & Abilities **
-            CreateClass {
-                ref path,
-                ref class,
-            } => {
+            CreateClass { ref class } => {
                 self.classes.insert(class.clone());
-                self.link_folder_item(path, &FolderItemID::ClassID(class.id))?;
             }
             EditClass { ref class } => {
                 self.classes.mutate(&class.id, move |c| {
@@ -1735,12 +1437,8 @@ impl GameExt for Game {
                     c.emoji = class.emoji.clone();
                 });
             }
-            CreateAbility {
-                ref path,
-                ref ability,
-            } => {
+            CreateAbility { ref ability } => {
                 self.abilities.insert(ability.clone());
-                self.link_folder_item(path, &FolderItemID::AbilityID(ability.id))?;
             }
             EditAbility { ref ability } => {
                 self.abilities.mutate(&ability.id, move |a| {
@@ -1753,14 +1451,12 @@ impl GameExt for Game {
 
             // ** Creatures **
             CreateCreature {
-                ref path,
                 creature: ref rcreature,
             } => {
                 let creature = rcreature.clone();
                 self.creatures
                     .try_insert(creature)
                     .ok_or_else(|| GameError::CreatureAlreadyExists(rcreature.id()))?;
-                self.link_folder_item(path, &FolderItemID::CreatureID(rcreature.id()))?;
             }
             EditCreatureDetails {
                 creature_id,

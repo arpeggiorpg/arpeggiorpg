@@ -2,9 +2,10 @@
 
 ## Status
 
-In progress. Phase 0 is complete and deployed to preprod. Phase 1, the domain-model change, is
-next. Module and storage work has not started; a few eventual Phase 2 UI outcomes were pulled
-forward into the prototype.
+In progress. Phases 0 and 1 are complete. Phase 0 is deployed to preprod; Phase 1 is implemented
+and verified locally but is not yet deployed. Phase 2 collection-editing behavior and Dioxus
+controls are next. Module and granular-storage work has not started; a few eventual Phase 2 UI
+outcomes were pulled forward into the prototype.
 
 This is the canonical plan for replacing campaign folders with a resource catalog and collections,
 for importing and exporting modules, and for eventually moving from whole-game snapshots to
@@ -21,10 +22,7 @@ Completed in the Rust/Dioxus UI:
 - Replaced the normal Campaign tree with a Catalog as the default GM view.
 - Added Current Scene, session-local Recent, resource-type, search, collection overview, and
   individual collection views.
-- Projected existing folder paths as temporary read-only collections.
 - Added one location-free create flow for scenes, creatures, notes, classes, abilities, and items.
-  For compatibility with the current commands and domain model, it creates resources under the
-  hidden default path `/catalog`.
 - Flattened Manage Creatures, preserved search and grant/remove behavior, and placed creatures
   assigned when the dialog opens at the top of the list.
 - Added existing creature icons and class emojis to catalog rows.
@@ -32,20 +30,38 @@ Completed in the Rust/Dioxus UI:
 - Left the TypeScript UI untouched.
 - Deployed the current prototype to `https://preprod.arpeggio-331.pages.dev`.
 
+Completed in the Phase 1 domain model:
+
+- Added first-class `CollectionID`, `NoteID`, `Collection`, and top-level `Note` types.
+- Made note ownership and visibility explicit instead of deriving authorization from folder paths.
+- Added `Game.collections` and `Game.notes` while retaining whole-game snapshot persistence.
+- Added collection validation for stale references and duplicate membership within a collection;
+  resources may belong to multiple collections.
+- Added deterministic folder-to-collection and embedded-note-to-top-level-note conversion.
+- Added storage migration version 2, which transactionally rewrites every existing snapshot and
+  log before a current `Game` is created or replay begins.
+- Moved every folder-era wire type and conversion rule into a Worker-only migration module.
+- Removed `campaign`, folder commands, folder logs, and FolderTree dependencies from `arptypes`,
+  `arpeggio`, and `arpui`.
+- Added folder-free resource, note, collection, rename, copy, and catalog-deletion logs.
+- Added pathless resource and note commands; player note authorization now uses explicit ownership.
+- Switched catalog and player serialization to the new top-level notes and collections.
+- Verified the migration in the local Durable Object suite and verified the workspace and WASM
+  builds.
+
 Not yet implemented:
 
-- First-class `Collection` and top-level `Note` domain types.
-- Collection editing, multiple membership, manual ordering, or catalog deletion.
-- Location-free resource commands; the current UI adapts existing folder-based commands.
+- Dioxus collection editing, multiple-membership, manual-ordering, and catalog-deletion controls.
 - The new module format, dependency-aware import/export, and module provenance.
-- Repository abstraction, granular persistence, migration, or dual-write work.
+- Repository abstraction, granular persistence, or dual-write work.
 
-Current decisions and prototype constraints:
+Current decisions and constraints:
 
-- `/catalog` is an implementation detail of the compatibility layer, not a user-facing location.
 - Legacy folder-based module imports do not need to remain available. There are no known module
-  files in active use, and the format will be replaced during Phase 5.
-- Existing folder-based games still require a migration path when the domain model changes.
+  files in active use, and migration fails transactionally with a precise error if it encounters a
+  legacy `LoadModule` log.
+- Folder compatibility exists only in the Worker storage migration. Current domain types and logs
+  have no folder representation.
 
 ## Implementation phases
 
@@ -56,28 +72,28 @@ Current decisions and prototype constraints:
 - [x] Add Current Scene and Recent where practical.
 - [x] Present folder paths as temporary read-only collections.
 - [x] Remove the folder tree from the normal UI.
-- [x] Add a location-free prototype create flow backed by `/catalog`.
+- [x] Add a location-free prototype create flow.
 - [x] Gather experience before changing serialized state.
 - [x] Do not touch the TypeScript UI or generated TypeScript.
 
 ### Phase 1: Domain model
 
-- Add `CollectionID` and `NoteID`.
-- Make notes top-level resources.
-- Add `Collection` with separate typed vectors.
-- Add `Game.collections`.
-- Add collection validation and helper methods.
-- Continue storing whole-game snapshots.
-- Add legacy `Game` deserialization or an explicit migration adapter.
+- [x] Add `CollectionID` and `NoteID`.
+- [x] Make notes top-level resources.
+- [x] Add `Collection` with separate typed vectors.
+- [x] Add `Game.collections`.
+- [x] Add collection validation and helper methods.
+- [x] Continue storing whole-game snapshots.
+- [x] Add an explicit storage migration for legacy snapshots and logs.
+- [x] Remove folder compatibility from the core domain and replay path.
 
-### Phase 2: Commands and Dioxus UI
+### Phase 2: Collection editing and Dioxus UI
 
-- Add collection commands and logs.
-- Remove folder selection from new-resource flows.
+- [x] Add foundational collection commands and logs (completed during Phase 1 migration work).
+- [x] Remove folder selection from new-resource flows.
 - Support add, remove, reorder, create, rename, and delete collection operations.
 - Make catalog deletion explicitly different from collection removal.
 - [x] Replace the campaign tree as the normal UI (completed early during Phase 0).
-- Keep folder commands only for legacy replay and migration.
 
 ### Phase 3: Repository and granular blobs
 
@@ -92,9 +108,9 @@ Current decisions and prototype constraints:
 ### Phase 4: Cleanup
 
 - Stop writing full snapshots when recovery and rollback permit it.
-- Remove `campaign` and normal-use folder code.
+- [x] Remove `campaign` and normal-use folder code (completed during Phase 1).
 - [x] Remove folder UI (completed early during Phase 0).
-- Remove legacy commands and logs only after old replay is no longer needed.
+- [x] Remove legacy commands and logs from core replay (completed during Phase 1).
 - Consider removing the standalone `foldertree` crate if no other code uses it.
 
 ### Phase 5: Modules
@@ -289,7 +305,8 @@ pub struct Game {
 }
 ```
 
-`campaign: FolderTree<Folder>` is removed after migration and compatibility work is complete.
+`campaign: FolderTree<Folder>` has been removed from the current in-memory and serialized model.
+Only the Worker migration has a private representation of that legacy field.
 
 ## Modules
 
@@ -396,8 +413,7 @@ Build a catalog-oriented view in the Rust/Dioxus GM UI using the current `Game`:
 - Do not expose folder creation, rename, move, or delete in the experimental view.
 - Allow UI-local prototype collections if testing multiple membership or ordering is useful; they
   may be intentionally ephemeral.
-- Remove the existing campaign tree from the normal UI. Backend folder compatibility remains until
-  the domain and storage migrations are complete.
+- Remove the existing campaign tree from the normal UI.
 
 The experiment need not perfectly emulate collection editing because the old tree cannot represent
 zero-to-many collection membership. Its purpose is to validate navigation, terminology, discovery,
@@ -422,7 +438,8 @@ and whether users miss hierarchical folders.
 
 ## Commands and logs
 
-After the UI model is accepted, introduce collection-oriented commands and logs.
+The core now has folder-free resource and collection commands and logs. Phase 2 should refine these
+into the user-facing collection-editing operations needed by the Dioxus UI.
 
 Likely commands include:
 
@@ -439,9 +456,9 @@ The exact command granularity should favor simple validation and deterministic l
 fields should be used for bulk membership operations rather than public heterogeneous resource
 lists.
 
-Folder commands and their log variants must remain deserializable while old snapshots and logs can
-still be encountered. They can be marked legacy and removed only after the storage migration makes
-replay from folder-era logs unnecessary.
+Folder commands and their log variants are not part of the current domain. Storage migration
+version 2 owns private legacy wire types, expands each old row into zero or more current logs, and
+renumbers the resulting rows before normal replay begins.
 
 `ImportModule` is allowed to affect many resources. It is rare and should be transactional. Its
 affected resources can be enumerated from the module rather than treated as an unknowable
@@ -475,9 +492,9 @@ During the UI experiment and the initial domain migration:
 
 - keep `game_snapshots` unchanged;
 - keep whole-`Game` JSONB blobs;
-- keep log append and replay unchanged where possible;
-- take a new full snapshot after migrating a game to the new domain shape;
-- prefer compatibility adapters over a simultaneous storage rewrite.
+- keep current log append and replay unchanged;
+- transactionally rewrite existing snapshots and logs into the new domain shape before load;
+- keep all legacy deserialization and stateful folder interpretation inside Worker migration code.
 
 This isolates product-model risk from storage-migration risk.
 
@@ -590,7 +607,7 @@ For each game Durable Object:
 
 1. Add the new blob tables alongside `game_snapshots`.
 2. On first migration load, read the latest authoritative snapshot and replay its remaining logs.
-3. Convert any remaining folder model to catalog resources and collections.
+3. Require storage version 2, where all folder snapshots and logs have already been converted.
 4. Backfill `resources`, `collections`, and `game_state` in one transaction.
 5. Mark the granular representation with a schema or migration version.
 6. During a verification period, dual-write granular blobs and normal full snapshots.
@@ -598,8 +615,7 @@ For each game Durable Object:
 8. Switch cold load to granular blobs after parity is established.
 9. Continue keeping logs for history and debugging.
 10. Stop writing new full snapshots only after rollback and recovery requirements are settled.
-11. Drop old snapshots, folder compatibility code, and legacy log variants only in a later,
-    explicitly irreversible migration.
+11. Drop old full snapshots only in a later, explicitly irreversible migration.
 
 The Durable Object per game makes migration naturally incremental: each game can migrate when its
 object next wakes.
@@ -627,11 +643,12 @@ The folder-to-collection migration should:
 4. Use the folder's full path as the initial collection name to avoid ambiguity.
 5. Preserve each folder's typed resource membership.
 6. Choose a deterministic initial order because current folder membership uses unordered sets.
-   Sorting by display name is a reasonable default.
+   The implemented migration sorts typed IDs and sorts notes by name and ID.
 7. Drop empty folders unless retaining one has demonstrated user value.
 8. Translate `/Players/{player_id}` note placement into explicit ownership and visibility metadata.
 9. Validate that all catalog resources still exist and all collection references resolve.
-10. Retain a compatibility reader for old serialized games.
+10. Rewrite every stored log into current folder-free logs before normal replay.
+11. Keep the compatibility reader and stateful folder interpreter private to the Worker migration.
 
 Because the old validation requires every resource to appear in exactly one folder, normal games
 should migrate without orphaned or multiply assigned resources. Migration code must still detect
@@ -695,26 +712,26 @@ preview what will be included.
 Do not solve creature templates in this project. Modules initially copy complete creature values.
 A later template/instance distinction can build on module provenance if needed.
 
-### Multiple collection membership is not representable during the UI prototype
+### Multiple collection membership was not representable during the UI prototype
 
-Treat prototype collections as read-only folder projections or ephemeral UI state. Do not distort
-the final model to fit the compatibility layer.
+The final domain now supports multiple membership. Phase 2 still needs to expose it through
+collection-editing controls.
 
 ### Generic blobs may become limiting
 
 Only introduce typed SQL tables or indexed columns in response to demonstrated queries. The
 repository boundary should allow that change without changing the domain or UI model.
 
-### Old logs may require folder-era types
+### Old logs require stateful conversion
 
-Keep legacy enum variants and compatibility types until the migration no longer relies on replaying
-them. Avoid an early cleanup that makes old games unrecoverable.
+Keep the frozen folder-era wire types and tree interpreter isolated in the Worker migration. The
+migration must rewrite both tables transactionally and fail without advancing the storage version
+if any snapshot or log cannot be converted. Core Arpeggio must never replay a folder-era log.
 
 ## Open design questions
 
-These do not block the UI experiment:
+These do not block the next phase:
 
-- What explicit ownership and visibility fields should notes have?
 - Should all collections be manually ordered, or should some sort automatically by name?
 - Should the automatically created import collection contain all imported resources or only the
   module's explicit roots? The initial recommendation is all imported resources.

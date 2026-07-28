@@ -1,6 +1,5 @@
 use std::collections::{HashMap, HashSet};
 
-use foldertree::FolderPath;
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
@@ -74,14 +73,6 @@ pub fn creature_logs_into_game_logs(creature_id: CreatureID, ls: Vec<CreatureLog
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS)]
 #[serde(tag = "t")]
 pub enum GameLog {
-    LoadModule {
-        name: String,
-        source: ModuleSource,
-        #[ts(skip)]
-        module: Game,
-        path: FolderPath,
-    },
-
     SetActiveScene {
         id: Option<SceneID>,
     },
@@ -121,39 +112,28 @@ pub enum GameLog {
         success: bool,
     },
 
-    // ** Folder Management **
-    /// Create a folder, given segments leading to it.
-    CreateFolder {
-        path: FolderPath,
+    CreateCollection {
+        collection: Collection,
     },
-    /// Rename a folder. DEPRECATED (I think?)
-    RenameFolder {
-        path: FolderPath,
+    EditCollection {
+        collection: Collection,
+    },
+    DeleteCollection {
+        collection_id: CollectionID,
+    },
+    DeleteResource {
+        resource: ResourceRef,
+    },
+    RenameResource {
+        resource: ResourceRef,
         new_name: String,
     },
-    MoveFolderItem {
-        source: FolderPath,
-        item_id: FolderItemID,
-        destination: FolderPath,
-    },
-    CopyFolderItem {
-        source: FolderPath,
-        item_id: FolderItemID,
-        dest: FolderPath,
-        new_item_id: FolderItemID,
-    },
-    DeleteFolderItem {
-        path: FolderPath,
-        item_id: FolderItemID,
-    },
-    RenameFolderItem {
-        path: FolderPath,
-        item_id: FolderItemID,
-        new_name: String,
+    CopyResource {
+        source: ResourceRef,
+        destination: ResourceRef,
     },
 
     CreateItem {
-        path: FolderPath,
         item: Item,
     },
     EditItem {
@@ -161,12 +141,9 @@ pub enum GameLog {
     },
 
     CreateNote {
-        path: FolderPath,
         note: Note,
     },
     EditNote {
-        path: FolderPath,
-        original_name: String,
         note: Note,
     },
 
@@ -189,7 +166,6 @@ pub enum GameLog {
     },
 
     CreateScene {
-        path: FolderPath,
         scene: Scene,
     },
     EditSceneDetails {
@@ -290,14 +266,12 @@ pub enum GameLog {
 
     // ** Classes & Abilities **
     CreateClass {
-        path: FolderPath,
         class: Class,
     },
     EditClass {
         class: Class,
     },
     CreateAbility {
-        path: FolderPath,
         ability: Ability,
     },
     EditAbility {
@@ -306,7 +280,6 @@ pub enum GameLog {
 
     // ** Creatures **
     CreateCreature {
-        path: FolderPath,
         creature: Creature,
     },
     // Deprecated: please migrate & remove

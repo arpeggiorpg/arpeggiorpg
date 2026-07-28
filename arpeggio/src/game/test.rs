@@ -35,30 +35,127 @@ pub fn t_game() -> Game {
     game.creatures.insert(ranger);
     game.creatures.insert(cleric);
     game.scenes.insert(t_scene());
-    let mut folder = Folder::new();
-    for creature_id in game.creatures.keys() {
-        folder.creatures.insert(*creature_id);
-    }
-    for scene_id in game.scenes.keys() {
-        folder.scenes.insert(*scene_id);
-    }
-    for class_id in game.classes.keys() {
-        folder.classes.insert(*class_id);
-    }
-    for ab_id in game.abilities.keys() {
-        folder.abilities.insert(*ab_id);
-    }
-    game.campaign
-        .make_folder(&FolderPath::root(), "testdata".to_string(), folder)
-        .unwrap();
+    game.collections.insert(Collection {
+        id: CollectionID::gen(),
+        name: "testdata".to_string(),
+        scenes: game.scenes.keys().copied().collect(),
+        creatures: game.creatures.keys().copied().collect(),
+        notes: vec![],
+        items: vec![],
+        abilities: game.abilities.keys().copied().collect(),
+        classes: game.classes.keys().copied().collect(),
+    });
     game
 }
 
 #[test]
 fn validate_test_game() {
     t_game()
-        .validate_campaign()
+        .validate_collections()
         .expect("Test game must validate");
+}
+
+#[test]
+fn collection_validation_allows_multiple_membership_and_rejects_duplicates() {
+    let mut game = t_game();
+    let existing = game.collections.values().next().unwrap().clone();
+    let mut second = existing.clone();
+    second.id = CollectionID::gen();
+    second.name = "Another collection".to_string();
+    game.collections.insert(second);
+
+    game.validate_collections()
+        .expect("resources may appear in multiple collections");
+
+    game.collections.mutate(&existing.id, |collection| {
+        collection.scenes.push(collection.scenes[0]);
+    });
+    assert!(matches!(
+        game.validate_collections(),
+        Err(GameError::DuplicateCollectionResource(_, kind, _)) if kind == "scene"
+    ));
+}
+
+#[test]
+fn catalog_commands_create_resources_without_membership_and_clean_up_on_delete() {
+    let game = t_game();
+    let created = game
+        .perform_gm_command(GMCommand::CreateItem {
+            name: "Unfiled item".to_string(),
+        })
+        .unwrap();
+    let item_id = created
+        .logs
+        .iter()
+        .find_map(|log| match log {
+            GameLog::CreateItem { item } => Some(item.id),
+            _ => None,
+        })
+        .unwrap();
+    assert!(created
+        .game
+        .collections
+        .values()
+        .all(|collection| !collection.items.contains(&item_id)));
+
+    let mut collection = created.game.collections.values().next().unwrap().clone();
+    collection.items.push(item_id);
+    let organized = created
+        .game
+        .perform_gm_command(GMCommand::EditCollection { collection })
+        .unwrap();
+    assert!(organized
+        .game
+        .collections
+        .values()
+        .any(|collection| collection.items.contains(&item_id)));
+
+    let deleted = organized
+        .game
+        .perform_gm_command(GMCommand::DeleteResource {
+            resource: ResourceRef::Item(item_id),
+        })
+        .unwrap();
+    assert!(!deleted.game.items.contains_key(&item_id));
+    assert!(deleted
+        .game
+        .collections
+        .values()
+        .all(|collection| !collection.items.contains(&item_id)));
+}
+
+#[test]
+fn player_note_commands_enforce_explicit_ownership() {
+    let mut game = t_game();
+    let alice = PlayerID("alice".to_string());
+    let bob = PlayerID("bob".to_string());
+    game.players.insert(Player::new(alice.clone()));
+    game.players.insert(Player::new(bob.clone()));
+
+    let created = game
+        .perform_player_command(
+            alice.clone(),
+            PlayerCommand::CreateNote {
+                name: "Scratch".to_string(),
+                content: "Private".to_string(),
+            },
+        )
+        .unwrap();
+    let note = created.game.notes.values().next().unwrap();
+    assert_eq!(note.owner, NoteOwner::Player(alice));
+    assert_eq!(note.visibility, NoteVisibility::OwnerOnly);
+
+    assert_eq!(
+        created.game.perform_player_command(
+            bob,
+            PlayerCommand::EditNote {
+                note_id: note.id,
+                name: "Stolen".to_string(),
+                content: "No".to_string(),
+            },
+        ),
+        Err(GameError::NoteNotFound(note.id))
+    );
 }
 
 pub fn t_classes() -> IndexedHashMap<Class> {
@@ -360,124 +457,6 @@ fn preview_volume_targets_shows_creatures_for_scene_volume_actions() {
         .unwrap();
     let expected = hashset! {cid_cleric(), cid_ranger(), cid_rogue()};
     assert_eq!(HashSet::from_iter(preview.0), expected);
-}
-
-#[test]
-fn test_export_module() {
-    let root_path = FolderPath::root();
-    let rules_path = FolderPath::from_vec(vec!["Rules".to_string()]);
-    let note = Note {
-        name: "My Note".to_string(),
-        content: "My Content".to_string(),
-    };
-    let mut folder = Folder::new();
-    folder.notes.insert(note.clone());
-
-    let mut game = t_game();
-    game.campaign
-        .make_folder(&root_path, "Rules".to_string(), folder)
-        .expect("Betta woik");
-    let new_game = game.export_module(&rules_path).expect("Couldn't export");
-    let new_note = new_game
-        .campaign
-        .get(&root_path)
-        .unwrap()
-        .notes
-        .get("My Note");
-    assert_eq!(new_note.expect("My Note wasn't at root"), &note);
-}
-
-#[test]
-fn test_export_module_references() {
-    let root_path = FolderPath::root();
-    let rules_path = FolderPath::from_vec(vec!["Rules".to_string()]);
-    let mut folder = Folder::new();
-    folder.classes.insert(classid_ranger());
-
-    let mut game = t_game();
-    game.campaign
-        .make_folder(&root_path, "Rules".to_string(), folder)
-        .expect("Betta woik");
-    let new_game = game.export_module(&rules_path).expect("Couldn't export");
-    assert_eq!(
-        new_game
-            .get_class(classid_ranger())
-            .expect("new game didn't have ranger class"),
-        game.get_class(classid_ranger())
-            .expect("Old game didn't have ranger class")
-    );
-}
-
-#[test]
-fn test_export_subfolders() {
-    let root_path = FolderPath::root();
-    let rules_path = "/Rules".parse().unwrap();
-    let root = Folder::new();
-    let mut classes_folder = Folder::new();
-    classes_folder.classes.insert(classid_ranger());
-
-    let mut game = t_game();
-    game.campaign
-        .make_folder(&root_path, "Rules".to_string(), root)
-        .unwrap();
-    game.campaign
-        .make_folder(&rules_path, "Classes".to_string(), classes_folder)
-        .unwrap();
-    let new_game = game.export_module(&rules_path).expect("Couldn't export");
-    assert_eq!(
-        new_game
-            .get_class(classid_ranger())
-            .expect("new game didn't have ranger class"),
-        game.get_class(classid_ranger())
-            .expect("Old game didn't have ranger class")
-    );
-
-    let new_classes = &new_game
-        .campaign
-        .get(&"/Classes".parse().unwrap())
-        .unwrap()
-        .classes;
-    let old_classes = &game
-        .campaign
-        .get(&"/Rules/Classes".parse().unwrap())
-        .unwrap()
-        .classes;
-    assert_eq!(new_classes, old_classes);
-}
-
-#[test]
-fn test_import_module() {
-    let mut module: Game = Default::default();
-    let classid = ClassID::gen();
-    let class = Class {
-        id: classid,
-        name: "Blood Hunter".to_string(),
-        abilities: vec![],
-        conditions: vec![],
-        color: "blue".to_string(),
-        emoji: Some("🩸".to_string()),
-    };
-    module.classes.insert(class);
-    module
-        .link_folder_item(&FolderPath::root(), &FolderItemID::ClassID(classid))
-        .unwrap();
-
-    let sys_path = "/System".parse().unwrap();
-
-    let mut game = t_game();
-    game.import_module(&sys_path, &module)
-        .expect("import must succeed");
-
-    assert_eq!(
-        game.get_class(classid).expect("New game missing class"),
-        module.get_class(classid).expect("Old game missing class")
-    );
-    assert!(game
-        .campaign
-        .get(&sys_path)
-        .unwrap()
-        .classes
-        .contains(&classid));
 }
 
 fn t_item() -> Item {

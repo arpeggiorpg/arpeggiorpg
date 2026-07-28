@@ -1,10 +1,9 @@
 use arptypes::{
-    AABB, AbilityCreation, Action, ClassCreation, CreatureCreation, CreatureEffect, CreatureTarget,
-    Dice, Energy, Folder, GMCommand, Game, Note, SceneCreation, SceneID,
-    multitenant::RPIGameRequest, u32meter,
+    AABB, AbilityCreation, Action, ClassCreation, Collection, CollectionID, CreatureCreation,
+    CreatureEffect, CreatureTarget, Dice, Energy, GMCommand, Game, NoteVisibility, SceneCreation,
+    SceneID, multitenant::RPIGameRequest, u32meter,
 };
 use dioxus::prelude::*;
-use foldertree::FolderPath;
 
 use crate::{
     components::{
@@ -112,7 +111,7 @@ enum CatalogView {
     Recent,
     Type(CatalogResourceKind),
     Collections,
-    Collection(FolderPath),
+    Collection(CollectionID),
 }
 
 #[derive(Clone, PartialEq)]
@@ -150,7 +149,7 @@ pub fn CatalogPanel(
     let title = if searching {
         "Search results".to_string()
     } else {
-        catalog_view_title(&view())
+        catalog_view_title(&game, &view())
     };
 
     let entries = if searching {
@@ -162,7 +161,7 @@ pub fn CatalogPanel(
         entries_for_view(&game, &view(), selected_scene_id, &recent_scene_ids())
     };
 
-    let collection_paths = all_collection_paths(&game);
+    let collections = all_collections(&game);
     let select_scene = {
         let on_select_scene = on_select_scene;
         Callback::new(move |scene_id| {
@@ -287,14 +286,15 @@ pub fn CatalogPanel(
                             view.set(CatalogView::Collections);
                         },
                     }
-                    for path in collection_paths {
+                    for collection in collections {
                         {
-                            let label = collection_label(&path);
+                            let collection_id = collection.id;
+                            let label = collection.name;
                             let selected = !searching
-                                && view() == CatalogView::Collection(path.clone());
+                                && view() == CatalogView::Collection(collection_id);
                             rsx! {
                                 button {
-                                    key: "{label}",
+                                    key: "{collection_id}",
                                     r#type: "button",
                                     title: "{label}",
                                     class: if selected {
@@ -304,7 +304,7 @@ pub fn CatalogPanel(
                                     },
                                     onclick: move |_| {
                                         search.set(String::new());
-                                        view.set(CatalogView::Collection(path.clone()));
+                                        view.set(CatalogView::Collection(collection_id));
                                     },
                                     "{label}"
                                 }
@@ -481,26 +481,23 @@ fn CatalogEmptyState(searching: bool, view: CatalogView) -> Element {
 }
 
 #[component]
-fn CollectionsOverview(game: Game, on_open: EventHandler<FolderPath>) -> Element {
-    let paths = all_collection_paths(&game);
+fn CollectionsOverview(game: Game, on_open: EventHandler<CollectionID>) -> Element {
+    let collections = all_collections(&game);
 
     rsx! {
         div {
             class: "space-y-2",
-            for path in paths {
+            for collection in collections {
                 {
-                    let label = collection_label(&path);
-                    let count = game
-                        .campaign
-                        .get(&path)
-                        .map(folder_resource_count)
-                        .unwrap_or_default();
+                    let collection_id = collection.id;
+                    let count = collection_resource_count(&collection);
+                    let label = collection.name;
                     rsx! {
                         button {
-                            key: "{label}",
+                            key: "{collection_id}",
                             r#type: "button",
                             class: "block w-full rounded-md border border-gray-200 bg-white px-3 py-3 text-left hover:border-blue-200 hover:bg-blue-50",
-                            onclick: move |_| on_open.call(path.clone()),
+                            onclick: move |_| on_open.call(collection_id),
                             span {
                                 class: "block truncate text-sm font-medium text-gray-800",
                                 "{label}"
@@ -534,20 +531,12 @@ fn CreateCatalogResourceModal(game: Game, on_close: EventHandler<()>) -> Element
     classes.sort_by(|a, b| a.1.cmp(&b.1));
 
     let mut create_action = use_action({
-        let game = game.clone();
         let on_close = on_close;
         move |request: CreateCatalogResource| {
             let ws = ws;
-            let game = game.clone();
             let on_close = on_close;
             async move {
-                let path = catalog_folder_path();
-                if game.campaign.get(&path).is_err() {
-                    send_catalog_command(ws, GMCommand::CreateFolder { path: path.clone() })
-                        .await?;
-                }
-
-                let command = create_catalog_command(request, path)?;
+                let command = create_catalog_command(request)?;
                 send_catalog_command(ws, command).await?;
                 on_close.call(());
                 Ok::<(), anyhow::Error>(())
@@ -727,13 +716,9 @@ async fn send_catalog_command(
     result.map(|_| ()).map_err(anyhow::Error::msg)
 }
 
-fn create_catalog_command(
-    request: CreateCatalogResource,
-    path: FolderPath,
-) -> anyhow::Result<GMCommand> {
+fn create_catalog_command(request: CreateCatalogResource) -> anyhow::Result<GMCommand> {
     let command = match request.kind {
         CatalogCreateKind::Scene => GMCommand::CreateScene {
-            path,
             scene: SceneCreation {
                 name: request.name,
                 background_image_url: request.background_image_url,
@@ -742,7 +727,6 @@ fn create_catalog_command(
             },
         },
         CatalogCreateKind::Creature => GMCommand::CreateCreature {
-            path,
             creature: CreatureCreation {
                 name: request.name,
                 class: request
@@ -761,14 +745,11 @@ fn create_catalog_command(
             },
         },
         CatalogCreateKind::Note => GMCommand::CreateNote {
-            path,
-            note: Note {
-                name: request.name,
-                content: String::new(),
-            },
+            name: request.name,
+            content: String::new(),
+            visibility: NoteVisibility::GMOnly,
         },
         CatalogCreateKind::Class => GMCommand::CreateClass {
-            path,
             class: ClassCreation {
                 name: request.name,
                 abilities: Vec::new(),
@@ -778,7 +759,6 @@ fn create_catalog_command(
             },
         },
         CatalogCreateKind::Ability => GMCommand::CreateAbility {
-            path,
             ability: AbilityCreation {
                 name: request.name,
                 cost: Energy(0),
@@ -789,25 +769,22 @@ fn create_catalog_command(
                 usable_ooc: false,
             },
         },
-        CatalogCreateKind::Item => GMCommand::CreateItem {
-            path,
-            name: request.name,
-        },
+        CatalogCreateKind::Item => GMCommand::CreateItem { name: request.name },
     };
     Ok(command)
 }
 
-fn catalog_folder_path() -> FolderPath {
-    FolderPath::from_vec(vec!["catalog".to_string()])
-}
-
-fn catalog_view_title(view: &CatalogView) -> String {
+fn catalog_view_title(game: &Game, view: &CatalogView) -> String {
     match view {
         CatalogView::CurrentScene => "Current scene".to_string(),
         CatalogView::Recent => "Recent".to_string(),
         CatalogView::Type(kind) => kind.plural().to_string(),
         CatalogView::Collections => "Collections".to_string(),
-        CatalogView::Collection(path) => collection_label(path),
+        CatalogView::Collection(id) => game
+            .collections
+            .get(id)
+            .map(|collection| collection.name.clone())
+            .unwrap_or_else(|| "Collection".to_string()),
     }
 }
 
@@ -832,7 +809,7 @@ fn entries_for_view(
             .into_iter()
             .filter(|entry| entry.kind == *kind)
             .collect(),
-        CatalogView::Collection(path) => collection_entries(game, path),
+        CatalogView::Collection(id) => collection_entries(game, id),
         CatalogView::Collections => Vec::new(),
     }
 }
@@ -878,40 +855,44 @@ fn all_catalog_entries(game: &Game) -> Vec<CatalogEntry> {
         emoji: None,
     }));
 
-    for path in game.campaign.walk_paths(&FolderPath::root()) {
-        let Ok(folder) = game.campaign.get(path) else {
-            continue;
-        };
-        entries.extend(folder.notes.values().map(|note| CatalogEntry {
-            key: format!("note:{}:{}", collection_label(path), note.name),
+    entries.extend(game.notes.values().map(|note| {
+        let mut collection_names: Vec<_> = game
+            .collections
+            .values()
+            .filter(|collection| collection.notes.contains(&note.id))
+            .map(|collection| collection.name.clone())
+            .collect();
+        collection_names.sort();
+        CatalogEntry {
+            key: format!("note:{}", note.id),
             kind: CatalogResourceKind::Note,
             name: note.name.clone(),
-            detail: Some(collection_label(path)),
+            detail: (!collection_names.is_empty()).then(|| collection_names.join(", ")),
             scene_id: None,
             icon_url: None,
             emoji: None,
-        }));
-    }
+        }
+    }));
 
     sort_catalog_entries(&mut entries);
     entries
 }
 
-fn collection_entries(game: &Game, path: &FolderPath) -> Vec<CatalogEntry> {
-    let Ok(folder) = game.campaign.get(path) else {
+fn collection_entries(game: &Game, id: &CollectionID) -> Vec<CatalogEntry> {
+    let Some(collection) = game.collections.get(id) else {
         return Vec::new();
     };
-    let detail = Some(collection_label(path));
+    let detail = Some(collection.name.clone());
     let mut entries = Vec::new();
 
-    entries.extend(folder.scenes.iter().filter_map(|id| {
+    entries.extend(collection.scenes.iter().filter_map(|id| {
         game.scenes.get(id).map(|scene| {
             let mut entry = scene_entry(scene);
             entry.detail = detail.clone();
             entry
         })
     }));
-    entries.extend(folder.creatures.iter().filter_map(|id| {
+    entries.extend(collection.creatures.iter().filter_map(|id| {
         game.creatures.get(id).map(|creature| CatalogEntry {
             key: format!("creature:{}", creature.id),
             kind: CatalogResourceKind::Creature,
@@ -922,16 +903,18 @@ fn collection_entries(game: &Game, path: &FolderPath) -> Vec<CatalogEntry> {
             emoji: None,
         })
     }));
-    entries.extend(folder.notes.values().map(|note| CatalogEntry {
-        key: format!("note:{}:{}", collection_label(path), note.name),
-        kind: CatalogResourceKind::Note,
-        name: note.name.clone(),
-        detail: detail.clone(),
-        scene_id: None,
-        icon_url: None,
-        emoji: None,
+    entries.extend(collection.notes.iter().filter_map(|id| {
+        game.notes.get(id).map(|note| CatalogEntry {
+            key: format!("note:{}", note.id),
+            kind: CatalogResourceKind::Note,
+            name: note.name.clone(),
+            detail: detail.clone(),
+            scene_id: None,
+            icon_url: None,
+            emoji: None,
+        })
     }));
-    entries.extend(folder.classes.iter().filter_map(|id| {
+    entries.extend(collection.classes.iter().filter_map(|id| {
         game.classes.get(id).map(|class| CatalogEntry {
             key: format!("class:{}", class.id),
             kind: CatalogResourceKind::Class,
@@ -942,7 +925,7 @@ fn collection_entries(game: &Game, path: &FolderPath) -> Vec<CatalogEntry> {
             emoji: Some(class.emoji.clone().unwrap_or_else(|| "🧑‍🎓".to_string())),
         })
     }));
-    entries.extend(folder.abilities.iter().filter_map(|id| {
+    entries.extend(collection.abilities.iter().filter_map(|id| {
         game.abilities.get(id).map(|ability| CatalogEntry {
             key: format!("ability:{}", ability.id),
             kind: CatalogResourceKind::Ability,
@@ -953,7 +936,7 @@ fn collection_entries(game: &Game, path: &FolderPath) -> Vec<CatalogEntry> {
             emoji: None,
         })
     }));
-    entries.extend(folder.items.iter().filter_map(|id| {
+    entries.extend(collection.items.iter().filter_map(|id| {
         game.items.get(id).map(|item| CatalogEntry {
             key: format!("item:{}", item.id),
             kind: CatalogResourceKind::Item,
@@ -1001,41 +984,29 @@ fn catalog_entry_matches(entry: &CatalogEntry, normalized_query: &str) -> bool {
             .contains(normalized_query)
 }
 
-fn all_collection_paths(game: &Game) -> Vec<FolderPath> {
-    let mut paths: Vec<_> = game
-        .campaign
-        .walk_paths(&FolderPath::root())
-        .cloned()
-        .collect();
-    paths.sort_by_key(collection_label);
-    paths
+fn all_collections(game: &Game) -> Vec<Collection> {
+    let mut collections: Vec<_> = game.collections.values().cloned().collect();
+    collections.sort_by(|left, right| {
+        left.name
+            .to_lowercase()
+            .cmp(&right.name.to_lowercase())
+            .then_with(|| left.id.cmp(&right.id))
+    });
+    collections
 }
 
-fn collection_label(path: &FolderPath) -> String {
-    if path.is_root() {
-        "/".to_string()
-    } else {
-        path.to_string()
-    }
-}
-
-fn folder_resource_count(folder: &Folder) -> usize {
-    folder.scenes.len()
-        + folder.creatures.len()
-        + folder.notes.len()
-        + folder.items.len()
-        + folder.abilities.len()
-        + folder.classes.len()
+fn collection_resource_count(collection: &Collection) -> usize {
+    collection.scenes.len()
+        + collection.creatures.len()
+        + collection.notes.len()
+        + collection.items.len()
+        + collection.abilities.len()
+        + collection.classes.len()
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn creation_uses_catalog_folder() {
-        assert_eq!(catalog_folder_path().to_string(), "/catalog");
-    }
 
     #[test]
     fn search_matches_name_and_resource_type() {

@@ -4,12 +4,14 @@ use worker::{wasm_bindgen::JsValue, Error, Result, SqlStorage, State, Storage, T
 
 use crate::sqlite::initialize_sqlite_tables;
 
+mod catalog_domain;
+
 const LEGACY_VERSION_KEY: &str = "DURABLEGAME_VERSION";
 const METADATA_TABLE: &str = "arpeggio_storage_metadata";
 const STORAGE_VERSION_KEY: &str = "storage_version";
 
 pub const BASELINE_STORAGE_VERSION: StorageVersion = StorageVersion(1);
-pub const CURRENT_STORAGE_VERSION: StorageVersion = BASELINE_STORAGE_VERSION;
+pub const CURRENT_STORAGE_VERSION: StorageVersion = StorageVersion(2);
 
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub struct StorageVersion(pub u32);
@@ -20,9 +22,12 @@ struct Migration {
     run: fn(&SqlStorage) -> Result<()>,
 }
 
-// Add future migrations here in ascending target-version order. The production baseline is already
-// the current schema, so there are intentionally no historical migrations in this registry.
-const MIGRATIONS: &[Migration] = &[];
+const CATALOG_DOMAIN_MIGRATION: Migration = Migration {
+    version: StorageVersion(2),
+    run: catalog_domain::migrate_catalog_domain,
+};
+
+const MIGRATIONS: &[Migration] = &[CATALOG_DOMAIN_MIGRATION];
 
 #[derive(Debug, Deserialize)]
 struct CountRow {
@@ -297,14 +302,16 @@ pub async fn test_empty_storage_baseline(state: &State) -> Result<()> {
     storage.delete_all().await?;
 
     let version = migrate_storage_to_current(storage).await?;
-    if version != BASELINE_STORAGE_VERSION {
-        return Err(migration_error("Fresh storage did not reach the baseline"));
+    if version != CURRENT_STORAGE_VERSION {
+        return Err(migration_error(
+            "Fresh storage did not reach the current version",
+        ));
     }
     let storage = state.storage();
     if storage.get::<u32>(LEGACY_VERSION_KEY).await?.is_some() {
         return Err(migration_error("Legacy version key was not removed"));
     }
-    if read_storage_version(&storage.sql())? != Some(BASELINE_STORAGE_VERSION) {
+    if read_storage_version(&storage.sql())? != Some(CURRENT_STORAGE_VERSION) {
         return Err(migration_error("SQL storage version was not recorded"));
     }
     Ok(())
@@ -340,6 +347,226 @@ pub async fn test_production_schema_adoption(state: &State) -> Result<()> {
     if storage.get::<u32>(LEGACY_VERSION_KEY).await?.is_some() {
         return Err(migration_error("Legacy version key was not removed"));
     }
+    Ok(())
+}
+
+pub async fn test_catalog_domain_migration(state: &State) -> Result<()> {
+    let storage = state.storage();
+    storage.delete_all().await?;
+    let sql = storage.sql();
+    initialize_sqlite_tables(&sql)?;
+    initialize_metadata(&sql, BASELINE_STORAGE_VERSION)?;
+
+    let mut legacy_json = serde_json::to_value(arptypes::Game::default())
+        .map_err(|error| migration_error(format!("Could not serialize test game: {error}")))?;
+    let game_object = legacy_json
+        .as_object_mut()
+        .ok_or_else(|| migration_error("Serialized test game was not an object"))?;
+    game_object.remove("notes");
+    game_object.remove("collections");
+    let empty_folder = || {
+        serde_json::json!({
+            "scenes": [],
+            "creatures": [],
+            "notes": {},
+            "items": [],
+            "abilities": [],
+            "classes": []
+        })
+    };
+    game_object.insert(
+        "campaign".to_string(),
+        serde_json::json!({
+            "data": empty_folder(),
+            "children": {
+                "Players": {
+                    "data": empty_folder(),
+                    "children": {
+                        "alice": {
+                            "data": empty_folder(),
+                            "children": {
+                                "Notes": {
+                                    "data": {
+                                        "scenes": [],
+                                        "creatures": [],
+                                        "notes": {
+                                            "Scratch": {
+                                                "name": "Scratch",
+                                                "content": "Migrated content"
+                                            }
+                                        },
+                                        "items": [],
+                                        "abilities": [],
+                                        "classes": []
+                                    },
+                                    "children": {}
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }),
+    );
+    let legacy_json = serde_json::to_string(&legacy_json)
+        .map_err(|error| migration_error(format!("Could not encode test game: {error}")))?;
+    sql.exec(
+        "INSERT INTO game_snapshots (snapshot_idx, game) VALUES (0, jsonb(?))",
+        Some(vec![legacy_json.into()]),
+    )?;
+    let legacy_log = serde_json::json!({
+        "t": "EditNote",
+        "path": "/Players/alice/Notes",
+        "original_name": "Scratch",
+        "note": {
+            "name": "Journal",
+            "content": "Updated after the snapshot"
+        }
+    });
+    sql.exec(
+        "INSERT INTO logs (snapshot_idx, log_idx, game_log)
+         VALUES (0, 0, jsonb(?))",
+        Some(vec![legacy_log.to_string().into()]),
+    )?;
+    let migrated_item_id = arptypes::ItemID::gen();
+    let legacy_create_item = serde_json::json!({
+        "t": "CreateItem",
+        "path": "/Players/alice/Notes",
+        "item": {
+            "id": migrated_item_id,
+            "name": "Migrated item"
+        }
+    });
+    sql.exec(
+        "INSERT INTO logs (snapshot_idx, log_idx, game_log)
+         VALUES (0, 1, jsonb(?))",
+        Some(vec![legacy_create_item.to_string().into()]),
+    )?;
+
+    let version = migrate_storage_to_current(storage).await?;
+    if version != CURRENT_STORAGE_VERSION {
+        return Err(migration_error(
+            "Catalog migration did not advance storage version",
+        ));
+    }
+
+    #[derive(Deserialize)]
+    struct MigratedSnapshot {
+        game: String,
+    }
+    let snapshot: MigratedSnapshot = state
+        .storage()
+        .sql()
+        .exec(
+            "SELECT json(game) AS game FROM game_snapshots WHERE snapshot_idx = 0",
+            None,
+        )?
+        .one()?;
+    let migrated_game: arptypes::Game = serde_json::from_str(&snapshot.game).map_err(|error| {
+        migration_error(format!("Could not decode migrated test game: {error}"))
+    })?;
+
+    let note = migrated_game
+        .notes
+        .values()
+        .next()
+        .ok_or_else(|| migration_error("Catalog migration did not create a top-level note"))?;
+    if note.owner != arptypes::NoteOwner::Player(arptypes::PlayerID("alice".to_string()))
+        || note.visibility != arptypes::NoteVisibility::OwnerOnly
+    {
+        return Err(migration_error(
+            "Catalog migration did not preserve player-note authorization",
+        ));
+    }
+    let collection = migrated_game
+        .collections
+        .values()
+        .next()
+        .ok_or_else(|| migration_error("Catalog migration did not create a collection"))?;
+    if collection.name != "/Players/alice/Notes" || collection.notes != vec![note.id] {
+        return Err(migration_error(
+            "Catalog migration created incorrect collection membership",
+        ));
+    }
+
+    #[derive(Deserialize)]
+    struct MigratedLog {
+        game_log: String,
+    }
+    let migrated_logs: Vec<MigratedLog> = state
+        .storage()
+        .sql()
+        .exec(
+            "SELECT json(game_log) AS game_log
+             FROM logs
+             WHERE snapshot_idx = 0
+             ORDER BY log_idx",
+            None,
+        )?
+        .to_array()?;
+    if migrated_logs.len() != 3 {
+        return Err(migration_error(format!(
+            "Expected three expanded migrated logs, found {}",
+            migrated_logs.len()
+        )));
+    }
+    let mut replayed = migrated_game;
+    for migrated_log in migrated_logs {
+        let raw: serde_json::Value =
+            serde_json::from_str(&migrated_log.game_log).map_err(|error| {
+                migration_error(format!("Could not inspect migrated test log: {error}"))
+            })?;
+        if raw.get("path").is_some()
+            || raw
+                .get("t")
+                .and_then(serde_json::Value::as_str)
+                .is_some_and(|tag| {
+                    matches!(
+                        tag,
+                        "CreateFolder"
+                            | "RenameFolder"
+                            | "MoveFolderItem"
+                            | "CopyFolderItem"
+                            | "DeleteFolderItem"
+                            | "RenameFolderItem"
+                            | "LoadModule"
+                    )
+                })
+        {
+            return Err(migration_error(
+                "Migrated log still contains a legacy folder field or variant",
+            ));
+        }
+        let log: arptypes::GameLog = serde_json::from_value(raw).map_err(|error| {
+            migration_error(format!("Could not decode migrated test log: {error}"))
+        })?;
+        replayed = arpeggio::game::GameExt::apply_log(&replayed, &log)
+            .map_err(|error| migration_error(format!("Could not replay migrated log: {error}")))?;
+    }
+    let replayed_note = replayed
+        .notes
+        .values()
+        .next()
+        .ok_or_else(|| migration_error("Replayed game lost the migrated note"))?;
+    if replayed_note.name != "Journal" || replayed_note.content != "Updated after the snapshot" {
+        return Err(migration_error(
+            "Migrated note log did not reproduce the legacy update",
+        ));
+    }
+    if replayed
+        .items
+        .get(&migrated_item_id)
+        .is_none_or(|item| item.name != "Migrated item")
+        || replayed
+            .collections
+            .values()
+            .all(|collection| !collection.items.contains(&migrated_item_id))
+    {
+        return Err(migration_error(
+            "Migrated path-bearing resource log did not replay with collection membership",
+        ));
+    }
+
     Ok(())
 }
 
@@ -415,29 +642,34 @@ fn test_migration_three_failure(sql: &SqlStorage) -> Result<()> {
     Err(migration_error("Intentional migration failure"))
 }
 
-const TEST_MIGRATIONS_TO_TWO: &[Migration] = &[Migration {
-    version: StorageVersion(2),
-    run: test_migration_two,
-}];
+const TEST_MIGRATIONS_TO_THREE: &[Migration] = &[
+    CATALOG_DOMAIN_MIGRATION,
+    Migration {
+        version: StorageVersion(3),
+        run: test_migration_two,
+    },
+];
 
 const TEST_MIGRATIONS_SUCCESS: &[Migration] = &[
+    CATALOG_DOMAIN_MIGRATION,
     Migration {
-        version: StorageVersion(2),
+        version: StorageVersion(3),
         run: test_migration_two,
     },
     Migration {
-        version: StorageVersion(3),
+        version: StorageVersion(4),
         run: test_migration_three,
     },
 ];
 
 const TEST_MIGRATIONS_FAILURE: &[Migration] = &[
+    CATALOG_DOMAIN_MIGRATION,
     Migration {
-        version: StorageVersion(2),
+        version: StorageVersion(3),
         run: test_migration_two,
     },
     Migration {
-        version: StorageVersion(3),
+        version: StorageVersion(4),
         run: test_migration_three_failure,
     },
 ];
@@ -446,14 +678,14 @@ pub async fn test_migration_chain_and_rollback(state: &State) -> Result<()> {
     state.storage().delete_all().await?;
     migrate_storage_to_current(state.storage()).await?;
 
-    if migrate_storage(state.storage(), StorageVersion(3), TEST_MIGRATIONS_FAILURE)
+    if migrate_storage(state.storage(), StorageVersion(4), TEST_MIGRATIONS_FAILURE)
         .await
         .is_ok()
     {
         return Err(migration_error("Failing migration chain succeeded"));
     }
     let sql = state.storage().sql();
-    if read_storage_version(&sql)? != Some(BASELINE_STORAGE_VERSION)
+    if read_storage_version(&sql)? != Some(CURRENT_STORAGE_VERSION)
         || table_exists(&sql, "migration_test_two")?
         || table_exists(&sql, "migration_test_three")?
     {
@@ -461,25 +693,25 @@ pub async fn test_migration_chain_and_rollback(state: &State) -> Result<()> {
     }
 
     let version =
-        migrate_storage(state.storage(), StorageVersion(2), TEST_MIGRATIONS_TO_TWO).await?;
-    if version != StorageVersion(2) || !table_exists(&state.storage().sql(), "migration_test_two")?
+        migrate_storage(state.storage(), StorageVersion(3), TEST_MIGRATIONS_TO_THREE).await?;
+    if version != StorageVersion(3) || !table_exists(&state.storage().sql(), "migration_test_two")?
     {
-        return Err(migration_error("Immediate migration to version 2 failed"));
+        return Err(migration_error("Immediate migration to version 3 failed"));
     }
 
     let version =
-        migrate_storage(state.storage(), StorageVersion(3), TEST_MIGRATIONS_SUCCESS).await?;
-    if version != StorageVersion(3)
+        migrate_storage(state.storage(), StorageVersion(4), TEST_MIGRATIONS_SUCCESS).await?;
+    if version != StorageVersion(4)
         || !table_exists(&state.storage().sql(), "migration_test_three")?
     {
-        return Err(migration_error("Retry from version 2 failed"));
+        return Err(migration_error("Retry from version 3 failed"));
     }
 
     state.storage().delete_all().await?;
     migrate_storage_to_current(state.storage()).await?;
     let version =
-        migrate_storage(state.storage(), StorageVersion(3), TEST_MIGRATIONS_SUCCESS).await?;
-    if version != StorageVersion(3)
+        migrate_storage(state.storage(), StorageVersion(4), TEST_MIGRATIONS_SUCCESS).await?;
+    if version != StorageVersion(4)
         || !table_exists(&state.storage().sql(), "migration_test_two")?
         || !table_exists(&state.storage().sql(), "migration_test_three")?
     {
