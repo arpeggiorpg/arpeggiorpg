@@ -237,6 +237,80 @@ fn remove_resource_from_collections(game: &mut Game, resource: ResourceRef) {
     }
 }
 
+fn extend_unique<T: Copy + Eq>(destination: &mut Vec<T>, additions: &[T]) {
+    for addition in additions {
+        if !destination.contains(addition) {
+            destination.push(*addition);
+        }
+    }
+}
+
+fn remove_members<T: Eq>(destination: &mut Vec<T>, removals: &[T]) {
+    destination.retain(|candidate| !removals.contains(candidate));
+}
+
+fn add_collection_resources(collection: &mut Collection, resources: &CollectionResources) {
+    extend_unique(&mut collection.scenes, &resources.scenes);
+    extend_unique(&mut collection.creatures, &resources.creatures);
+    extend_unique(&mut collection.notes, &resources.notes);
+    extend_unique(&mut collection.items, &resources.items);
+    extend_unique(&mut collection.abilities, &resources.abilities);
+    extend_unique(&mut collection.classes, &resources.classes);
+}
+
+fn remove_collection_resources(collection: &mut Collection, resources: &CollectionResources) {
+    remove_members(&mut collection.scenes, &resources.scenes);
+    remove_members(&mut collection.creatures, &resources.creatures);
+    remove_members(&mut collection.notes, &resources.notes);
+    remove_members(&mut collection.items, &resources.items);
+    remove_members(&mut collection.abilities, &resources.abilities);
+    remove_members(&mut collection.classes, &resources.classes);
+}
+
+fn merge_collections(
+    game: &mut Game,
+    destination_id: CollectionID,
+    source_ids: &[CollectionID],
+) -> Result<(), GameError> {
+    if !game.collections.contains_key(&destination_id) {
+        return Err(GameError::CollectionNotFound(destination_id));
+    }
+
+    let mut seen = HashSet::new();
+    let mut sources = Vec::new();
+    for source_id in source_ids {
+        if *source_id == destination_id || !seen.insert(*source_id) {
+            continue;
+        }
+        sources.push(
+            game.collections
+                .get(source_id)
+                .cloned()
+                .ok_or(GameError::CollectionNotFound(*source_id))?,
+        );
+    }
+
+    game.collections.mutate(&destination_id, |destination| {
+        for source in &sources {
+            add_collection_resources(
+                destination,
+                &CollectionResources {
+                    scenes: source.scenes.clone(),
+                    creatures: source.creatures.clone(),
+                    notes: source.notes.clone(),
+                    items: source.items.clone(),
+                    abilities: source.abilities.clone(),
+                    classes: source.classes.clone(),
+                },
+            );
+        }
+    });
+    for source in sources {
+        game.collections.remove(&source.id);
+    }
+    game.validate_collections()
+}
+
 fn delete_resource(game: &mut Game, resource: ResourceRef) -> Result<(), GameError> {
     remove_resource_from_collections(game, resource);
     match resource {
@@ -728,6 +802,34 @@ impl GameExt for Game {
             EditCollection { collection } => {
                 self.change_with(GameLog::EditCollection { collection })
             }
+            RenameCollection {
+                collection_id,
+                name,
+            } => self.change_with(GameLog::RenameCollection {
+                collection_id,
+                name,
+            }),
+            AddResourcesToCollection {
+                collection_id,
+                resources,
+            } => self.change_with(GameLog::AddResourcesToCollection {
+                collection_id,
+                resources,
+            }),
+            RemoveResourcesFromCollection {
+                collection_id,
+                resources,
+            } => self.change_with(GameLog::RemoveResourcesFromCollection {
+                collection_id,
+                resources,
+            }),
+            MergeCollections {
+                destination_id,
+                source_ids,
+            } => self.change_with(GameLog::MergeCollections {
+                destination_id,
+                source_ids,
+            }),
             DeleteCollection { collection_id } => {
                 self.change_with(GameLog::DeleteCollection { collection_id })
             }
@@ -1205,6 +1307,40 @@ impl GameExt for Game {
                 self.collections.insert(collection.clone());
                 self.validate_collections()?;
             }
+            RenameCollection {
+                collection_id,
+                ref name,
+            } => {
+                self.collections
+                    .mutate(&collection_id, |collection| collection.name = name.clone())
+                    .ok_or(GameError::CollectionNotFound(collection_id))?;
+            }
+            AddResourcesToCollection {
+                collection_id,
+                ref resources,
+            } => {
+                self.collections
+                    .mutate(&collection_id, |collection| {
+                        add_collection_resources(collection, resources)
+                    })
+                    .ok_or(GameError::CollectionNotFound(collection_id))?;
+                self.validate_collections()?;
+            }
+            RemoveResourcesFromCollection {
+                collection_id,
+                ref resources,
+            } => {
+                self.collections
+                    .mutate(&collection_id, |collection| {
+                        remove_collection_resources(collection, resources)
+                    })
+                    .ok_or(GameError::CollectionNotFound(collection_id))?;
+                self.validate_collections()?;
+            }
+            MergeCollections {
+                destination_id,
+                ref source_ids,
+            } => merge_collections(self, destination_id, source_ids)?,
             DeleteCollection { collection_id } => {
                 self.collections
                     .remove(&collection_id)

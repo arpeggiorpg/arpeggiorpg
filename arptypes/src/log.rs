@@ -118,6 +118,22 @@ pub enum GameLog {
     EditCollection {
         collection: Collection,
     },
+    RenameCollection {
+        collection_id: CollectionID,
+        name: String,
+    },
+    AddResourcesToCollection {
+        collection_id: CollectionID,
+        resources: CollectionResources,
+    },
+    RemoveResourcesFromCollection {
+        collection_id: CollectionID,
+        resources: CollectionResources,
+    },
+    MergeCollections {
+        destination_id: CollectionID,
+        source_ids: Vec<CollectionID>,
+    },
     DeleteCollection {
         collection_id: CollectionID,
     },

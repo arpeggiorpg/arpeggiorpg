@@ -2,10 +2,8 @@
 
 ## Status
 
-In progress. Phases 0 and 1 are complete. Phase 0 is deployed to preprod; Phase 1 is implemented
-and verified locally but is not yet deployed. Phase 2 collection-editing behavior and Dioxus
-controls are next. Module and granular-storage work has not started; a few eventual Phase 2 UI
-outcomes were pulled forward into the prototype.
+In progress. Phases 0 and 1 are complete and deployed. Phase 2 is implemented and verified locally
+but is not yet deployed. Module and granular-storage work has not started.
 
 This is the canonical plan for replacing campaign folders with a resource catalog and collections,
 for importing and exporting modules, and for eventually moving from whole-game snapshots to
@@ -49,9 +47,18 @@ Completed in the Phase 1 domain model:
 - Verified the migration in the local Durable Object suite and verified the workspace and WASM
   builds.
 
+Completed in Phase 2:
+
+- Added explicit typed commands and logs for renaming collections, adding and removing membership,
+  and merging collections.
+- Added Dioxus controls to create, rename, merge, and delete collections.
+- Added per-resource collection membership management with multiple membership.
+- Made collection removal distinct from confirmed catalog deletion; neither deleting nor merging
+  collections deletes their resources.
+- Kept manual resource reordering deferred.
+
 Not yet implemented:
 
-- Dioxus collection editing, multiple-membership, manual-ordering, and catalog-deletion controls.
 - The new module format, dependency-aware import/export, and module provenance.
 - Repository abstraction, granular persistence, or dual-write work.
 
@@ -62,6 +69,8 @@ Current decisions and constraints:
   legacy `LoadModule` log.
 - Folder compatibility exists only in the Worker storage migration. Current domain types and logs
   have no folder representation.
+- Manual resource reordering is deferred. Catalog views sort resources for presentation while
+  preserving the typed membership vectors in storage.
 
 ## Implementation phases
 
@@ -91,8 +100,8 @@ Current decisions and constraints:
 
 - [x] Add foundational collection commands and logs (completed during Phase 1 migration work).
 - [x] Remove folder selection from new-resource flows.
-- Support add, remove, reorder, create, rename, and delete collection operations.
-- Make catalog deletion explicitly different from collection removal.
+- [x] Support add, remove, create, rename, merge, and delete collection operations.
+- [x] Make catalog deletion explicitly different from collection removal.
 - [x] Replace the campaign tree as the normal UI (completed early during Phase 0).
 
 ### Phase 3: Repository and granular blobs
@@ -127,7 +136,7 @@ Current decisions and constraints:
 Arpeggio will move toward three separate concepts:
 
 1. **Catalog**: all resources owned by a game, browsable primarily by resource type and search.
-2. **Collection**: an optional, non-nested, ordered grouping of resource IDs.
+2. **Collection**: an optional, non-nested grouping of resource IDs.
 3. **Module**: a portable set of complete resources that can be imported into or exported from a
    game.
 
@@ -256,10 +265,12 @@ Collection rules:
 
 - A resource may be in zero, one, or multiple collections.
 - Each resource ID must occur at most once in each typed vector.
-- Vector order is user-visible and should be preserved.
+- Membership vectors preserve their stored order, but Phase 2 does not expose manual reordering.
 - Collections cannot contain collections.
 - Removing a resource from a collection does not delete the resource.
 - Deleting a collection does not delete its resources.
+- Merging collections unions their typed memberships into one destination, deduplicates IDs, and
+  deletes only the source collections—not their resources.
 - Deleting a resource removes its ID from every collection.
 - Copying a resource creates a new resource ID; adding an existing resource to another collection
   does not copy it.
@@ -411,8 +422,8 @@ Build a catalog-oriented view in the Rust/Dioxus GM UI using the current `Game`:
 - Present each existing folder as a temporary collection named by its full path.
 - Hide recursive folder navigation in the experimental view.
 - Do not expose folder creation, rename, move, or delete in the experimental view.
-- Allow UI-local prototype collections if testing multiple membership or ordering is useful; they
-  may be intentionally ephemeral.
+- Allow UI-local prototype collections if testing multiple membership is useful; they may be
+  intentionally ephemeral.
 - Remove the existing campaign tree from the normal UI.
 
 The experiment need not perfectly emulate collection editing because the old tree cannot represent
@@ -425,7 +436,6 @@ and whether users miss hierarchical folders.
 - Are flat, non-nested collections sufficient for adventure and rules organization?
 - Does "Current scene" remove the need for much manual organization?
 - Is the distinction between removing from a collection and deleting a resource understandable?
-- Should collection ordering be manual everywhere or only in selected views?
 - When importing a module, is one automatically created collection a good default?
 
 ### Experiment success criteria
@@ -438,19 +448,20 @@ and whether users miss hierarchical folders.
 
 ## Commands and logs
 
-The core now has folder-free resource and collection commands and logs. Phase 2 should refine these
-into the user-facing collection-editing operations needed by the Dioxus UI.
+The core has folder-free resource and collection commands and logs, and the Dioxus UI exposes the
+Phase 2 collection-editing operations.
 
-Likely commands include:
+Current collection commands include:
 
 - `CreateCollection`
 - `EditCollection`
 - `DeleteCollection`
+- `MergeCollections`
+- `RenameCollection`
 - `AddResourcesToCollection`
 - `RemoveResourcesFromCollection`
-- `ReorderCollectionResources`
-- `ImportModule`
-- resource creation commands without `FolderPath`
+
+Resource creation commands no longer require a path. Future module work will add `ImportModule`.
 
 The exact command granularity should favor simple validation and deterministic logs. Separate typed
 fields should be used for bulk membership operations rather than public heterogeneous resource
@@ -555,8 +566,8 @@ separate keyed blobs. Choose whichever makes affected-state tracking clearer; do
 their internal fields prematurely.
 
 Collections remain typed Rust values serialized as one blob per collection. Collection membership
-does not require a join table initially. Reordering or editing a collection rewrites that small
-collection blob.
+does not require a join table initially. Editing a collection rewrites that small collection blob;
+merging rewrites the destination and deletes the source collection blobs.
 
 Benefits of this schema:
 
@@ -661,10 +672,11 @@ and report malformed legacy data rather than assume it is valid.
 - A resource may be in no collections.
 - A resource may be in multiple collections.
 - Duplicate IDs in one typed vector are rejected or normalized.
-- Order survives serialization and persistence.
+- Membership survives serialization and persistence.
 - Removing membership does not delete the resource.
 - Deleting a resource removes every stale collection reference.
 - Deleting a collection preserves all resources.
+- Merging collections deduplicates membership and preserves all resources.
 
 ### Migration tests
 
@@ -714,8 +726,7 @@ A later template/instance distinction can build on module provenance if needed.
 
 ### Multiple collection membership was not representable during the UI prototype
 
-The final domain now supports multiple membership. Phase 2 still needs to expose it through
-collection-editing controls.
+The final domain and Phase 2 UI now support multiple membership.
 
 ### Generic blobs may become limiting
 
@@ -732,7 +743,6 @@ if any snapshot or log cannot be converted. Core Arpeggio must never replay a fo
 
 These do not block the next phase:
 
-- Should all collections be manually ordered, or should some sort automatically by name?
 - Should the automatically created import collection contain all imported resources or only the
   module's explicit roots? The initial recommendation is all imported resources.
 - Which scene references are contextual contents versus optional links?

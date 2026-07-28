@@ -1,7 +1,9 @@
+use std::collections::HashSet;
+
 use arptypes::{
-    AABB, AbilityCreation, Action, ClassCreation, Collection, CollectionID, CreatureCreation,
-    CreatureEffect, CreatureTarget, Dice, Energy, GMCommand, Game, NoteVisibility, ResourceRef,
-    SceneCreation, SceneID, multitenant::RPIGameRequest, u32meter,
+    AABB, AbilityCreation, Action, ClassCreation, Collection, CollectionID, CollectionResources,
+    CreatureCreation, CreatureEffect, CreatureTarget, Dice, Energy, GMCommand, Game,
+    NoteVisibility, ResourceRef, SceneCreation, SceneID, multitenant::RPIGameRequest, u32meter,
 };
 use dioxus::prelude::*;
 
@@ -117,6 +119,7 @@ enum CatalogView {
 #[derive(Clone, PartialEq)]
 struct CatalogEntry {
     key: String,
+    resource: ResourceRef,
     kind: CatalogResourceKind,
     name: String,
     detail: Option<String>,
@@ -142,6 +145,9 @@ pub fn CatalogPanel(
     let mut view = use_signal(|| CatalogView::CurrentScene);
     let mut search = use_signal(String::new);
     let mut show_create_modal = use_signal(|| false);
+    let mut show_create_collection_modal = use_signal(|| false);
+    let mut manage_collection_id = use_signal(|| None::<CollectionID>);
+    let mut manage_resource = use_signal(|| None::<ResourceRef>);
     let mut recent_scene_ids = use_signal(Vec::<SceneID>::new);
 
     let query = search().trim().to_lowercase();
@@ -192,10 +198,18 @@ pub fn CatalogPanel(
                             "Browse every resource in this game."
                         }
                     }
-                    Button {
-                        variant: ButtonVariant::Primary,
-                        onclick: move |_| show_create_modal.set(true),
-                        "+ New"
+                    div {
+                        class: "flex gap-2",
+                        Button {
+                            variant: ButtonVariant::Outline,
+                            onclick: move |_| show_create_collection_modal.set(true),
+                            "+ Collection"
+                        }
+                        Button {
+                            variant: ButtonVariant::Primary,
+                            onclick: move |_| show_create_modal.set(true),
+                            "+ Resource"
+                        }
                     }
                 }
                 label {
@@ -322,9 +336,19 @@ pub fn CatalogPanel(
                             class: "truncate text-sm font-semibold text-gray-800",
                             "{title}"
                         }
-                        span {
-                            class: "shrink-0 text-xs text-gray-400",
-                            "{entries.len()} items"
+                        div {
+                            class: "flex shrink-0 items-center gap-2",
+                            span {
+                                class: "text-xs text-gray-400",
+                                "{entries.len()} items"
+                            }
+                            if let CatalogView::Collection(collection_id) = view() {
+                                Button {
+                                    variant: ButtonVariant::Outline,
+                                    onclick: move |_| manage_collection_id.set(Some(collection_id)),
+                                    "Manage"
+                                }
+                            }
                         }
                     }
 
@@ -347,6 +371,7 @@ pub fn CatalogPanel(
                                     entry,
                                     selected_scene_id,
                                     on_select_scene: select_scene,
+                                    on_manage: move |resource| manage_resource.set(Some(resource)),
                                 }
                             }
                         }
@@ -359,6 +384,35 @@ pub fn CatalogPanel(
             CreateCatalogResourceModal {
                 game: game.clone(),
                 on_close: move |_| show_create_modal.set(false),
+            }
+        }
+
+        if show_create_collection_modal() {
+            CreateCollectionModal {
+                on_close: move |_| show_create_collection_modal.set(false),
+            }
+        }
+
+        if let Some(collection_id) = manage_collection_id() {
+            ManageCollectionModal {
+                game: game.clone(),
+                collection_id,
+                on_close: move |_| manage_collection_id.set(None),
+                on_navigate: move |destination: Option<CollectionID>| {
+                    manage_collection_id.set(None);
+                    search.set(String::new());
+                    view.set(destination
+                        .map(CatalogView::Collection)
+                        .unwrap_or(CatalogView::Collections));
+                },
+            }
+        }
+
+        if let Some(resource) = manage_resource() {
+            ManageResourceModal {
+                game: game.clone(),
+                resource,
+                on_close: move |_| manage_resource.set(None),
             }
         }
     }
@@ -389,6 +443,7 @@ fn CatalogResourceRow(
     entry: CatalogEntry,
     selected_scene_id: Option<SceneID>,
     on_select_scene: EventHandler<SceneID>,
+    on_manage: EventHandler<ResourceRef>,
 ) -> Element {
     let selected = entry.scene_id.is_some() && entry.scene_id == selected_scene_id;
     let row_class = if selected {
@@ -397,7 +452,7 @@ fn CatalogResourceRow(
         "flex w-full items-center gap-3 rounded-md border border-gray-200 bg-white px-3 py-2 text-left hover:border-gray-300 hover:bg-gray-50"
     };
 
-    let content = rsx! {
+    let icon = rsx! {
         if let Some(icon_url) = &entry.icon_url {
             img {
                 class: "h-8 w-8 shrink-0 rounded object-cover",
@@ -420,8 +475,10 @@ fn CatalogResourceRow(
                 "{entry.kind.marker()}"
             }
         }
+    };
+    let description = rsx! {
         span {
-            class: "min-w-0 flex-1",
+            class: "block min-w-0",
             span {
                 class: if selected {
                     "block truncate text-sm font-medium text-blue-900"
@@ -443,20 +500,29 @@ fn CatalogResourceRow(
         }
     };
 
-    if let Some(scene_id) = entry.scene_id {
-        rsx! {
+    rsx! {
+        div {
+            class: "{row_class}",
+            {icon}
+            if let Some(scene_id) = entry.scene_id {
+                button {
+                    r#type: "button",
+                    class: "min-w-0 flex-1 text-left",
+                    onclick: move |_| on_select_scene.call(scene_id),
+                    {description}
+                }
+            } else {
+                span {
+                    class: "min-w-0 flex-1",
+                    {description}
+                }
+            }
             button {
                 r#type: "button",
-                class: "{row_class}",
-                onclick: move |_| on_select_scene.call(scene_id),
-                {content}
-            }
-        }
-    } else {
-        rsx! {
-            div {
-                class: "{row_class}",
-                {content}
+                class: "shrink-0 rounded px-2 py-1 text-xs font-medium text-gray-500 hover:bg-gray-200 hover:text-gray-800",
+                title: "Manage collections or delete from catalog",
+                onclick: move |_| on_manage.call(entry.resource),
+                "Manage"
             }
         }
     }
@@ -705,6 +771,498 @@ fn CreateCatalogResourceModal(game: Game, on_close: EventHandler<()>) -> Element
     }
 }
 
+#[component]
+fn CreateCollectionModal(on_close: EventHandler<()>) -> Element {
+    let ws = use_ws();
+    let mut name = use_signal(String::new);
+    let mut create_action = use_action({
+        let on_close = on_close;
+        move |name: String| {
+            let on_close = on_close;
+            async move {
+                send_catalog_command(ws, GMCommand::CreateCollection { name }).await?;
+                on_close.call(());
+                Ok::<(), anyhow::Error>(())
+            }
+        }
+    });
+    let trimmed_name = name().trim().to_string();
+
+    rsx! {
+        Modal {
+            open: true,
+            on_close: move |_| on_close.call(()),
+            class: "p-6",
+            h3 {
+                class: "text-lg font-semibold text-gray-900",
+                "Create collection"
+            }
+            p {
+                class: "mt-1 text-sm text-gray-500",
+                "Collections organize existing catalog resources without moving or copying them."
+            }
+            form {
+                class: "mt-5 space-y-4",
+                onsubmit: move |evt| {
+                    evt.prevent_default();
+                    if !trimmed_name.is_empty() {
+                        create_action.call(trimmed_name.clone());
+                    }
+                },
+                label {
+                    class: "block",
+                    span {
+                        class: "mb-1 block text-sm font-medium text-gray-700",
+                        "Name"
+                    }
+                    input {
+                        class: "w-full rounded-md border border-gray-300 px-3 py-2 text-sm",
+                        r#type: "text",
+                        autofocus: true,
+                        value: "{name}",
+                        oninput: move |evt| name.set(evt.value()),
+                    }
+                }
+                if let Some(Err(error)) = create_action.value() {
+                    p {
+                        class: "rounded bg-red-50 px-3 py-2 text-sm text-red-700",
+                        "Creation failed: {error}"
+                    }
+                }
+                div {
+                    class: "flex justify-end gap-2",
+                    Button {
+                        r#type: "button",
+                        variant: ButtonVariant::Ghost,
+                        onclick: move |_| on_close.call(()),
+                        "Cancel"
+                    }
+                    Button {
+                        r#type: "submit",
+                        variant: ButtonVariant::Primary,
+                        disabled: trimmed_name.is_empty() || create_action.pending(),
+                        if create_action.pending() { "Creating..." } else { "Create" }
+                    }
+                }
+            }
+        }
+    }
+}
+
+#[component]
+fn ManageCollectionModal(
+    game: Game,
+    collection_id: CollectionID,
+    on_close: EventHandler<()>,
+    on_navigate: EventHandler<Option<CollectionID>>,
+) -> Element {
+    let ws = use_ws();
+    let Some(collection) = game.collections.get(&collection_id).cloned() else {
+        return rsx! {
+            Modal {
+                open: true,
+                on_close: move |_| on_close.call(()),
+                class: "p-6",
+                p { class: "text-sm text-red-700", "Collection no longer exists." }
+            }
+        };
+    };
+
+    let initial_name = collection.name.clone();
+    let mut name = use_signal(move || initial_name);
+    let destinations: Vec<_> = all_collections(&game)
+        .into_iter()
+        .filter(|candidate| candidate.id != collection_id)
+        .collect();
+    let first_destination = destinations.first().map(|candidate| candidate.id);
+    let mut merge_destination = use_signal(move || first_destination);
+    let mut confirm_delete = use_signal(|| false);
+
+    let mut rename_action = use_action({
+        let on_close = on_close;
+        move |name: String| {
+            let on_close = on_close;
+            async move {
+                send_catalog_command(
+                    ws,
+                    GMCommand::RenameCollection {
+                        collection_id,
+                        name,
+                    },
+                )
+                .await?;
+                on_close.call(());
+                Ok::<(), anyhow::Error>(())
+            }
+        }
+    });
+    let mut merge_action = use_action({
+        let on_navigate = on_navigate;
+        move |destination_id: CollectionID| {
+            let on_navigate = on_navigate;
+            async move {
+                send_catalog_command(
+                    ws,
+                    GMCommand::MergeCollections {
+                        destination_id,
+                        source_ids: vec![collection_id],
+                    },
+                )
+                .await?;
+                on_navigate.call(Some(destination_id));
+                Ok::<(), anyhow::Error>(())
+            }
+        }
+    });
+    let mut delete_action = use_action({
+        let on_navigate = on_navigate;
+        move |_| {
+            let on_navigate = on_navigate;
+            async move {
+                send_catalog_command(ws, GMCommand::DeleteCollection { collection_id }).await?;
+                on_navigate.call(None);
+                Ok::<(), anyhow::Error>(())
+            }
+        }
+    });
+    let trimmed_name = name().trim().to_string();
+    let pending = rename_action.pending() || merge_action.pending() || delete_action.pending();
+
+    rsx! {
+        Modal {
+            open: true,
+            on_close: move |_| on_close.call(()),
+            class: "p-6 max-w-xl",
+            h3 {
+                class: "text-lg font-semibold text-gray-900",
+                "Manage collection"
+            }
+            p {
+                class: "mt-1 text-sm text-gray-500",
+                "{collection_resource_count(&collection)} resources"
+            }
+
+            form {
+                class: "mt-5",
+                onsubmit: move |evt| {
+                    evt.prevent_default();
+                    if !trimmed_name.is_empty() && trimmed_name != collection.name {
+                        rename_action.call(trimmed_name.clone());
+                    }
+                },
+                label {
+                    class: "block",
+                    span {
+                        class: "mb-1 block text-sm font-medium text-gray-700",
+                        "Name"
+                    }
+                    div {
+                        class: "flex gap-2",
+                        input {
+                            class: "min-w-0 flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm",
+                            r#type: "text",
+                            value: "{name}",
+                            oninput: move |evt| name.set(evt.value()),
+                        }
+                        Button {
+                            r#type: "submit",
+                            variant: ButtonVariant::Primary,
+                            disabled: pending || trimmed_name.is_empty() || trimmed_name == collection.name,
+                            if rename_action.pending() { "Saving..." } else { "Rename" }
+                        }
+                    }
+                }
+            }
+
+            div {
+                class: "mt-6 border-t border-gray-200 pt-5",
+                h4 { class: "text-sm font-semibold text-gray-900", "Merge collection" }
+                p {
+                    class: "mt-1 text-xs text-gray-500",
+                    "Move every membership into another collection, then remove this collection. Catalog resources are preserved."
+                }
+                if destinations.is_empty() {
+                    p { class: "mt-3 text-sm text-gray-500", "Create another collection before merging." }
+                } else {
+                    div {
+                        class: "mt-3 flex gap-2",
+                        select {
+                            class: "min-w-0 flex-1 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm",
+                            value: merge_destination().map(|id| id.to_string()).unwrap_or_default(),
+                            oninput: move |evt| {
+                                let value = evt.value();
+                                merge_destination.set(
+                                    destinations
+                                        .iter()
+                                        .find(|candidate| candidate.id.to_string() == value)
+                                        .map(|candidate| candidate.id),
+                                );
+                            },
+                            for destination in &destinations {
+                                option {
+                                    key: "{destination.id}",
+                                    value: "{destination.id}",
+                                    "{destination.name}"
+                                }
+                            }
+                        }
+                        Button {
+                            variant: ButtonVariant::Outline,
+                            disabled: pending || merge_destination().is_none(),
+                            onclick: move |_| {
+                                if let Some(destination_id) = merge_destination() {
+                                    merge_action.call(destination_id);
+                                }
+                            },
+                            if merge_action.pending() { "Merging..." } else { "Merge into" }
+                        }
+                    }
+                }
+            }
+
+            div {
+                class: "mt-6 border-t border-red-100 pt-5",
+                h4 { class: "text-sm font-semibold text-red-800", "Delete collection" }
+                p {
+                    class: "mt-1 text-xs text-gray-500",
+                    "Deleting a collection does not delete any catalog resources."
+                }
+                if confirm_delete() {
+                    div {
+                        class: "mt-3 flex items-center justify-between gap-3 rounded bg-red-50 p-3",
+                        span { class: "text-sm text-red-800", "Delete this collection?" }
+                        div {
+                            class: "flex gap-2",
+                            Button {
+                                variant: ButtonVariant::Ghost,
+                                disabled: pending,
+                                onclick: move |_| confirm_delete.set(false),
+                                "Cancel"
+                            }
+                            Button {
+                                variant: ButtonVariant::Destructive,
+                                disabled: pending,
+                                onclick: move |_| delete_action.call(()),
+                                if delete_action.pending() { "Deleting..." } else { "Delete" }
+                            }
+                        }
+                    }
+                } else {
+                    Button {
+                        variant: ButtonVariant::Destructive,
+                        disabled: pending,
+                        onclick: move |_| confirm_delete.set(true),
+                        "Delete collection"
+                    }
+                }
+            }
+
+            for result in [rename_action.value(), merge_action.value(), delete_action.value()] {
+                if let Some(Err(error)) = result {
+                    p {
+                        class: "mt-4 rounded bg-red-50 px-3 py-2 text-sm text-red-700",
+                        "Operation failed: {error}"
+                    }
+                }
+            }
+
+            div {
+                class: "mt-6 flex justify-end",
+                Button {
+                    variant: ButtonVariant::Ghost,
+                    disabled: pending,
+                    onclick: move |_| on_close.call(()),
+                    "Close"
+                }
+            }
+        }
+    }
+}
+
+#[component]
+fn ManageResourceModal(game: Game, resource: ResourceRef, on_close: EventHandler<()>) -> Element {
+    let ws = use_ws();
+    let Some(resource_name) = resource_name(&game, resource) else {
+        return rsx! {
+            Modal {
+                open: true,
+                on_close: move |_| on_close.call(()),
+                class: "p-6",
+                p { class: "text-sm text-red-700", "Resource no longer exists." }
+            }
+        };
+    };
+    let collections = all_collections(&game);
+    let original: HashSet<_> = collections
+        .iter()
+        .filter(|collection| collection_contains_resource(collection, resource))
+        .map(|collection| collection.id)
+        .collect();
+    let initial_selected = original.clone();
+    let mut selected = use_signal(move || initial_selected);
+    let mut confirm_delete = use_signal(|| false);
+
+    let mut membership_action = use_action({
+        let original = original.clone();
+        let on_close = on_close;
+        move |updated: HashSet<CollectionID>| {
+            let original = original.clone();
+            let on_close = on_close;
+            async move {
+                let mut additions: Vec<_> = updated.difference(&original).copied().collect();
+                let mut removals: Vec<_> = original.difference(&updated).copied().collect();
+                additions.sort();
+                removals.sort();
+                for collection_id in removals {
+                    send_catalog_command(
+                        ws,
+                        GMCommand::RemoveResourcesFromCollection {
+                            collection_id,
+                            resources: collection_resources(resource),
+                        },
+                    )
+                    .await?;
+                }
+                for collection_id in additions {
+                    send_catalog_command(
+                        ws,
+                        GMCommand::AddResourcesToCollection {
+                            collection_id,
+                            resources: collection_resources(resource),
+                        },
+                    )
+                    .await?;
+                }
+                on_close.call(());
+                Ok::<(), anyhow::Error>(())
+            }
+        }
+    });
+    let mut delete_action = use_action({
+        let on_close = on_close;
+        move |_| {
+            let on_close = on_close;
+            async move {
+                send_catalog_command(ws, GMCommand::DeleteResource { resource }).await?;
+                on_close.call(());
+                Ok::<(), anyhow::Error>(())
+            }
+        }
+    });
+    let pending = membership_action.pending() || delete_action.pending();
+
+    rsx! {
+        Modal {
+            open: true,
+            on_close: move |_| on_close.call(()),
+            class: "p-6 max-w-xl",
+            h3 {
+                class: "text-lg font-semibold text-gray-900",
+                "Manage {resource_name}"
+            }
+            p {
+                class: "mt-1 text-sm text-gray-500",
+                "Choose every collection where this resource should appear."
+            }
+
+            div {
+                class: "mt-5 max-h-72 overflow-y-auto rounded-md border border-gray-200",
+                if collections.is_empty() {
+                    p {
+                        class: "p-4 text-sm text-gray-500",
+                        "There are no collections yet."
+                    }
+                } else {
+                    for collection in &collections {
+                        {
+                            let collection_id = collection.id;
+                            rsx! {
+                                label {
+                                    key: "{collection_id}",
+                                    class: "flex cursor-pointer items-center justify-between gap-3 border-b border-gray-100 px-3 py-2 text-sm last:border-b-0 hover:bg-gray-50",
+                                    span { class: "truncate text-gray-800", "{collection.name}" }
+                                    input {
+                                        r#type: "checkbox",
+                                        checked: selected().contains(&collection_id),
+                                        onchange: move |evt| {
+                                            selected.with_mut(|selected| {
+                                                if evt.checked() {
+                                                    selected.insert(collection_id);
+                                                } else {
+                                                    selected.remove(&collection_id);
+                                                }
+                                            });
+                                        },
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            if let Some(Err(error)) = membership_action.value() {
+                p {
+                    class: "mt-4 rounded bg-red-50 px-3 py-2 text-sm text-red-700",
+                    "Membership update failed: {error}"
+                }
+            }
+            if let Some(Err(error)) = delete_action.value() {
+                p {
+                    class: "mt-4 rounded bg-red-50 px-3 py-2 text-sm text-red-700",
+                    "Catalog deletion failed: {error}"
+                }
+            }
+
+            div {
+                class: "mt-5 flex items-center justify-between gap-3",
+                div {
+                    if confirm_delete() {
+                        div {
+                            class: "flex items-center gap-2 rounded bg-red-50 p-2",
+                            span { class: "text-xs text-red-800", "Delete from the catalog everywhere?" }
+                            Button {
+                                variant: ButtonVariant::Destructive,
+                                disabled: pending,
+                                onclick: move |_| delete_action.call(()),
+                                if delete_action.pending() { "Deleting..." } else { "Confirm" }
+                            }
+                            Button {
+                                variant: ButtonVariant::Ghost,
+                                disabled: pending,
+                                onclick: move |_| confirm_delete.set(false),
+                                "Cancel"
+                            }
+                        }
+                    } else {
+                        Button {
+                            variant: ButtonVariant::Destructive,
+                            disabled: pending,
+                            onclick: move |_| confirm_delete.set(true),
+                            "Delete from catalog"
+                        }
+                    }
+                }
+                div {
+                    class: "flex gap-2",
+                    Button {
+                        variant: ButtonVariant::Ghost,
+                        disabled: pending,
+                        onclick: move |_| on_close.call(()),
+                        "Cancel"
+                    }
+                    Button {
+                        variant: ButtonVariant::Primary,
+                        disabled: pending || selected() == original,
+                        onclick: move |_| membership_action.call(selected()),
+                        if membership_action.pending() { "Saving..." } else { "Save memberships" }
+                    }
+                }
+            }
+        }
+    }
+}
+
 async fn send_catalog_command(
     ws: Coroutine<crate::rpi::UIRequest>,
     command: GMCommand,
@@ -827,6 +1385,7 @@ fn all_catalog_entries(game: &Game) -> Vec<CatalogEntry> {
     );
     entries.extend(game.creatures.values().map(|creature| CatalogEntry {
         key: format!("creature:{}", creature.id),
+        resource: ResourceRef::Creature(creature.id),
         kind: CatalogResourceKind::Creature,
         name: creature.name.clone(),
         detail: collection_detail(game, ResourceRef::Creature(creature.id)),
@@ -836,6 +1395,7 @@ fn all_catalog_entries(game: &Game) -> Vec<CatalogEntry> {
     }));
     entries.extend(game.classes.values().map(|class| CatalogEntry {
         key: format!("class:{}", class.id),
+        resource: ResourceRef::Class(class.id),
         kind: CatalogResourceKind::Class,
         name: class.name.clone(),
         detail: collection_detail(game, ResourceRef::Class(class.id)),
@@ -845,6 +1405,7 @@ fn all_catalog_entries(game: &Game) -> Vec<CatalogEntry> {
     }));
     entries.extend(game.abilities.values().map(|ability| CatalogEntry {
         key: format!("ability:{}", ability.id),
+        resource: ResourceRef::Ability(ability.id),
         kind: CatalogResourceKind::Ability,
         name: ability.name.clone(),
         detail: collection_detail(game, ResourceRef::Ability(ability.id)),
@@ -854,6 +1415,7 @@ fn all_catalog_entries(game: &Game) -> Vec<CatalogEntry> {
     }));
     entries.extend(game.items.values().map(|item| CatalogEntry {
         key: format!("item:{}", item.id),
+        resource: ResourceRef::Item(item.id),
         kind: CatalogResourceKind::Item,
         name: item.name.clone(),
         detail: collection_detail(game, ResourceRef::Item(item.id)),
@@ -864,6 +1426,7 @@ fn all_catalog_entries(game: &Game) -> Vec<CatalogEntry> {
 
     entries.extend(game.notes.values().map(|note| CatalogEntry {
         key: format!("note:{}", note.id),
+        resource: ResourceRef::Note(note.id),
         kind: CatalogResourceKind::Note,
         name: note.name.clone(),
         detail: collection_detail(game, ResourceRef::Note(note.id)),
@@ -891,6 +1454,7 @@ fn collection_entries(game: &Game, id: &CollectionID) -> Vec<CatalogEntry> {
     entries.extend(collection.creatures.iter().filter_map(|id| {
         game.creatures.get(id).map(|creature| CatalogEntry {
             key: format!("creature:{}", creature.id),
+            resource: ResourceRef::Creature(creature.id),
             kind: CatalogResourceKind::Creature,
             name: creature.name.clone(),
             detail: detail.clone(),
@@ -902,6 +1466,7 @@ fn collection_entries(game: &Game, id: &CollectionID) -> Vec<CatalogEntry> {
     entries.extend(collection.notes.iter().filter_map(|id| {
         game.notes.get(id).map(|note| CatalogEntry {
             key: format!("note:{}", note.id),
+            resource: ResourceRef::Note(note.id),
             kind: CatalogResourceKind::Note,
             name: note.name.clone(),
             detail: detail.clone(),
@@ -913,6 +1478,7 @@ fn collection_entries(game: &Game, id: &CollectionID) -> Vec<CatalogEntry> {
     entries.extend(collection.classes.iter().filter_map(|id| {
         game.classes.get(id).map(|class| CatalogEntry {
             key: format!("class:{}", class.id),
+            resource: ResourceRef::Class(class.id),
             kind: CatalogResourceKind::Class,
             name: class.name.clone(),
             detail: detail.clone(),
@@ -924,6 +1490,7 @@ fn collection_entries(game: &Game, id: &CollectionID) -> Vec<CatalogEntry> {
     entries.extend(collection.abilities.iter().filter_map(|id| {
         game.abilities.get(id).map(|ability| CatalogEntry {
             key: format!("ability:{}", ability.id),
+            resource: ResourceRef::Ability(ability.id),
             kind: CatalogResourceKind::Ability,
             name: ability.name.clone(),
             detail: detail.clone(),
@@ -935,6 +1502,7 @@ fn collection_entries(game: &Game, id: &CollectionID) -> Vec<CatalogEntry> {
     entries.extend(collection.items.iter().filter_map(|id| {
         game.items.get(id).map(|item| CatalogEntry {
             key: format!("item:{}", item.id),
+            resource: ResourceRef::Item(item.id),
             kind: CatalogResourceKind::Item,
             name: item.name.clone(),
             detail: detail.clone(),
@@ -955,6 +1523,7 @@ fn catalog_scene_entry(game: &Game, scene: &arptypes::Scene) -> CatalogEntry {
 fn scene_entry(scene: &arptypes::Scene, detail: Option<String>) -> CatalogEntry {
     CatalogEntry {
         key: format!("scene:{}", scene.id),
+        resource: ResourceRef::Scene(scene.id),
         kind: CatalogResourceKind::Scene,
         name: scene.name.clone(),
         detail,
@@ -995,18 +1564,62 @@ fn all_collections(game: &Game) -> Vec<Collection> {
     collections
 }
 
+fn collection_contains_resource(collection: &Collection, resource: ResourceRef) -> bool {
+    match resource {
+        ResourceRef::Scene(id) => collection.scenes.contains(&id),
+        ResourceRef::Creature(id) => collection.creatures.contains(&id),
+        ResourceRef::Note(id) => collection.notes.contains(&id),
+        ResourceRef::Item(id) => collection.items.contains(&id),
+        ResourceRef::Ability(id) => collection.abilities.contains(&id),
+        ResourceRef::Class(id) => collection.classes.contains(&id),
+    }
+}
+
+fn collection_resources(resource: ResourceRef) -> CollectionResources {
+    match resource {
+        ResourceRef::Scene(id) => CollectionResources {
+            scenes: vec![id],
+            ..Default::default()
+        },
+        ResourceRef::Creature(id) => CollectionResources {
+            creatures: vec![id],
+            ..Default::default()
+        },
+        ResourceRef::Note(id) => CollectionResources {
+            notes: vec![id],
+            ..Default::default()
+        },
+        ResourceRef::Item(id) => CollectionResources {
+            items: vec![id],
+            ..Default::default()
+        },
+        ResourceRef::Ability(id) => CollectionResources {
+            abilities: vec![id],
+            ..Default::default()
+        },
+        ResourceRef::Class(id) => CollectionResources {
+            classes: vec![id],
+            ..Default::default()
+        },
+    }
+}
+
+fn resource_name(game: &Game, resource: ResourceRef) -> Option<String> {
+    match resource {
+        ResourceRef::Scene(id) => game.scenes.get(&id).map(|value| value.name.clone()),
+        ResourceRef::Creature(id) => game.creatures.get(&id).map(|value| value.name.clone()),
+        ResourceRef::Note(id) => game.notes.get(&id).map(|value| value.name.clone()),
+        ResourceRef::Item(id) => game.items.get(&id).map(|value| value.name.clone()),
+        ResourceRef::Ability(id) => game.abilities.get(&id).map(|value| value.name.clone()),
+        ResourceRef::Class(id) => game.classes.get(&id).map(|value| value.name.clone()),
+    }
+}
+
 fn collection_detail(game: &Game, resource: ResourceRef) -> Option<String> {
     let mut collections: Vec<_> = game
         .collections
         .values()
-        .filter(|collection| match resource {
-            ResourceRef::Scene(id) => collection.scenes.contains(&id),
-            ResourceRef::Creature(id) => collection.creatures.contains(&id),
-            ResourceRef::Note(id) => collection.notes.contains(&id),
-            ResourceRef::Item(id) => collection.items.contains(&id),
-            ResourceRef::Ability(id) => collection.abilities.contains(&id),
-            ResourceRef::Class(id) => collection.classes.contains(&id),
-        })
+        .filter(|collection| collection_contains_resource(collection, resource))
         .collect();
     collections.sort_by(|left, right| {
         left.name
@@ -1078,6 +1691,7 @@ mod tests {
     fn search_matches_name_and_resource_type() {
         let entry = CatalogEntry {
             key: "scene:1".to_string(),
+            resource: ResourceRef::Scene(arptypes::SceneID::r#gen()),
             kind: CatalogResourceKind::Scene,
             name: "Moonlit Harbor".to_string(),
             detail: None,

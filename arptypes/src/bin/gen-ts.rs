@@ -53,6 +53,7 @@ pub fn main() -> Result<(), anyhow::Error> {
         <T::ItemID as TS>::decl(),
         <T::Collection as TS>::decl(),
         <T::CollectionID as TS>::decl(),
+        <T::CollectionResources as TS>::decl(),
         <T::Note as TS>::decl(),
         <T::NoteID as TS>::decl(),
         <T::ResourceRef as TS>::decl(),

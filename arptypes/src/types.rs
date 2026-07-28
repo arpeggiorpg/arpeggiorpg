@@ -276,6 +276,16 @@ pub struct Collection {
     pub classes: Vec<ClassID>,
 }
 
+#[derive(Debug, Clone, Default, Serialize, Deserialize, Eq, PartialEq, TS)]
+pub struct CollectionResources {
+    pub scenes: Vec<SceneID>,
+    pub creatures: Vec<CreatureID>,
+    pub notes: Vec<NoteID>,
+    pub items: Vec<ItemID>,
+    pub abilities: Vec<AbilityID>,
+    pub classes: Vec<ClassID>,
+}
+
 impl DeriveKey for Collection {
     type KeyType = CollectionID;
     fn derive_key(&self) -> CollectionID {

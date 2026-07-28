@@ -77,6 +77,113 @@ fn collection_validation_allows_multiple_membership_and_rejects_duplicates() {
 }
 
 #[test]
+fn collection_membership_commands_and_merge_preserve_resources() {
+    let game = t_game();
+    let destination = game.collections.values().next().unwrap().clone();
+    let scene_id = destination.scenes[0];
+    let creature_id = destination.creatures[0];
+
+    let renamed = game
+        .perform_gm_command(GMCommand::RenameCollection {
+            collection_id: destination.id,
+            name: "Destination".to_string(),
+        })
+        .unwrap();
+    assert_eq!(
+        renamed.game.collections.get(&destination.id).unwrap().name,
+        "Destination"
+    );
+
+    let removed = renamed
+        .game
+        .perform_gm_command(GMCommand::RemoveResourcesFromCollection {
+            collection_id: destination.id,
+            resources: CollectionResources {
+                scenes: vec![scene_id],
+                ..Default::default()
+            },
+        })
+        .unwrap();
+    assert!(!removed
+        .game
+        .collections
+        .get(&destination.id)
+        .unwrap()
+        .scenes
+        .contains(&scene_id));
+    assert!(removed.game.scenes.contains_key(&scene_id));
+
+    let added = removed
+        .game
+        .perform_gm_command(GMCommand::AddResourcesToCollection {
+            collection_id: destination.id,
+            resources: CollectionResources {
+                scenes: vec![scene_id, scene_id],
+                ..Default::default()
+            },
+        })
+        .unwrap();
+    assert_eq!(
+        added
+            .game
+            .collections
+            .get(&destination.id)
+            .unwrap()
+            .scenes
+            .iter()
+            .filter(|id| **id == scene_id)
+            .count(),
+        1
+    );
+
+    let source_id = CollectionID::gen();
+    let mut with_source = added.game;
+    with_source.collections.insert(Collection {
+        id: source_id,
+        name: "Source".to_string(),
+        scenes: vec![scene_id],
+        creatures: vec![creature_id],
+        notes: vec![],
+        items: vec![],
+        abilities: vec![],
+        classes: vec![],
+    });
+    let merged = with_source
+        .perform_gm_command(GMCommand::MergeCollections {
+            destination_id: destination.id,
+            source_ids: vec![source_id, source_id, destination.id],
+        })
+        .unwrap();
+
+    assert!(!merged.game.collections.contains_key(&source_id));
+    let merged_destination = merged.game.collections.get(&destination.id).unwrap();
+    assert_eq!(
+        merged_destination
+            .scenes
+            .iter()
+            .filter(|id| **id == scene_id)
+            .count(),
+        1
+    );
+    assert!(merged_destination.creatures.contains(&creature_id));
+    assert!(merged.game.scenes.contains_key(&scene_id));
+    assert!(merged.game.creatures.contains_key(&creature_id));
+
+    let deleted_collection = merged
+        .game
+        .perform_gm_command(GMCommand::DeleteCollection {
+            collection_id: destination.id,
+        })
+        .unwrap();
+    assert!(!deleted_collection
+        .game
+        .collections
+        .contains_key(&destination.id));
+    assert!(deleted_collection.game.scenes.contains_key(&scene_id));
+    assert!(deleted_collection.game.creatures.contains_key(&creature_id));
+}
+
+#[test]
 fn catalog_commands_create_resources_without_membership_and_clean_up_on_delete() {
     let game = t_game();
     let created = game
