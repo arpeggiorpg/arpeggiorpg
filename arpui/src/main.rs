@@ -12,6 +12,7 @@ use serde::Serialize;
 use tracing::{error, info};
 
 mod admin_view;
+mod catalog;
 mod chat;
 mod components;
 mod gfx;
