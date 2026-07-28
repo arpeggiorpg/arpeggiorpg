@@ -2,7 +2,9 @@
 
 ## Status
 
-Proposed.
+In progress. Phase 0 is complete and deployed to preprod. Phase 1, the domain-model change, is
+next. Module and storage work has not started; a few eventual Phase 2 UI outcomes were pulled
+forward into the prototype.
 
 This is the canonical plan for replacing campaign folders with a resource catalog and collections,
 for importing and exporting modules, and for eventually moving from whole-game snapshots to
@@ -11,6 +13,98 @@ granular blob persistence.
 It supersedes `doc/piecemeal sql storage.md`. The useful parts of that plan are incorporated here,
 but persistence work is deliberately sequenced after a UI experiment and the resource-model
 change.
+
+### Progress update — 2026-07-28
+
+Completed in the Rust/Dioxus UI:
+
+- Replaced the normal Campaign tree with a Catalog as the default GM view.
+- Added Current Scene, session-local Recent, resource-type, search, collection overview, and
+  individual collection views.
+- Projected existing folder paths as temporary read-only collections.
+- Added one location-free create flow for scenes, creatures, notes, classes, abilities, and items.
+  For compatibility with the current commands and domain model, it creates resources under the
+  hidden default path `/catalog`.
+- Flattened Manage Creatures, preserved search and grant/remove behavior, and placed creatures
+  assigned when the dialog opens at the top of the list.
+- Added existing creature icons and class emojis to catalog rows.
+- Removed the legacy folder-tree UI instead of retaining it behind a development switch.
+- Left the TypeScript UI untouched.
+- Deployed the current prototype to `https://preprod.arpeggio-331.pages.dev`.
+
+Not yet implemented:
+
+- First-class `Collection` and top-level `Note` domain types.
+- Collection editing, multiple membership, manual ordering, or catalog deletion.
+- Location-free resource commands; the current UI adapts existing folder-based commands.
+- The new module format, dependency-aware import/export, and module provenance.
+- Repository abstraction, granular persistence, migration, or dual-write work.
+
+Current decisions and prototype constraints:
+
+- `/catalog` is an implementation detail of the compatibility layer, not a user-facing location.
+- Legacy folder-based module imports do not need to remain available. There are no known module
+  files in active use, and the format will be replaced during Phase 5.
+- Existing folder-based games still require a migration path when the domain model changes.
+
+## Implementation phases
+
+### Phase 0: UI prototype
+
+- [x] Add catalog navigation to the Rust/Dioxus GM UI.
+- [x] Add type views and search.
+- [x] Add Current Scene and Recent where practical.
+- [x] Present folder paths as temporary read-only collections.
+- [x] Remove the folder tree from the normal UI.
+- [x] Add a location-free prototype create flow backed by `/catalog`.
+- [x] Gather experience before changing serialized state.
+- [x] Do not touch the TypeScript UI or generated TypeScript.
+
+### Phase 1: Domain model
+
+- Add `CollectionID` and `NoteID`.
+- Make notes top-level resources.
+- Add `Collection` with separate typed vectors.
+- Add `Game.collections`.
+- Add collection validation and helper methods.
+- Continue storing whole-game snapshots.
+- Add legacy `Game` deserialization or an explicit migration adapter.
+
+### Phase 2: Commands and Dioxus UI
+
+- Add collection commands and logs.
+- Remove folder selection from new-resource flows.
+- Support add, remove, reorder, create, rename, and delete collection operations.
+- Make catalog deletion explicitly different from collection removal.
+- [x] Replace the campaign tree as the normal UI (completed early during Phase 0).
+- Keep folder commands only for legacy replay and migration.
+
+### Phase 3: Repository and granular blobs
+
+- Add the repository boundary.
+- Implement it first with current snapshot storage.
+- Add generic resource, collection, and game-state blob tables.
+- Implement and test affected-entity projection.
+- Backfill and dual-write.
+- Add full parity and recovery tests.
+- Switch cold loading to granular blobs.
+
+### Phase 4: Cleanup
+
+- Stop writing full snapshots when recovery and rollback permit it.
+- Remove `campaign` and normal-use folder code.
+- [x] Remove folder UI (completed early during Phase 0).
+- Remove legacy commands and logs only after old replay is no longer needed.
+- Consider removing the standalone `foldertree` crate if no other code uses it.
+
+### Phase 5: Modules
+
+- Define the versioned typed module format.
+- Implement reference discovery and dependency classification.
+- Implement export preview and validation.
+- Implement ID remapping and transactional import.
+- Automatically create a collection for imported content.
+- Add round-trip and dependency-closure tests.
 
 ## Decision summary
 
@@ -29,9 +123,11 @@ The intended implementation order is:
 1. Experiment with the catalog and collection experience entirely in the Rust/Dioxus UI.
 2. Add collections and top-level notes to the Rust domain model while retaining whole-game snapshot
    blobs.
-3. Replace folder-based module import/export with dependency-aware modules.
-4. Only then introduce granular persistence, initially using generic JSON blob rows rather than a
-   relational schema for every resource type.
+3. Replace folder-based commands with collection-oriented commands and complete the Dioxus UI.
+4. Introduce granular persistence using generic JSON blob rows, then remove remaining normal-use
+   folder code.
+5. Implement dependency-aware module import and export against the final catalog and collection
+   model.
 
 The old TypeScript UI and `arptypes/src/bin/gen-ts.rs` are effectively dead. They do not need to be
 updated as part of this work. New design and implementation work should target the Rust/Dioxus UI in
@@ -280,9 +376,9 @@ Module import should:
 
 The import destination is the game catalog; users do not choose a folder.
 
-Existing folder-based `.arpeggiogame` and JSON modules should remain importable through a legacy
-adapter. The adapter should flatten their folder tree, migrate notes to IDs, and produce the new
-module representation before normal import proceeds.
+Existing folder-based `.arpeggiogame` and JSON modules do not need a compatibility adapter. There
+are no known module files in active use, and the new typed module format is expected to differ
+substantially.
 
 ## UI experiment
 
@@ -300,8 +396,8 @@ Build a catalog-oriented view in the Rust/Dioxus GM UI using the current `Game`:
 - Do not expose folder creation, rename, move, or delete in the experimental view.
 - Allow UI-local prototype collections if testing multiple membership or ordering is useful; they
   may be intentionally ephemeral.
-- Keep the existing campaign tree available behind the current UI or a development switch until
-  the experiment is accepted.
+- Remove the existing campaign tree from the normal UI. Backend folder compatibility remains until
+  the domain and storage migrations are complete.
 
 The experiment need not perfectly emulate collection editing because the old tree cannot represent
 zero-to-many collection membership. Its purpose is to validate navigation, terminology, discovery,
@@ -535,69 +631,11 @@ The folder-to-collection migration should:
 7. Drop empty folders unless retaining one has demonstrated user value.
 8. Translate `/Players/{player_id}` note placement into explicit ownership and visibility metadata.
 9. Validate that all catalog resources still exist and all collection references resolve.
-10. Retain a compatibility reader for old serialized games and modules.
+10. Retain a compatibility reader for old serialized games.
 
 Because the old validation requires every resource to appear in exactly one folder, normal games
 should migrate without orphaned or multiply assigned resources. Migration code must still detect
 and report malformed legacy data rather than assume it is valid.
-
-## Implementation phases
-
-### Phase 0: UI prototype
-
-- Add catalog navigation to the Rust/Dioxus GM UI.
-- Add type views and search.
-- Add Current Scene and Recent where practical.
-- Present folder paths as temporary read-only collections.
-- Gather experience before changing serialized state.
-- Do not touch the TypeScript UI or generated TypeScript.
-
-### Phase 1: Domain model
-
-- Add `CollectionID` and `NoteID`.
-- Make notes top-level resources.
-- Add `Collection` with separate typed vectors.
-- Add `Game.collections`.
-- Add collection validation and helper methods.
-- Continue storing whole-game snapshots.
-- Add legacy `Game` deserialization or an explicit migration adapter.
-
-### Phase 2: Commands and Dioxus UI
-
-- Add collection commands and logs.
-- Remove folder selection from new-resource flows.
-- Support add, remove, reorder, create, rename, and delete collection operations.
-- Make catalog deletion explicitly different from collection removal.
-- Replace the campaign tree as the normal UI.
-- Keep folder commands only for legacy replay and migration.
-
-### Phase 3: Modules
-
-- Define the versioned typed module format.
-- Implement reference discovery and dependency classification.
-- Implement export preview and validation.
-- Implement ID remapping and transactional import.
-- Automatically create a collection for imported content.
-- Add a legacy folder-module adapter.
-- Add round-trip and dependency-closure tests.
-
-### Phase 4: Repository and granular blobs
-
-- Add the repository boundary.
-- Implement it first with current snapshot storage.
-- Add generic resource, collection, and game-state blob tables.
-- Implement and test affected-entity projection.
-- Backfill and dual-write.
-- Add full parity and recovery tests.
-- Switch cold loading to granular blobs.
-
-### Phase 5: Cleanup
-
-- Stop writing full snapshots when recovery and rollback permit it.
-- Remove `campaign` and normal-use folder code.
-- Remove folder UI.
-- Remove legacy commands and logs only after old replay is no longer needed.
-- Consider removing the standalone `foldertree` crate if no other code uses it.
 
 ## Testing strategy
 
@@ -618,7 +656,6 @@ and report malformed legacy data rather than assume it is valid.
 - Notes receive stable IDs and preserve content.
 - Player notes preserve authorization semantics.
 - Malformed folder games fail with useful errors.
-- Existing `.arpeggiogame` files remain importable.
 
 ### Module tests
 
@@ -695,7 +732,7 @@ This initiative is complete when:
 - resources can appear in multiple non-nested collections;
 - creating a resource requires no path;
 - modules import and export with validated dependency closure;
-- old folder-based games and modules have a supported migration path;
+- old folder-based games have a supported migration path;
 - the Rust/Dioxus UI implements the catalog and collections experience;
 - the TypeScript UI remains intentionally untouched;
 - granular blob persistence can reconstruct a `Game` exactly and is authoritative;
