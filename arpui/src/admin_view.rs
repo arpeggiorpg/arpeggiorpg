@@ -321,7 +321,8 @@ fn SuperuserAdminPage() -> Element {
                                                                             status_message.set(Some(format!("Dumping {game_name}...")));
                                                                             error_message.set(None);
                                                                             match rpi_get::<serde_json::Value>(&format!("superuser/dump/{game_id}")).await {
-                                                                                Ok(value) => {
+                                                                                Ok(mut value) => {
+                                                                                    decode_dump_hex_values(&mut value);
                                                                                     let pretty = serde_json::to_string_pretty(&value)
                                                                                         .unwrap_or_else(|_| value.to_string());
                                                                                     info!(game_id, game_name, dump=?value, "superuser dump");
@@ -570,6 +571,71 @@ fn render_has_data(has_stored_data: Option<bool>) -> String {
     }
 }
 
+fn decode_dump_hex_values(value: &mut serde_json::Value) {
+    match value {
+        serde_json::Value::Array(values) => {
+            for value in values {
+                decode_dump_hex_values(value);
+            }
+        }
+        serde_json::Value::Object(object) => {
+            let is_hex_sql_value = object
+                .get("type")
+                .and_then(serde_json::Value::as_str)
+                .is_some_and(|kind| matches!(kind, "text" | "blob"));
+            if is_hex_sql_value {
+                let decoded = object
+                    .get("value")
+                    .and_then(serde_json::Value::as_str)
+                    .and_then(decode_hex)
+                    .map(display_bytes);
+                if let Some(decoded) = decoded {
+                    object.insert("value".to_string(), serde_json::Value::String(decoded));
+                }
+            }
+
+            for value in object.values_mut() {
+                decode_dump_hex_values(value);
+            }
+        }
+        _ => {}
+    }
+}
+
+fn decode_hex(value: &str) -> Option<Vec<u8>> {
+    if !value.len().is_multiple_of(2) {
+        return None;
+    }
+    value
+        .as_bytes()
+        .chunks_exact(2)
+        .map(|pair| {
+            std::str::from_utf8(pair)
+                .ok()
+                .and_then(|pair| u8::from_str_radix(pair, 16).ok())
+        })
+        .collect()
+}
+
+fn display_bytes(bytes: Vec<u8>) -> String {
+    match String::from_utf8(bytes) {
+        Ok(text) => text,
+        Err(error) => error
+            .into_bytes()
+            .into_iter()
+            .map(|byte| match byte {
+                b'\\' => "\\\\".to_string(),
+                b'"' => "\\\"".to_string(),
+                b'\n' => "\\n".to_string(),
+                b'\r' => "\\r".to_string(),
+                b'\t' => "\\t".to_string(),
+                0x20..=0x7e => char::from(byte).to_string(),
+                _ => format!("\\x{byte:02X}"),
+            })
+            .collect(),
+    }
+}
+
 fn get_do_status(game_id: &str, data: &SuperuserGamesResponse) -> DoStatus {
     let do_id = data.arpeggiogame_ids.get(game_id);
     let mut present = false;
@@ -631,4 +697,42 @@ fn find_orphan_dos(data: &SuperuserGamesResponse) -> Vec<OrphanDo> {
 
     orphans.sort_by(|a, b| a.namespace.cmp(&b.namespace).then(a.id.cmp(&b.id)));
     orphans
+}
+
+#[cfg(test)]
+mod tests {
+    use serde_json::json;
+
+    use super::decode_dump_hex_values;
+
+    #[test]
+    fn dump_hex_values_are_decoded_for_display() {
+        let mut dump = json!({
+            "sql": [{
+                "type": "insert",
+                "rows": [[
+                    {"type": "text", "value": "486920F09F8EB5"},
+                    {"type": "blob", "value": "706C61696E2074657874"},
+                    {"type": "blob", "value": "00FF41225C"},
+                    {"type": "integer", "value": "4869"}
+                ]]
+            }]
+        });
+
+        decode_dump_hex_values(&mut dump);
+
+        assert_eq!(dump["sql"][0]["rows"][0][0]["value"], "Hi 🎵");
+        assert_eq!(dump["sql"][0]["rows"][0][1]["value"], "plain text");
+        assert_eq!(dump["sql"][0]["rows"][0][2]["value"], "\\x00\\xFFA\\\"\\\\");
+        assert_eq!(dump["sql"][0]["rows"][0][3]["value"], "4869");
+    }
+
+    #[test]
+    fn invalid_hex_is_left_unchanged() {
+        let mut dump = json!({"type": "blob", "value": "not hex"});
+
+        decode_dump_hex_values(&mut dump);
+
+        assert_eq!(dump["value"], "not hex");
+    }
 }
