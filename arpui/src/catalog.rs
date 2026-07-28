@@ -1,7 +1,7 @@
 use arptypes::{
     AABB, AbilityCreation, Action, ClassCreation, Collection, CollectionID, CreatureCreation,
-    CreatureEffect, CreatureTarget, Dice, Energy, GMCommand, Game, NoteVisibility, SceneCreation,
-    SceneID, multitenant::RPIGameRequest, u32meter,
+    CreatureEffect, CreatureTarget, Dice, Energy, GMCommand, Game, NoteVisibility, ResourceRef,
+    SceneCreation, SceneID, multitenant::RPIGameRequest, u32meter,
 };
 use dioxus::prelude::*;
 
@@ -434,7 +434,10 @@ fn CatalogResourceRow(
                 class: "block truncate text-xs text-gray-500",
                 "{entry.kind.label()}"
                 if let Some(detail) = &entry.detail {
-                    " · {detail}"
+                    span {
+                        title: "{detail}",
+                        " · {detail}"
+                    }
                 }
             }
         }
@@ -797,13 +800,13 @@ fn entries_for_view(
     match view {
         CatalogView::CurrentScene => selected_scene_id
             .and_then(|id| game.scenes.get(&id))
-            .map(scene_entry)
+            .map(|scene| catalog_scene_entry(game, scene))
             .into_iter()
             .collect(),
         CatalogView::Recent => recent_scene_ids
             .iter()
             .filter_map(|id| game.scenes.get(id))
-            .map(scene_entry)
+            .map(|scene| catalog_scene_entry(game, scene))
             .collect(),
         CatalogView::Type(kind) => all_catalog_entries(game)
             .into_iter()
@@ -817,12 +820,16 @@ fn entries_for_view(
 fn all_catalog_entries(game: &Game) -> Vec<CatalogEntry> {
     let mut entries = Vec::new();
 
-    entries.extend(game.scenes.values().map(scene_entry));
+    entries.extend(
+        game.scenes
+            .values()
+            .map(|scene| catalog_scene_entry(game, scene)),
+    );
     entries.extend(game.creatures.values().map(|creature| CatalogEntry {
         key: format!("creature:{}", creature.id),
         kind: CatalogResourceKind::Creature,
         name: creature.name.clone(),
-        detail: None,
+        detail: collection_detail(game, ResourceRef::Creature(creature.id)),
         scene_id: None,
         icon_url: (!creature.icon_url.is_empty()).then(|| creature.icon_url.clone()),
         emoji: None,
@@ -831,7 +838,7 @@ fn all_catalog_entries(game: &Game) -> Vec<CatalogEntry> {
         key: format!("class:{}", class.id),
         kind: CatalogResourceKind::Class,
         name: class.name.clone(),
-        detail: None,
+        detail: collection_detail(game, ResourceRef::Class(class.id)),
         scene_id: None,
         icon_url: None,
         emoji: Some(class.emoji.clone().unwrap_or_else(|| "🧑‍🎓".to_string())),
@@ -840,7 +847,7 @@ fn all_catalog_entries(game: &Game) -> Vec<CatalogEntry> {
         key: format!("ability:{}", ability.id),
         kind: CatalogResourceKind::Ability,
         name: ability.name.clone(),
-        detail: None,
+        detail: collection_detail(game, ResourceRef::Ability(ability.id)),
         scene_id: None,
         icon_url: None,
         emoji: None,
@@ -849,29 +856,20 @@ fn all_catalog_entries(game: &Game) -> Vec<CatalogEntry> {
         key: format!("item:{}", item.id),
         kind: CatalogResourceKind::Item,
         name: item.name.clone(),
-        detail: None,
+        detail: collection_detail(game, ResourceRef::Item(item.id)),
         scene_id: None,
         icon_url: None,
         emoji: None,
     }));
 
-    entries.extend(game.notes.values().map(|note| {
-        let mut collection_names: Vec<_> = game
-            .collections
-            .values()
-            .filter(|collection| collection.notes.contains(&note.id))
-            .map(|collection| collection.name.clone())
-            .collect();
-        collection_names.sort();
-        CatalogEntry {
-            key: format!("note:{}", note.id),
-            kind: CatalogResourceKind::Note,
-            name: note.name.clone(),
-            detail: (!collection_names.is_empty()).then(|| collection_names.join(", ")),
-            scene_id: None,
-            icon_url: None,
-            emoji: None,
-        }
+    entries.extend(game.notes.values().map(|note| CatalogEntry {
+        key: format!("note:{}", note.id),
+        kind: CatalogResourceKind::Note,
+        name: note.name.clone(),
+        detail: collection_detail(game, ResourceRef::Note(note.id)),
+        scene_id: None,
+        icon_url: None,
+        emoji: None,
     }));
 
     sort_catalog_entries(&mut entries);
@@ -886,11 +884,9 @@ fn collection_entries(game: &Game, id: &CollectionID) -> Vec<CatalogEntry> {
     let mut entries = Vec::new();
 
     entries.extend(collection.scenes.iter().filter_map(|id| {
-        game.scenes.get(id).map(|scene| {
-            let mut entry = scene_entry(scene);
-            entry.detail = detail.clone();
-            entry
-        })
+        game.scenes
+            .get(id)
+            .map(|scene| scene_entry(scene, detail.clone()))
     }));
     entries.extend(collection.creatures.iter().filter_map(|id| {
         game.creatures.get(id).map(|creature| CatalogEntry {
@@ -952,12 +948,16 @@ fn collection_entries(game: &Game, id: &CollectionID) -> Vec<CatalogEntry> {
     entries
 }
 
-fn scene_entry(scene: &arptypes::Scene) -> CatalogEntry {
+fn catalog_scene_entry(game: &Game, scene: &arptypes::Scene) -> CatalogEntry {
+    scene_entry(scene, collection_detail(game, ResourceRef::Scene(scene.id)))
+}
+
+fn scene_entry(scene: &arptypes::Scene, detail: Option<String>) -> CatalogEntry {
     CatalogEntry {
         key: format!("scene:{}", scene.id),
         kind: CatalogResourceKind::Scene,
         name: scene.name.clone(),
-        detail: None,
+        detail,
         scene_id: Some(scene.id),
         icon_url: None,
         emoji: None,
@@ -995,6 +995,34 @@ fn all_collections(game: &Game) -> Vec<Collection> {
     collections
 }
 
+fn collection_detail(game: &Game, resource: ResourceRef) -> Option<String> {
+    let mut collections: Vec<_> = game
+        .collections
+        .values()
+        .filter(|collection| match resource {
+            ResourceRef::Scene(id) => collection.scenes.contains(&id),
+            ResourceRef::Creature(id) => collection.creatures.contains(&id),
+            ResourceRef::Note(id) => collection.notes.contains(&id),
+            ResourceRef::Item(id) => collection.items.contains(&id),
+            ResourceRef::Ability(id) => collection.abilities.contains(&id),
+            ResourceRef::Class(id) => collection.classes.contains(&id),
+        })
+        .collect();
+    collections.sort_by(|left, right| {
+        left.name
+            .to_lowercase()
+            .cmp(&right.name.to_lowercase())
+            .then_with(|| left.id.cmp(&right.id))
+    });
+    (!collections.is_empty()).then(|| {
+        collections
+            .into_iter()
+            .map(|collection| collection.name.as_str())
+            .collect::<Vec<_>>()
+            .join(", ")
+    })
+}
+
 fn collection_resource_count(collection: &Collection) -> usize {
     collection.scenes.len()
         + collection.creatures.len()
@@ -1007,6 +1035,44 @@ fn collection_resource_count(collection: &Collection) -> usize {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn collection_detail_covers_every_resource_type_and_sorts_names() {
+        let scene_id = arptypes::SceneID::r#gen();
+        let creature_id = arptypes::CreatureID::r#gen();
+        let note_id = arptypes::NoteID::r#gen();
+        let item_id = arptypes::ItemID::r#gen();
+        let ability_id = arptypes::AbilityID::r#gen();
+        let class_id = arptypes::ClassID::r#gen();
+        let mut game = Game::default();
+
+        for name in ["Zeta", "Alpha"] {
+            game.collections.insert(Collection {
+                id: CollectionID::r#gen(),
+                name: name.to_string(),
+                scenes: vec![scene_id],
+                creatures: vec![creature_id],
+                notes: vec![note_id],
+                items: vec![item_id],
+                abilities: vec![ability_id],
+                classes: vec![class_id],
+            });
+        }
+
+        for resource in [
+            ResourceRef::Scene(scene_id),
+            ResourceRef::Creature(creature_id),
+            ResourceRef::Note(note_id),
+            ResourceRef::Item(item_id),
+            ResourceRef::Ability(ability_id),
+            ResourceRef::Class(class_id),
+        ] {
+            assert_eq!(
+                collection_detail(&game, resource).as_deref(),
+                Some("Alpha, Zeta")
+            );
+        }
+    }
 
     #[test]
     fn search_matches_name_and_resource_type() {
