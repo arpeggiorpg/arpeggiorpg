@@ -122,6 +122,8 @@ struct CatalogEntry {
     name: String,
     detail: Option<String>,
     scene_id: Option<SceneID>,
+    icon_url: Option<String>,
+    emoji: Option<String>,
 }
 
 #[derive(Clone)]
@@ -396,13 +398,27 @@ fn CatalogResourceRow(
     };
 
     let content = rsx! {
-        span {
-            class: if selected {
-                "flex h-8 w-8 shrink-0 items-center justify-center rounded bg-blue-600 text-[0.65rem] font-bold text-white"
-            } else {
-                "flex h-8 w-8 shrink-0 items-center justify-center rounded bg-gray-100 text-[0.65rem] font-bold text-gray-500"
-            },
-            "{entry.kind.marker()}"
+        if let Some(icon_url) = &entry.icon_url {
+            img {
+                class: "h-8 w-8 shrink-0 rounded object-cover",
+                src: "{icon_url}",
+                alt: "",
+            }
+        } else if let Some(emoji) = &entry.emoji {
+            span {
+                class: "flex h-8 w-8 shrink-0 items-center justify-center text-xl",
+                title: "{entry.name}",
+                "{emoji}"
+            }
+        } else {
+            span {
+                class: if selected {
+                    "flex h-8 w-8 shrink-0 items-center justify-center rounded bg-blue-600 text-[0.65rem] font-bold text-white"
+                } else {
+                    "flex h-8 w-8 shrink-0 items-center justify-center rounded bg-gray-100 text-[0.65rem] font-bold text-gray-500"
+                },
+                "{entry.kind.marker()}"
+            }
         }
         span {
             class: "min-w-0 flex-1",
@@ -831,6 +847,8 @@ fn all_catalog_entries(game: &Game) -> Vec<CatalogEntry> {
         name: creature.name.clone(),
         detail: None,
         scene_id: None,
+        icon_url: (!creature.icon_url.is_empty()).then(|| creature.icon_url.clone()),
+        emoji: None,
     }));
     entries.extend(game.classes.values().map(|class| CatalogEntry {
         key: format!("class:{}", class.id),
@@ -838,6 +856,8 @@ fn all_catalog_entries(game: &Game) -> Vec<CatalogEntry> {
         name: class.name.clone(),
         detail: None,
         scene_id: None,
+        icon_url: None,
+        emoji: Some(class.emoji.clone().unwrap_or_else(|| "🧑‍🎓".to_string())),
     }));
     entries.extend(game.abilities.values().map(|ability| CatalogEntry {
         key: format!("ability:{}", ability.id),
@@ -845,6 +865,8 @@ fn all_catalog_entries(game: &Game) -> Vec<CatalogEntry> {
         name: ability.name.clone(),
         detail: None,
         scene_id: None,
+        icon_url: None,
+        emoji: None,
     }));
     entries.extend(game.items.values().map(|item| CatalogEntry {
         key: format!("item:{}", item.id),
@@ -852,6 +874,8 @@ fn all_catalog_entries(game: &Game) -> Vec<CatalogEntry> {
         name: item.name.clone(),
         detail: None,
         scene_id: None,
+        icon_url: None,
+        emoji: None,
     }));
 
     for path in game.campaign.walk_paths(&FolderPath::root()) {
@@ -864,6 +888,8 @@ fn all_catalog_entries(game: &Game) -> Vec<CatalogEntry> {
             name: note.name.clone(),
             detail: Some(collection_label(path)),
             scene_id: None,
+            icon_url: None,
+            emoji: None,
         }));
     }
 
@@ -892,6 +918,8 @@ fn collection_entries(game: &Game, path: &FolderPath) -> Vec<CatalogEntry> {
             name: creature.name.clone(),
             detail: detail.clone(),
             scene_id: None,
+            icon_url: (!creature.icon_url.is_empty()).then(|| creature.icon_url.clone()),
+            emoji: None,
         })
     }));
     entries.extend(folder.notes.values().map(|note| CatalogEntry {
@@ -900,6 +928,8 @@ fn collection_entries(game: &Game, path: &FolderPath) -> Vec<CatalogEntry> {
         name: note.name.clone(),
         detail: detail.clone(),
         scene_id: None,
+        icon_url: None,
+        emoji: None,
     }));
     entries.extend(folder.classes.iter().filter_map(|id| {
         game.classes.get(id).map(|class| CatalogEntry {
@@ -908,6 +938,8 @@ fn collection_entries(game: &Game, path: &FolderPath) -> Vec<CatalogEntry> {
             name: class.name.clone(),
             detail: detail.clone(),
             scene_id: None,
+            icon_url: None,
+            emoji: Some(class.emoji.clone().unwrap_or_else(|| "🧑‍🎓".to_string())),
         })
     }));
     entries.extend(folder.abilities.iter().filter_map(|id| {
@@ -917,6 +949,8 @@ fn collection_entries(game: &Game, path: &FolderPath) -> Vec<CatalogEntry> {
             name: ability.name.clone(),
             detail: detail.clone(),
             scene_id: None,
+            icon_url: None,
+            emoji: None,
         })
     }));
     entries.extend(folder.items.iter().filter_map(|id| {
@@ -926,6 +960,8 @@ fn collection_entries(game: &Game, path: &FolderPath) -> Vec<CatalogEntry> {
             name: item.name.clone(),
             detail: detail.clone(),
             scene_id: None,
+            icon_url: None,
+            emoji: None,
         })
     }));
 
@@ -940,6 +976,8 @@ fn scene_entry(scene: &arptypes::Scene) -> CatalogEntry {
         name: scene.name.clone(),
         detail: None,
         scene_id: Some(scene.id),
+        icon_url: None,
+        emoji: None,
     }
 }
 
@@ -1007,6 +1045,8 @@ mod tests {
             name: "Moonlit Harbor".to_string(),
             detail: None,
             scene_id: None,
+            icon_url: None,
+            emoji: None,
         };
 
         assert!(catalog_entry_matches(&entry, "moonlit"));
