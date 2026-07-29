@@ -52,6 +52,16 @@ pub async fn test_full_storage_dump(state: &State) -> anyhow::Result<()> {
         "full storage dump omitted SQL schema or data"
     );
     anyhow::ensure!(
+        dump.sql.iter().any(|operation| matches!(
+            operation,
+            SqlOperation::Statement { sql } if sql.contains("CREATE TABLE items")
+        )) && dump.sql.iter().any(|operation| matches!(
+            operation,
+            SqlOperation::Insert { table, .. } if table == "game_state"
+        )),
+        "full storage dump omitted typed game tables or singleton state"
+    );
+    anyhow::ensure!(
         dump.kv.len() == 2
             && dump
                 .kv
@@ -73,7 +83,7 @@ pub async fn test_full_storage_dump(state: &State) -> anyhow::Result<()> {
     state.storage().sql().exec(
         "INSERT INTO game_snapshots (snapshot_idx, game) VALUES (?, ?)",
         Some(vec![
-            SqlStorageValue::Integer(0),
+            SqlStorageValue::Integer(999),
             SqlStorageValue::Blob(large_blob.clone()),
         ]),
     )?;

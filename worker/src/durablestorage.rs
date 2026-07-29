@@ -5,6 +5,7 @@ use std::{
 };
 
 use anyhow::anyhow;
+use futures_util::lock::Mutex;
 use tracing::info;
 use worker::{SqlStorage, State};
 
@@ -14,9 +15,10 @@ use arpeggio::{
 };
 use arptypes::{
     multitenant::{GameIndex, ImageType, InvitationID},
-    GMCommand,
+    GMCommand, ResourceRef,
 };
 
+use crate::entity_storage;
 use crate::tests::test_init;
 
 type RecentGameLogs = VecDeque<(GameIndex, GameLog)>;
@@ -36,6 +38,7 @@ pub struct GameStorage {
     next_log_idx: Cell<usize>,
     cached_game: Rc<RefCell<Game>>,
     recent_logs: Rc<RefCell<RecentGameLogs>>,
+    update_lock: Mutex<()>,
 }
 
 const NUM_LOGS_PER_SNAPSHOT: usize = 100;
@@ -54,41 +57,44 @@ impl GameStorage {
     pub fn load(state: Rc<State>) -> anyhow::Result<Self> {
         info!(event = "game-load-start");
         let sql = state.storage().sql();
-
-        // Find the most recent snapshot
-        let (game, latest_snapshot_idx) = match Self::load_latest_game_snapshot(state.clone())? {
-            Some(x) => x,
-            None => {
-                info!(event = "new-game");
-                let default_game = Game::default();
-                Self::store_game_snapshot(&sql, 0, &default_game)?;
-                (default_game, 0)
-            }
-        };
-
-        // Load recent logs from the most recent 2 snapshot indexes and apply them to the game
-        let (final_game, recent_logs, next_log_idx) =
-            Self::load_and_apply_recent_logs(&sql, game, latest_snapshot_idx)?;
+        let game = entity_storage::load_game(&sql)?;
+        let latest_snapshot_idx = Self::latest_snapshot_idx(&sql)?.unwrap_or(0);
+        let (recent_logs, next_log_idx) = Self::load_recent_logs(&sql, latest_snapshot_idx)?;
 
         let game_storage = Self {
             state,
             current_snapshot_idx: Cell::new(latest_snapshot_idx),
             next_log_idx: Cell::new(next_log_idx),
-            cached_game: Rc::new(RefCell::new(final_game)),
+            cached_game: Rc::new(RefCell::new(game)),
             recent_logs: Rc::new(RefCell::new(recent_logs)),
+            update_lock: Mutex::new(()),
         };
 
         Ok(game_storage)
     }
 
-    fn load_latest_game_snapshot(state: Rc<State>) -> anyhow::Result<Option<(Game, usize)>> {
+    fn latest_snapshot_idx(sql: &SqlStorage) -> anyhow::Result<Option<usize>> {
+        #[derive(serde::Deserialize)]
+        struct SnapshotIndexRow {
+            snapshot_idx: usize,
+        }
+
+        let rows: Vec<SnapshotIndexRow> = sql
+            .exec(
+                "SELECT snapshot_idx FROM game_snapshots ORDER BY snapshot_idx DESC LIMIT 1",
+                None,
+            )?
+            .to_array()?;
+        Ok(rows.into_iter().next().map(|row| row.snapshot_idx))
+    }
+
+    fn load_latest_game_snapshot(sql: &SqlStorage) -> anyhow::Result<Option<(Game, usize)>> {
         #[derive(serde::Deserialize)]
         struct GameRow {
             game: String, // can't figure out how to just make this `Game`
             snapshot_idx: usize,
         }
 
-        let sql = state.storage().sql();
         let rows: Vec<GameRow> = sql
             .exec(
                 "SELECT json(game) as game, snapshot_idx FROM game_snapshots \
@@ -106,6 +112,30 @@ impl GameStorage {
         }
     }
 
+    fn load_snapshot_materialized_game(sql: &SqlStorage) -> anyhow::Result<Game> {
+        #[derive(serde::Deserialize)]
+        struct LogRow {
+            game_log: String,
+        }
+
+        let (mut game, snapshot_idx) = Self::load_latest_game_snapshot(sql)?
+            .ok_or_else(|| anyhow!("No game snapshot exists"))?;
+        let logs: Vec<LogRow> = sql
+            .exec(
+                "SELECT json(game_log) AS game_log
+                 FROM logs
+                 WHERE snapshot_idx = ?
+                 ORDER BY log_idx",
+                Some(vec![(snapshot_idx as i64).into()]),
+            )?
+            .to_array()?;
+        for row in logs {
+            let log = serde_json::from_str(&row.game_log)?;
+            game = game.apply_log(&log)?;
+        }
+        Ok(game)
+    }
+
     fn store_game_snapshot(
         sql: &SqlStorage,
         snapshot_idx: usize,
@@ -119,11 +149,10 @@ impl GameStorage {
         Ok(())
     }
 
-    fn load_and_apply_recent_logs(
+    fn load_recent_logs(
         sql: &SqlStorage,
-        mut game: Game,
         latest_snapshot_idx: usize,
-    ) -> anyhow::Result<(Game, RecentGameLogs, usize)> {
+    ) -> anyhow::Result<(RecentGameLogs, usize)> {
         // Load logs from the most recent 2 snapshot indexes for history
         let snapshot_indices = if latest_snapshot_idx == 0 {
             vec![0]
@@ -155,7 +184,7 @@ impl GameStorage {
         let mut next_log_idx = 0;
 
         if all_rows.is_empty() {
-            return Ok((game, recent_logs, next_log_idx));
+            return Ok((recent_logs, next_log_idx));
         }
 
         info!(event = "loading-logs", num = all_rows.len());
@@ -172,9 +201,7 @@ impl GameStorage {
             let log_idx = row.log_idx as usize;
             let snapshot_idx = row.snapshot_idx as usize;
 
-            // Only apply logs from the latest snapshot to the game state
             if snapshot_idx == latest_snapshot_idx {
-                game = game.apply_log(&log)?;
                 next_log_idx = log_idx + 1;
             }
 
@@ -188,84 +215,98 @@ impl GameStorage {
             ));
         }
 
-        Ok((game, recent_logs, next_log_idx))
+        Ok((recent_logs, next_log_idx))
     }
 
     /// Update Game storage with changes from a changed_game. Updates the locally cached Game as well
     /// as writing new logs to storage.
-    pub fn update_game(
+    pub async fn update_game(
         &self,
         changed_game: ChangedGame,
     ) -> anyhow::Result<Vec<(GameIndex, GameLog)>> {
-        let mut logs_with_indices = vec![];
+        let _update_guard = self.update_lock.lock().await;
+        let old_game = self.game();
+        let snapshot_idx = self.current_snapshot_idx.get();
+        let first_log_idx = self.next_log_idx.get();
+        let logs_with_indices: Vec<_> = changed_game
+            .logs
+            .iter()
+            .enumerate()
+            .map(|(offset, log)| {
+                (
+                    GameIndex {
+                        game_idx: snapshot_idx,
+                        log_idx: first_log_idx + offset,
+                    },
+                    log.clone(),
+                )
+            })
+            .collect();
+        let serialized_logs: Vec<_> = changed_game
+            .logs
+            .iter()
+            .map(serde_json::to_string)
+            .collect::<Result<_, _>>()?;
+        let next_log_idx = first_log_idx + serialized_logs.len();
+        let new_snapshot_idx = (next_log_idx >= NUM_LOGS_PER_SNAPSHOT).then_some(snapshot_idx + 1);
 
-        // TODO: verify if the "implicit transactions" thing actually works, because this code
-        // *definitely* relies on it:
-        // https://developers.cloudflare.com/durable-objects/api/sqlite-storage-api/#transaction
-        for log in &changed_game.logs {
-            // Update the cached game
+        let sql = self.state.storage().sql();
+        let storage = self.state.storage();
+        let old_game_for_write = old_game;
+        let new_game_for_write = changed_game.game.clone();
+        storage
+            .transaction(move |_transaction| {
+                let sql = sql.clone();
+                async move {
+                    entity_storage::persist_game_delta(
+                        &sql,
+                        &old_game_for_write,
+                        &new_game_for_write,
+                    )
+                    .map_err(crate::rust_error)?;
 
-            self.maybe_snapshot(changed_game.clone())?;
+                    for (offset, serialized_log) in serialized_logs.into_iter().enumerate() {
+                        let log_idx = first_log_idx + offset;
+                        info!(event = "storing-log", snapshot_idx, log_idx);
+                        sql.exec(
+                            "INSERT INTO logs (snapshot_idx, log_idx, game_log)
+                             VALUES (?, ?, jsonb(?))",
+                            Some(vec![
+                                (snapshot_idx as i64).into(),
+                                (log_idx as i64).into(),
+                                serialized_log.into(),
+                            ]),
+                        )?;
+                    }
 
-            let serialized_log = serde_json::to_string(&log)?;
-            let log_idx = self.next_log_idx.get();
+                    if let Some(new_snapshot_idx) = new_snapshot_idx {
+                        info!(
+                            event = "creating-new-snapshot",
+                            new_snapshot_idx,
+                            log_count = next_log_idx
+                        );
+                        Self::store_game_snapshot(&sql, new_snapshot_idx, &new_game_for_write)
+                            .map_err(crate::rust_error)?;
+                    }
+                    Ok(())
+                }
+            })
+            .await
+            .map_err(crate::anydbg)?;
 
-            info!(
-                event = "storing-log",
-                snapshot_idx = self.current_snapshot_idx.get(),
-                log_idx
-            );
-
-            self.state.storage().sql().exec(
-                "INSERT INTO logs (snapshot_idx, log_idx, game_log) VALUES (?, ?, jsonb(?))",
-                Some(vec![
-                    (self.current_snapshot_idx.get() as i64).into(),
-                    (log_idx as i64).into(),
-                    serialized_log.into(),
-                ]),
-            )?;
-
-            logs_with_indices.push((
-                GameIndex {
-                    game_idx: self.current_snapshot_idx.get(),
-                    log_idx,
-                },
-                log.clone(),
-            ));
-
-            self.next_log_idx.set(log_idx + 1);
-        }
         *self.cached_game.borrow_mut() = changed_game.game;
+        if let Some(new_snapshot_idx) = new_snapshot_idx {
+            self.current_snapshot_idx.set(new_snapshot_idx);
+            self.next_log_idx.set(0);
+        } else {
+            self.next_log_idx.set(next_log_idx);
+        }
 
         // Update recent logs (keep all logs from most recent 2 snapshots)
         let mut recent_logs = self.recent_logs.borrow_mut();
         recent_logs.extend(logs_with_indices.iter().cloned());
 
         Ok(logs_with_indices)
-    }
-
-    fn maybe_snapshot(&self, changed_game: ChangedGame) -> anyhow::Result<()> {
-        // Check if we need to create a new snapshot after storing all logs
-        let total_logs_in_snapshot = self.next_log_idx.get();
-        if total_logs_in_snapshot >= NUM_LOGS_PER_SNAPSHOT {
-            let new_snapshot_idx = self.current_snapshot_idx.get() + 1;
-            info!(
-                event = "creating-new-snapshot",
-                new_snapshot_idx,
-                log_count = total_logs_in_snapshot
-            );
-
-            Self::store_game_snapshot(
-                &self.state.storage().sql(),
-                new_snapshot_idx,
-                &changed_game.game,
-            )?;
-            self.current_snapshot_idx.set(new_snapshot_idx);
-
-            // Reset log index for the new snapshot - future logs will start at 0 for the new snapshot
-            self.next_log_idx.set(0);
-        }
-        Ok(())
     }
 
     pub fn create_invitation(&self) -> anyhow::Result<InvitationID> {
@@ -358,7 +399,7 @@ pub async fn test_snapshot_creation(state: Rc<State>) -> anyhow::Result<()> {
             message: format!("Test message {i}"),
         };
         let changed_game = game_storage.game().perform_gm_command(cmd)?;
-        game_storage.update_game(changed_game)?;
+        game_storage.update_game(changed_game).await?;
     }
     assert_eq!(game_storage.current_snapshot_idx.get(), 1);
     assert_eq!(game_storage.recent_logs().len(), 101);
@@ -382,7 +423,7 @@ pub async fn test_snapshot_creation(state: Rc<State>) -> anyhow::Result<()> {
     Ok(())
 }
 
-/// Test that multi-log commands don't allow log count to go above NUM_LOGS_PER_SNAPSHOT.
+/// Test that a multi-log command is kept atomic when it crosses the snapshot threshold.
 #[tracing::instrument(skip(state))]
 pub async fn test_snapshot_creation_multilog(state: Rc<State>) -> anyhow::Result<()> {
     test_init(&state).await?;
@@ -394,7 +435,7 @@ pub async fn test_snapshot_creation_multilog(state: Rc<State>) -> anyhow::Result
             message: format!("Test message {i}"),
         };
         let changed_game = game_storage.game().perform_gm_command(cmd)?;
-        game_storage.update_game(changed_game)?;
+        game_storage.update_game(changed_game).await?;
     }
     assert_eq!(game_storage.current_snapshot_idx.get(), 0);
     assert_eq!(game_storage.recent_logs().len(), 98);
@@ -409,7 +450,7 @@ pub async fn test_snapshot_creation_multilog(state: Rc<State>) -> anyhow::Result
     let game = game_storage.game();
     let changed = game.change_with_logs(grouped_logs)?;
 
-    game_storage.update_game(changed)?;
+    game_storage.update_game(changed).await?;
 
     assert_eq!(game_storage.current_snapshot_idx.get(), 1);
     assert_eq!(game_storage.recent_logs().len(), 103);
@@ -424,12 +465,12 @@ pub async fn test_snapshot_creation_multilog(state: Rc<State>) -> anyhow::Result
         .iter()
         .filter(|(gi, _gl)| gi.game_idx == 0)
         .count();
-    assert_eq!(old_snapshot_logs, 100);
+    assert_eq!(old_snapshot_logs, 103);
     let new_snapshot_logs = recent_logs
         .iter()
         .filter(|(gi, _gl)| gi.game_idx == 1)
         .count();
-    assert_eq!(new_snapshot_logs, 3);
+    assert_eq!(new_snapshot_logs, 0);
     Ok(())
 }
 
@@ -461,7 +502,7 @@ pub async fn test_fresh_game_initialization(state: Rc<State>) -> anyhow::Result<
         message: "Hello from fresh game".to_string(),
     };
     let changed_game = game_storage.game().perform_gm_command(cmd)?;
-    game_storage.update_game(changed_game)?;
+    game_storage.update_game(changed_game).await?;
     assert_eq!(game_storage.recent_logs().len(), 1);
 
     // Reload from storage to verify persistence
@@ -472,5 +513,209 @@ pub async fn test_fresh_game_initialization(state: Rc<State>) -> anyhow::Result<
     let game = fresh_storage.game();
     assert!(game.current_combat.is_none());
 
+    Ok(())
+}
+
+#[tracing::instrument(skip(state))]
+pub async fn test_typed_table_persistence(state: Rc<State>) -> anyhow::Result<()> {
+    test_init(&state).await?;
+    let game_storage = GameStorage::load(state.clone())?;
+
+    let changed_game = game_storage
+        .game()
+        .perform_gm_command(GMCommand::CreateItem {
+            name: "Typed-table item".to_string(),
+        })?;
+    let item_id = changed_game
+        .game
+        .items
+        .values()
+        .next()
+        .ok_or_else(|| anyhow!("CreateItem did not create an item"))?
+        .id;
+    game_storage.update_game(changed_game).await?;
+
+    let sql = state.storage().sql();
+    assert_eq!(entity_storage::load_game(&sql)?, game_storage.game());
+    assert_eq!(
+        GameStorage::load_snapshot_materialized_game(&sql)?,
+        game_storage.game()
+    );
+
+    let changed_game = game_storage
+        .game()
+        .perform_gm_command(GMCommand::DeleteResource {
+            resource: ResourceRef::Item(item_id),
+        })?;
+    game_storage.update_game(changed_game).await?;
+    assert_eq!(entity_storage::load_game(&sql)?, game_storage.game());
+    assert_eq!(
+        GameStorage::load_snapshot_materialized_game(&sql)?,
+        game_storage.game()
+    );
+
+    #[derive(serde::Deserialize)]
+    struct CountRow {
+        count: i64,
+    }
+    let item_count: CountRow = sql
+        .exec("SELECT count(*) AS count FROM items", None)?
+        .one()?;
+    assert_eq!(item_count.count, 0);
+    Ok(())
+}
+
+#[tracing::instrument(skip(state))]
+pub async fn test_all_typed_tables_round_trip(state: Rc<State>) -> anyhow::Result<()> {
+    use arptypes::{
+        u32cm, AbilityCreation, Action, ClassCreation, CreatureCreation, CreatureEffect,
+        CreatureTarget, Dice, Energy, NoteVisibility, PlayerID, SceneCreation, TileSystem, AABB,
+    };
+
+    test_init(&state).await?;
+    let mut game = Game::default();
+    game = game
+        .perform_gm_command(GMCommand::CreateAbility {
+            ability: AbilityCreation {
+                name: "Round-trip ability".to_string(),
+                cost: Energy(1),
+                action: Action::Creature {
+                    effect: CreatureEffect::Heal(Dice::Flat { value: 1 }),
+                    target: CreatureTarget::Actor,
+                },
+                usable_ooc: true,
+            },
+        })?
+        .game;
+    game = game
+        .perform_gm_command(GMCommand::CreateClass {
+            class: ClassCreation {
+                name: "Round-trip class".to_string(),
+                abilities: game.abilities.keys().copied().collect(),
+                conditions: vec![],
+                color: "#ffffff".to_string(),
+                emoji: Some("🧪".to_string()),
+            },
+        })?
+        .game;
+    let class_id = *game
+        .classes
+        .keys()
+        .next()
+        .ok_or_else(|| anyhow!("CreateClass did not create a class"))?;
+    game = game
+        .perform_gm_command(GMCommand::CreateCreature {
+            creature: CreatureCreation {
+                name: "Round-trip creature".to_string(),
+                class: class_id,
+                portrait_url: String::new(),
+                icon_url: String::new(),
+                note: String::new(),
+                bio: String::new(),
+                initiative: Dice::Flat { value: 0 },
+                size: AABB {
+                    x: u32cm(100),
+                    y: u32cm(100),
+                    z: u32cm(100),
+                },
+            },
+        })?
+        .game;
+    game = game
+        .perform_gm_command(GMCommand::CreateScene {
+            scene: SceneCreation {
+                name: "Round-trip scene".to_string(),
+                background_image_url: String::new(),
+                background_image_offset: None,
+                background_image_scale: (1.0, 1.0),
+            },
+        })?
+        .game;
+    game = game
+        .perform_gm_command(GMCommand::CreateNote {
+            name: "Round-trip note".to_string(),
+            content: "Stored independently".to_string(),
+            visibility: NoteVisibility::GMOnly,
+        })?
+        .game;
+    game = game
+        .perform_gm_command(GMCommand::CreateItem {
+            name: "Round-trip item".to_string(),
+        })?
+        .game;
+    game = game
+        .perform_gm_command(GMCommand::CreateCollection {
+            name: "Round-trip collection".to_string(),
+        })?
+        .game;
+    game = game
+        .perform_gm_command(GMCommand::RegisterPlayer {
+            id: PlayerID("round-trip-player".to_string()),
+        })?
+        .game;
+    game.tile_system = TileSystem::DnD;
+    game.active_scene = game.scenes.keys().next().copied();
+
+    entity_storage::replace_game(&state.storage().sql(), &game)?;
+    assert_eq!(entity_storage::load_game(&state.storage().sql())?, game);
+    Ok(())
+}
+
+#[tracing::instrument(skip(state))]
+pub async fn test_typed_table_cold_load(state: Rc<State>) -> anyhow::Result<()> {
+    test_init(&state).await?;
+    let game_storage = GameStorage::load(state.clone())?;
+    let changed_game = game_storage
+        .game()
+        .perform_gm_command(GMCommand::CreateItem {
+            name: "Typed authority".to_string(),
+        })?;
+    game_storage.update_game(changed_game).await?;
+    let expected_game = game_storage.game();
+
+    // The latest snapshot still predates CreateItem. Removing its log makes the snapshot
+    // representation stale while leaving the typed rows authoritative.
+    state.storage().sql().exec("DELETE FROM logs", None)?;
+    let fresh_storage = GameStorage::load(state)?;
+    assert_eq!(fresh_storage.game(), expected_game);
+    Ok(())
+}
+
+#[tracing::instrument(skip(state))]
+pub async fn test_failed_typed_update_is_atomic(state: Rc<State>) -> anyhow::Result<()> {
+    test_init(&state).await?;
+    let game_storage = GameStorage::load(state.clone())?;
+    let original_game = game_storage.game();
+    state.storage().sql().exec(
+        "CREATE TRIGGER reject_test_item
+         BEFORE INSERT ON items
+         BEGIN
+             SELECT RAISE(ABORT, 'intentional typed-table failure');
+         END",
+        None,
+    )?;
+
+    let changed_game = original_game
+        .clone()
+        .perform_gm_command(GMCommand::CreateItem {
+            name: "Must roll back".to_string(),
+        })?;
+    assert!(game_storage.update_game(changed_game).await.is_err());
+    assert_eq!(game_storage.game(), original_game);
+    assert_eq!(
+        entity_storage::load_game(&state.storage().sql())?,
+        original_game
+    );
+
+    #[derive(serde::Deserialize)]
+    struct CountRow {
+        count: i64,
+    }
+    let log_count: CountRow = state
+        .storage()
+        .sql()
+        .exec("SELECT count(*) AS count FROM logs", None)?
+        .one()?;
+    assert_eq!(log_count.count, 0);
     Ok(())
 }

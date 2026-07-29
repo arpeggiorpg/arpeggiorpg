@@ -15,13 +15,15 @@ use worker::{
 };
 
 use crate::durablestorage::{
+    test_all_typed_tables_round_trip, test_failed_typed_update_is_atomic,
     test_fresh_game_initialization, test_snapshot_creation, test_snapshot_creation_multilog,
+    test_typed_table_cold_load, test_typed_table_persistence,
 };
 use crate::{
     domigrations::{
         test_catalog_domain_migration, test_empty_storage_baseline,
         test_migration_chain_and_rollback, test_production_schema_adoption,
-        test_untrusted_unversioned_storage_rejected,
+        test_typed_tables_migration, test_untrusted_unversioned_storage_rejected,
     },
     dump,
     durablestorage::GameStorage,
@@ -303,11 +305,16 @@ impl ArpeggioGameSql {
                 "test_empty_storage_baseline": report(test_empty_storage_baseline(&self.state).await),
                 "test_production_schema_adoption": report(test_production_schema_adoption(&self.state).await),
                 "test_catalog_domain_migration": report(test_catalog_domain_migration(&self.state).await),
+                "test_typed_tables_migration": report(test_typed_tables_migration(&self.state).await),
                 "test_untrusted_unversioned_storage_rejected": report(test_untrusted_unversioned_storage_rejected(&self.state).await),
                 "test_migration_chain_and_rollback": report(test_migration_chain_and_rollback(&self.state).await),
                 "test_snapshot_creation": report(test_snapshot_creation(self.state.clone()).await),
                 "test_snapshot_creation_multilog": report(test_snapshot_creation_multilog(self.state.clone()).await),
                 "test_fresh_game_initialization": report(test_fresh_game_initialization(self.state.clone()).await),
+                "test_typed_table_persistence": report(test_typed_table_persistence(self.state.clone()).await),
+                "test_all_typed_tables_round_trip": report(test_all_typed_tables_round_trip(self.state.clone()).await),
+                "test_typed_table_cold_load": report(test_typed_table_cold_load(self.state.clone()).await),
+                "test_failed_typed_update_is_atomic": report(test_failed_typed_update_is_atomic(self.state.clone()).await),
                 "test_concurrent_game_storage_initialization": report(self.test_concurrent_game_storage_initialization().await),
                 "test_full_storage_dump": report(dump::test_full_storage_dump(&self.state).await),
                 "test_dump_restore_and_load": report(self.test_dump_restore_and_load().await),

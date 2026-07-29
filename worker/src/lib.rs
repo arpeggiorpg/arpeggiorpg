@@ -8,6 +8,7 @@ mod domigrations;
 mod dump;
 mod durablegame;
 mod durablestorage;
+mod entity_storage;
 mod images;
 mod restore;
 mod sqlite;
