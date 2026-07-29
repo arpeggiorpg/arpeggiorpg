@@ -344,13 +344,13 @@ This provides production parity without making Wrangler part of the open-source 
 
 ### Phase 2: Make the Dioxus UI reusable
 
-- [ ] Move Google OAuth, auth cookies, and authenticated layout into a hosted shell.
-- [ ] Move the hosted game list, invitation acceptance, and admin page into that shell.
-- [ ] Make game views independent of the hosted route enum.
-- [ ] Make the WebSocket connector accept connection information from the application shell.
-- [ ] Add the standalone `/` GM route.
-- [ ] Add the `+ Player` dialog and player-registration action.
-- [ ] Add the `/Player/{name}` route and direct-load behavior.
+- [x] Move Google OAuth, auth cookies, and authenticated layout into a hosted shell.
+- [x] Move the hosted game list, invitation acceptance, and admin page into that shell.
+- [x] Make game views independent of the hosted route enum.
+- [x] Make the WebSocket connector accept connection information from the application shell.
+- [x] Add the standalone `/` GM route.
+- [x] Add the `+ Player` dialog and player-registration action.
+- [x] Add the `/Player/{name}` route and direct-load behavior.
 
 ### Phase 3: Extract shared game-session behavior
 

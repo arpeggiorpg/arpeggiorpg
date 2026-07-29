@@ -93,11 +93,11 @@ that are expedient, uncertain, or likely to need revision do not disappear into 
 
 - **Status:** accepted
 - **Phase:** 1
-- **Decision:** Preserve `ui/` as a legacy hosted client but do not update its handwritten codecs or
-  request unions during Phases 1–4. The Dioxus UI is the supported client for the split.
-- **Reasoning:** The existing development command already labels this client `legacy-ui`, while the
-  split plan explicitly identifies the Dioxus UI as the reusable public UI. Maintaining a second
-  manually decoded protocol would add work to a client intended either for archival or movement to
-  `arpeggio-hosted` in Phase 5.
-- **Revisit when:** Phase 5 decides whether to archive the TypeScript UI or keep it buildable in the
-  hosted repository.
+- **Decision:** Preserve `ui/` only as deprecated reference material. Do not update its handwritten
+  codecs, request unions, build, or runtime behavior, and do not treat it as a completion
+  dependency. The Dioxus UI is the supported client for the split.
+- **Reasoning:** The owner confirmed that the TypeScript/React client is fully deprecated and
+  unused. Maintaining a second manually decoded protocol would spend effort on code that is not
+  shipped.
+- **Revisit when:** Phase 5 decides whether to archive the TypeScript UI in either repository or
+  remove it.

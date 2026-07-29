@@ -1,14 +1,13 @@
 use arptypes::{
     GMCommand, Game, GameLog, SceneID,
-    hosted::{HostedGameRequest, InvitationID},
-    protocol::{GameAndMetadata, GameID, GameRequest, Role},
+    protocol::{GameAndMetadata, GameRequest},
 };
 use dioxus::prelude::*;
 use std::collections::HashSet;
 use tracing::{error, info};
 
 use crate::{
-    GAME_LOGS, GAME_NAME, GAME_SOURCE, GameSource, Route,
+    GAME_LOGS, GAME_NAME, GAME_SOURCE, GameSource,
     catalog::CatalogPanel,
     chat::GMChat,
     components::{
@@ -38,33 +37,38 @@ enum GMSceneViewMode {
 }
 
 #[component]
-pub fn GMGamePage(id: GameID, #[props(default)] scene_path: Option<Vec<String>>) -> Element {
+pub fn GMGameView(
+    websocket_url: String,
+    #[props(default)] scene_path: Option<Vec<String>>,
+    on_scene_path_change: EventHandler<Option<Vec<String>>>,
+    #[props(optional)] extra_panel: Option<Element>,
+    #[props(optional)] extra_panel_label: Option<String>,
+    #[props(optional)] toolbar: Option<Element>,
+) -> Element {
     rsx! {
         Connector {
-            role: Role::GM,
-            game_id: id,
+            websocket_url,
             player_id: None,
 
             GameLoader {
-                game_id: id,
                 initial_scene_path: scene_path,
+                on_scene_path_change,
+                extra_panel,
+                extra_panel_label,
+                toolbar,
             }
         }
     }
 }
 
 #[component]
-pub fn GMGameScenePage(id: GameID, scene_path: Vec<String>) -> Element {
-    rsx! {
-        GMGamePage {
-            id,
-            scene_path: Some(scene_path),
-        }
-    }
-}
-
-#[component]
-fn GameLoader(game_id: GameID, initial_scene_path: Option<Vec<String>>) -> Element {
+fn GameLoader(
+    initial_scene_path: Option<Vec<String>>,
+    on_scene_path_change: EventHandler<Option<Vec<String>>>,
+    extra_panel: Option<Element>,
+    extra_panel_label: Option<String>,
+    toolbar: Option<Element>,
+) -> Element {
     let ws = use_ws();
     let future: Resource<anyhow::Result<Game>> = use_resource(move || async move {
         info!("fetching game state for GM view");
@@ -81,8 +85,11 @@ fn GameLoader(game_id: GameID, initial_scene_path: Option<Vec<String>>) -> Eleme
             rsx! {
                 GMGameProvider {
                     Shell {
-                        game_id,
                         initial_scene_path,
+                        on_scene_path_change,
+                        extra_panel,
+                        extra_panel_label,
+                        toolbar,
                     }
                 }
             }
@@ -110,9 +117,14 @@ fn GMGameProvider(children: Element) -> Element {
 }
 
 #[component]
-fn Shell(game_id: GameID, initial_scene_path: Option<Vec<String>>) -> Element {
+fn Shell(
+    initial_scene_path: Option<Vec<String>>,
+    on_scene_path_change: EventHandler<Option<Vec<String>>>,
+    extra_panel: Option<Element>,
+    extra_panel_label: Option<String>,
+    toolbar: Option<Element>,
+) -> Element {
     let game = use_gm_game();
-    let navigator = navigator();
     let initial_scene_id = initial_scene_path
         .as_ref()
         .and_then(|path| resolve_scene_id_from_route_path(&game, path));
@@ -125,18 +137,8 @@ fn Shell(game_id: GameID, initial_scene_path: Option<Vec<String>>) -> Element {
         move |_creature_id| vec![CreatureMenuAction::GMWalk, CreatureMenuAction::Teleport];
     let navigate_to_scene = {
         let game = game.clone();
-        let game_id = game_id.clone();
         move |scene_id: SceneID| {
-            if let Some(scene_path) = route_scene_path_for_scene_id(&game, scene_id) {
-                navigator.push(Route::GMGameScenePage {
-                    id: game_id.clone(),
-                    scene_path,
-                });
-            } else {
-                navigator.push(Route::GMGamePage {
-                    id: game_id.clone(),
-                });
-            }
+            on_scene_path_change.call(route_scene_path_for_scene_id(&game, scene_id));
         }
     };
 
@@ -190,6 +192,12 @@ fn Shell(game_id: GameID, initial_scene_path: Option<Vec<String>>) -> Element {
                         "3D"
                     }
                 }
+                if let Some(toolbar) = toolbar {
+                    div {
+                        class: "absolute top-3 right-3 z-20",
+                        {toolbar}
+                    }
+                }
             }
             div {
                 class: "w-[30rem] h-full min-h-0 overflow-hidden border-l border-gray-200 bg-white flex flex-col",
@@ -206,8 +214,14 @@ fn Shell(game_id: GameID, initial_scene_path: Option<Vec<String>>) -> Element {
                             TabList {
                                 TabTrigger { value: "catalog".to_string(), index: 0usize, "Catalog" }
                                 TabTrigger { value: "players".to_string(), index: 1usize, "Players" }
-                                TabTrigger { value: "invitations".to_string(), index: 2usize, "Invitations" }
-                                TabTrigger { value: "history".to_string(), index: 3usize, "History" }
+                                if let Some(label) = extra_panel_label.clone() {
+                                    TabTrigger { value: "extra".to_string(), index: 2usize, "{label}" }
+                                }
+                                TabTrigger {
+                                    value: "history".to_string(),
+                                    index: if extra_panel.is_some() { 3usize } else { 2usize },
+                                    "History"
+                                }
                             }
                             TabContent {
                                 class: "h-full min-h-0 overflow-hidden".to_string(),
@@ -236,18 +250,20 @@ fn Shell(game_id: GameID, initial_scene_path: Option<Vec<String>>) -> Element {
                                     }
                                 }
                             }
-                            TabContent {
-                                class: "h-full min-h-0 overflow-hidden".to_string(),
-                                index: 2usize,
-                                value: "invitations".to_string(),
-                                div {
-                                    class: "h-full min-h-0 overflow-y-auto p-4",
-                                    Invitations { game_id }
+                            if let Some(panel) = extra_panel.clone() {
+                                TabContent {
+                                    class: "h-full min-h-0 overflow-hidden".to_string(),
+                                    index: 2usize,
+                                    value: "extra".to_string(),
+                                    div {
+                                        class: "h-full min-h-0 overflow-y-auto p-4",
+                                        {panel}
+                                    }
                                 }
                             }
                             TabContent {
                                 class: "h-full min-h-0 overflow-hidden".to_string(),
-                                index: 3usize,
+                                index: if extra_panel.is_some() { 3usize } else { 2usize },
                                 value: "history".to_string(),
                                 HistoryPanel {
                                     game: game.clone(),
@@ -708,127 +724,6 @@ fn GrantCreaturesModal(player_id: arptypes::PlayerID, on_close: EventHandler<()>
                         "Save"
                     }
                 }
-            }
-        }
-    }
-}
-
-#[component]
-fn Invitations(game_id: GameID) -> Element {
-    let ws = use_ws();
-    let mut invitations: Signal<Option<Vec<InvitationID>>> = use_signal(|| None);
-    let mut load_error: Signal<Option<String>> = use_signal(|| None);
-
-    // Load invitations on mount
-    let _loader: Resource<()> = use_resource(move || async move {
-        match send_request::<Vec<InvitationID>>(HostedGameRequest::GMListInvitations, ws).await {
-            Ok(list) => {
-                invitations.set(Some(list));
-            }
-            Err(e) => {
-                error!(?e, "Failed to load invitations");
-                load_error.set(Some(format!("{e}")));
-            }
-        }
-    });
-
-    let mut generate_action = use_action(move |_: ()| async move {
-        let new_id =
-            send_request::<InvitationID>(HostedGameRequest::GMGenerateInvitation, ws).await?;
-        info!(?new_id, "Generated new invitation");
-        let mut current = invitations().unwrap_or_default();
-        current.push(new_id);
-        invitations.set(Some(current));
-        Ok::<(), anyhow::Error>(())
-    });
-
-    let mut delete_action = use_action(move |invitation_id: InvitationID| async move {
-        send_request::<serde_json::Value>(
-            HostedGameRequest::GMDeleteInvitation { invitation_id },
-            ws,
-        )
-        .await?;
-        info!(?invitation_id, "Deleted invitation");
-        let current = invitations()
-            .unwrap_or_default()
-            .into_iter()
-            .filter(|id| *id != invitation_id)
-            .collect();
-        invitations.set(Some(current));
-        Ok::<(), anyhow::Error>(())
-    });
-
-    let base_url = {
-        let window = web_sys::window().expect("window must exist");
-        let location = window.location();
-        let origin = location.origin().unwrap_or_default();
-        origin
-    };
-
-    rsx! {
-        div {
-            class: "bg-white rounded-lg shadow-md p-4",
-            div {
-                class: "flex items-center justify-between mb-3",
-                h2 {
-                    class: "text-lg font-semibold text-gray-800",
-                    "Invitations"
-                }
-                Button {
-                    variant: ButtonVariant::Primary,
-                    disabled: generate_action.pending(),
-                    onclick: move |_| generate_action.call(()),
-                    if generate_action.pending() {
-                        "Generating..."
-                    } else {
-                        "Generate New Link"
-                    }
-                }
-            }
-
-            if let Some(err) = load_error() {
-                p {
-                    class: "text-red-600 text-sm",
-                    "Failed to load invitations: {err}"
-                }
-            }
-
-            match invitations() {
-                None => rsx! {
-                    p {
-                        class: "text-sm text-gray-500",
-                        "Loading invitations..."
-                    }
-                },
-                Some(list) if list.is_empty() => rsx! {
-                    p {
-                        class: "text-sm text-gray-500 italic",
-                        "No invitation links yet. Generate one to invite players."
-                    }
-                },
-                Some(list) => rsx! {
-                    ul {
-                        class: "space-y-2",
-                        for invitation_id in list {
-                            li {
-                                key: "{invitation_id}",
-                                class: "flex items-center gap-2",
-                                input {
-                                    class: "border rounded px-3 py-1 text-sm flex-1 bg-gray-50 text-gray-700",
-                                    r#type: "text",
-                                    readonly: true,
-                                    value: "{base_url}/invitations/{game_id}/{invitation_id}",
-                                }
-                                Button {
-                                    variant: ButtonVariant::Outline,
-                                    disabled: delete_action.pending(),
-                                    onclick: move |_| delete_action.call(invitation_id),
-                                    "Delete"
-                                }
-                            }
-                        }
-                    }
-                },
             }
         }
     }

@@ -1,9 +1,16 @@
-# Development
+# Dioxus UI development
 
-Run the following command in the root of the project to start the Dioxus dev server:
+From the repository root, run the standalone application with:
 
 ```bash
-dx serve --hot-reload
+just standalone-ui
 ```
 
-- Open the browser to http://localhost:8080
+It reads the Arpeggio server URL from the `RPI_URL` meta tag in
+`index.standalone.html`. The UI and server may use different origins.
+
+Run the authenticated Cloudflare-hosted application with:
+
+```bash
+just ui
+```

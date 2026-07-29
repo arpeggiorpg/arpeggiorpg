@@ -10,7 +10,10 @@ use crate::{
         button::{Button, ButtonVariant},
         modal::Modal,
     },
-    rpi::{copy_game_from_production, current_user, delete_preprod_copy, rpi_get},
+    hosted_rpi::{
+        CurrentUser, copy_game_from_production, current_user, delete_preprod_copy, is_preprod,
+        rpi_get,
+    },
 };
 
 #[derive(Clone, Debug, Deserialize)]
@@ -61,7 +64,7 @@ struct DoStatus {
 
 #[component]
 pub fn AdminPage() -> Element {
-    let me: Resource<anyhow::Result<crate::rpi::CurrentUser>> =
+    let me: Resource<anyhow::Result<CurrentUser>> =
         use_resource(move || async move { current_user().await });
 
     match &*me.read() {
@@ -95,7 +98,7 @@ pub fn AdminPage() -> Element {
 
 #[component]
 fn SuperuserAdminPage() -> Element {
-    let is_preprod = crate::rpi::is_preprod();
+    let is_preprod = is_preprod();
     let mut reload_nonce = use_signal(|| 0u32);
     let mut status_message = use_signal(|| None::<String>);
     let mut error_message = use_signal(|| None::<String>);

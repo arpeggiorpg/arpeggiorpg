@@ -10,7 +10,11 @@ legacy-ui:
 
 ui:
     cd arpui; cp index.dev.html index.html
-    cd arpui; dx serve
+    cd arpui; dx serve --bin arpui-hosted --features hosted
+
+standalone-ui:
+    cd arpui; cp index.standalone.html index.html
+    cd arpui; dx serve --bin arpui
 
 # This "ARP_LOCAL_DEV" is used in wrangler.toml (actually, worker/build.js)
 worker $ARP_LOCAL_DEV="--dev":
@@ -26,13 +30,13 @@ deploy-ui:
 deploy-dioxus branch="dioxus":
     cd arpui; cp index.prod.html index.html
     # debug-symbols=false is a workaround for some DWARF error from dx. hopefully this can be removed after upgrading
-    cd arpui; dx build --release --debug-symbols=false
+    cd arpui; dx build --bin arpui-hosted --features hosted --release --debug-symbols=false
     cd arpui; ../worker/node_modules/.bin/wrangler pages deploy "{{ dioxus_bundle_dir }}" --project-name arpeggio --branch {{ branch }} --commit-dirty=true
 
 deploy-dioxus-preprod:
     cd arpui; cp index.preprod.html index.html
     # debug-symbols=false is a workaround for some DWARF error from dx. hopefully this can be removed after upgrading
-    cd arpui; dx build --release --debug-symbols=false
+    cd arpui; dx build --bin arpui-hosted --features hosted --release --debug-symbols=false
     cd arpui; ../worker/node_modules/.bin/wrangler pages deploy "{{ dioxus_bundle_dir }}" --project-name arpeggio --branch preprod --commit-dirty=true
 
 deploy-backend:

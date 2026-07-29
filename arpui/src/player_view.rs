@@ -1,17 +1,15 @@
 use arptypes::{
     Item, PlayerCommand, PlayerID, SerializedCreature, SerializedPlayerGame,
-    hosted::InvitationID,
-    protocol::{GameID, GameRequest, PlayerGameAndMetadata, Role},
+    protocol::{GameRequest, PlayerGameAndMetadata},
 };
 use dioxus::prelude::*;
 
 use tracing::{error, info};
 
 use crate::{
-    GAME_LOGS, GAME_NAME, GAME_SOURCE, GameSource, Route,
+    GAME_LOGS, GAME_NAME, GAME_SOURCE, GameSource,
     chat::PlayerChat,
     components::{
-        button::{Button, ButtonVariant},
         creature::CreatureCard,
         modal::Modal,
         split_pane::{SplitDirection, SplitPane},
@@ -19,9 +17,8 @@ use crate::{
     },
     gfx::dioxus::Scene3dView,
     grid::{CreatureMenuAction, SceneGrid},
-    rpi::{self, Connector, send_request, use_ws},
+    rpi::{Connector, send_request, use_ws},
 };
-use arptypes::hosted::InvitationCheck;
 
 #[derive(Clone, Copy)]
 struct PlayerGameContext(Memo<SerializedPlayerGame>);
@@ -38,11 +35,10 @@ enum PlayerSceneViewMode {
 }
 
 #[component]
-pub fn PlayerGamePage(id: GameID, player_id: PlayerID) -> Element {
+pub fn PlayerGameView(websocket_url: String, player_id: PlayerID) -> Element {
     rsx! {
       Connector {
-        role: Role::Player,
-        game_id: id,
+        websocket_url,
         player_id: Some(player_id.clone()),
 
         GameLoader { player_id }
@@ -80,7 +76,12 @@ fn GameLoader(player_id: PlayerID) -> Element {
         },
         Some(Err(err)) => {
             error!("Player view failed to load game state: {:?}", err);
-            rsx! { div { "Unable to load player view." } }
+            rsx! {
+                div {
+                    class: "p-6 text-red-600",
+                    "Unable to load player view: {err}"
+                }
+            }
         }
         None => {
             rsx! { div { "Loading player view..." } }
@@ -705,185 +706,6 @@ fn GiveItemModal(
                             "Giving..."
                         } else {
                             "Give"
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-#[component]
-pub fn AcceptInvitationPage(game_id: GameID, invitation_id: InvitationID) -> Element {
-    let mut profile_name = use_signal(|| String::new());
-    let mut accept_error: Signal<Option<String>> = use_signal(|| None);
-    let navigator = navigator();
-
-    let check =
-        use_resource(move || async move { rpi::check_invitation(game_id, invitation_id).await });
-
-    let mut accept_action = use_action(move |name: String| {
-        let navigator = navigator.clone();
-        async move {
-            match rpi::accept_invitation(game_id, invitation_id, name).await {
-                Ok(()) => {
-                    navigator.push(Route::GameListPage);
-                }
-                Err(e) => {
-                    error!(?e, "Failed to accept invitation");
-                    accept_error.set(Some("Something went wrong. Please try again.".to_string()));
-                }
-            }
-            Ok::<(), anyhow::Error>(())
-        }
-    });
-
-    let mut do_accept = move || {
-        let name = profile_name().trim().to_string();
-        if !name.is_empty() {
-            accept_error.set(None);
-            accept_action.call(name);
-        }
-    };
-
-    match &*check.read() {
-        None => rsx! {
-            div {
-                class: "flex h-full items-center justify-center",
-                p { class: "text-gray-500", "Checking invitation..." }
-            }
-        },
-        Some(Err(e)) => rsx! {
-            div {
-                class: "flex h-full items-center justify-center",
-                p { class: "text-red-600", "Error checking invitation: {e}" }
-            }
-        },
-        Some(Ok(InvitationCheck {
-            invitation_valid: false,
-            ..
-        })) => rsx! {
-            div {
-                class: "flex h-full items-center justify-center",
-                div {
-                    class: "bg-white rounded-lg shadow-md p-6 text-center",
-                    p { class: "text-gray-700", "Sorry, that invitation doesn't seem to exist." }
-                    Link {
-                        to: Route::GameListPage {},
-                        class: "text-blue-700 text-sm mt-4 inline-block",
-                        "Back to Game List"
-                    }
-                }
-            }
-        },
-        Some(Ok(
-            check @ InvitationCheck {
-                already_member: true,
-                ..
-            },
-        )) => {
-            let name = check
-                .game_name
-                .clone()
-                .unwrap_or_else(|| "this game".to_string());
-            let game_link =
-                check
-                    .member_profile_name
-                    .as_ref()
-                    .map(|profile_name| Route::PlayerGamePage {
-                        id: game_id,
-                        player_id: profile_name.clone(),
-                    });
-            rsx! {
-                div {
-                    class: "flex h-full items-center justify-center",
-                    div {
-                        class: "bg-white rounded-lg shadow-md p-6 flex flex-col gap-4 text-center",
-                        h2 {
-                            class: "text-lg font-semibold text-gray-800",
-                            "Already a member"
-                        }
-                        p {
-                            class: "text-sm text-gray-600",
-                            "You're already a member of {name}."
-                        }
-                        if let Some(route) = game_link {
-                            Link {
-                                to: route,
-                                class: "text-blue-700 text-sm",
-                                "Go to {name} →"
-                            }
-                        } else {
-                            Link {
-                                to: Route::GameListPage {},
-                                class: "text-blue-700 text-sm",
-                                "Go to Game List"
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        Some(Ok(
-            check @ InvitationCheck {
-                invitation_valid: true,
-                already_member: false,
-                ..
-            },
-        )) => {
-            let name = check
-                .game_name
-                .clone()
-                .unwrap_or_else(|| "a game".to_string());
-            rsx! {
-                div {
-                    class: "flex h-full items-center justify-center",
-                    div {
-                        class: "bg-white rounded-lg shadow-md p-6 flex flex-col gap-4",
-                        h2 {
-                            class: "text-lg font-semibold text-gray-800",
-                            "You've been invited to {name}!"
-                        }
-                        p {
-                            class: "text-sm text-gray-600",
-                            "Enter a name to join as a player."
-                        }
-                        input {
-                            class: "border rounded px-3 py-2 w-full",
-                            r#type: "text",
-                            placeholder: "Your player name",
-                            value: "{profile_name}",
-                            autofocus: true,
-                            oninput: move |evt| profile_name.set(evt.value()),
-                            onkeydown: move |evt| {
-                                if evt.key() == Key::Enter && !accept_action.pending() {
-                                    do_accept();
-                                }
-                            },
-                        }
-                        if let Some(err) = accept_error() {
-                            p {
-                                class: "text-red-600 text-sm",
-                                "{err}"
-                            }
-                        }
-                        div {
-                            class: "flex justify-end gap-2",
-                            Link {
-                                to: Route::GameListPage {},
-                                class: "text-sm text-gray-500 py-2 px-3",
-                                "Cancel"
-                            }
-                            Button {
-                                variant: ButtonVariant::Primary,
-                                disabled: accept_action.pending() || profile_name().trim().is_empty(),
-                                onclick: move |_| do_accept(),
-                                if accept_action.pending() {
-                                    "Joining..."
-                                } else {
-                                    "Join as a Player"
-                                }
-                            }
                         }
                     }
                 }

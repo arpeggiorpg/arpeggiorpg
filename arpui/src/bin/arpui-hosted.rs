@@ -1,6 +1,4 @@
-#![allow(non_snake_case)]
-
 fn main() {
     dioxus_logger::init(tracing::Level::INFO).expect("failed to init logger");
-    dioxus::launch(arpui::standalone_app::App);
+    dioxus::launch(arpui::hosted_app::App);
 }

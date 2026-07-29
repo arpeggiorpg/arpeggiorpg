@@ -3,6 +3,16 @@ name = "arpui"
 version = "0.1.0"
 authors = ["Christopher Armstrong <227068+radix@users.noreply.github.com>"]
 edition = "2024"
+default-run = "arpui"
+
+[features]
+default = []
+hosted = []
+
+[[bin]]
+name = "arpui-hosted"
+path = "src/bin/arpui-hosted.rs"
+required-features = ["hosted"]
 
 [dependencies]
 anyhow = { version = "1.0.75", features = ["backtrace"] }
