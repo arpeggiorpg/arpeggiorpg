@@ -121,11 +121,11 @@ pub enum RpcResponse<T> {
 #[serde(rename_all = "snake_case", tag = "t")]
 pub enum GameUpdate {
     RefreshGame {
-        game: SerializedGame,
+        game: Box<SerializedGame>,
         logs: Vec<(GameIndex, GameLog)>,
     },
     RefreshPlayerGame {
-        game: SerializedPlayerGame,
+        game: Box<SerializedPlayerGame>,
         logs: Vec<(GameIndex, GameLog)>,
     },
 }
@@ -182,7 +182,7 @@ mod tests {
     #[test]
     fn refresh_update_preserves_existing_wire_shape() {
         let update = GameUpdate::RefreshGame {
-            game: SerializedGame::default(),
+            game: Box::new(SerializedGame::default()),
             logs: Vec::new(),
         };
         let value = serde_json::to_value(update).unwrap();

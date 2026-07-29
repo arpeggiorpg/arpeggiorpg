@@ -141,13 +141,16 @@ fn handle_unsolicited(
 ) -> anyhow::Result<()> {
     match update {
         GameUpdate::RefreshGame { game, logs } => {
-            let game = Game::from_serialized_game(game);
+            let game = Game::from_serialized_game(*game);
             *GAME_SOURCE.write() = GameSource::GM(game);
             GAME_LOGS.write().extend(logs);
         }
         GameUpdate::RefreshPlayerGame { game, logs } => {
             let player_id = player_id.unwrap_or(arptypes::PlayerID(String::new()));
-            *GAME_SOURCE.write() = GameSource::Player { player_id, game };
+            *GAME_SOURCE.write() = GameSource::Player {
+                player_id,
+                game: *game,
+            };
             GAME_LOGS.write().extend(logs);
         }
     }

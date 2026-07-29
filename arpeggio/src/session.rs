@@ -160,7 +160,7 @@ pub fn dispatch_game_request(
 
 pub fn gm_refresh(game: &Game, logs: &[(GameIndex, GameLog)]) -> Result<GameUpdate, SessionError> {
     Ok(GameUpdate::RefreshGame {
-        game: RPIGame(game).serialize_game()?,
+        game: Box::new(RPIGame(game).serialize_game()?),
         logs: logs.to_vec(),
     })
 }
@@ -171,7 +171,7 @@ pub fn player_refresh(
     logs: &[(GameIndex, GameLog)],
 ) -> Result<GameUpdate, SessionError> {
     Ok(GameUpdate::RefreshPlayerGame {
-        game: serialize_player_game(player_id, game)?,
+        game: Box::new(serialize_player_game(player_id, game)?),
         logs: logs.to_vec(),
     })
 }
