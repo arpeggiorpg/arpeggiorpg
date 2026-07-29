@@ -18,6 +18,7 @@ use crate::{
     },
     gfx::dioxus::Scene3dView,
     grid::{CreatureMenuAction, SceneGrid},
+    history::HistoryPanel,
     rpi::{Connector, send_request, use_ws},
 };
 
@@ -205,6 +206,7 @@ fn Shell(game_id: GameID, initial_scene_path: Option<Vec<String>>) -> Element {
                                 TabTrigger { value: "catalog".to_string(), index: 0usize, "Catalog" }
                                 TabTrigger { value: "players".to_string(), index: 1usize, "Players" }
                                 TabTrigger { value: "invitations".to_string(), index: 2usize, "Invitations" }
+                                TabTrigger { value: "history".to_string(), index: 3usize, "History" }
                             }
                             TabContent {
                                 class: "h-full min-h-0 overflow-hidden".to_string(),
@@ -240,6 +242,14 @@ fn Shell(game_id: GameID, initial_scene_path: Option<Vec<String>>) -> Element {
                                 div {
                                     class: "h-full min-h-0 overflow-y-auto p-4",
                                     Invitations { game_id }
+                                }
+                            }
+                            TabContent {
+                                class: "h-full min-h-0 overflow-hidden".to_string(),
+                                index: 3usize,
+                                value: "history".to_string(),
+                                HistoryPanel {
+                                    game: game.clone(),
                                 }
                             }
                         }

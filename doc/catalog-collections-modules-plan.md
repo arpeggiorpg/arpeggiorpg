@@ -161,6 +161,8 @@ Current decisions and constraints:
   - transactionally replace the current rows;
   - immediately create a new immutable snapshot of the restored state;
   - continue logging from that new snapshot.
+- [x] Port the recent-history UI to Dioxus and add confirmed restore actions for individual log
+  positions.
 - Validate the complete migration and rollback path in preprod before production deployment; do
   not deploy an intermediate ID-only typed schema or dual-write storage version.
 - [x] Stop writing monolithic snapshots and remove the legacy snapshot table as part of the unified

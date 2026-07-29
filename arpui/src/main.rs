@@ -18,6 +18,7 @@ mod components;
 mod gfx;
 mod gm_view;
 mod grid;
+mod history;
 mod player_view;
 mod rpi;
 use admin_view::AdminPage;
