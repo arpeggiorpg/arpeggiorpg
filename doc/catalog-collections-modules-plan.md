@@ -2,9 +2,8 @@
 
 ## Status
 
-In progress. Phases 0, 1, and 2 are complete, deployed to preproduction, and manually tested.
-Phases 3 and 4 are implemented and verified locally but are not yet deployed to preproduction.
-Module work has not started.
+In progress. Phases 0 through 4 are complete, deployed to preproduction, and manually tested.
+Their latest implementation commit is `634373c7`. Module work has not started.
 
 This is the canonical plan for replacing campaign folders with a resource catalog and collections,
 for importing and exporting modules, and for eventually moving from whole-game snapshots to
@@ -58,7 +57,7 @@ Completed in Phase 2:
   collections deletes their resources.
 - Kept manual resource reordering deferred.
 
-Implemented locally in Phases 3 and 4:
+Completed in Phases 3 and 4 and verified in preproduction:
 
 - Added separate JSONB tables for scenes, creatures, notes, items, abilities, classes, collections,
   and players plus singleton game state, all keyed by `snapshot_idx`.
@@ -74,13 +73,18 @@ Implemented locally in Phases 3 and 4:
 - Added storage/RPI rollback to an exact snapshot/log prefix, followed immediately by a new
   immutable typed snapshot.
 - Removed rollback from core `GMCommand` and `GameLog`.
+- Ported the history UI to Dioxus with confirmed restore actions and most-recent-first display.
+- Changed initial and refresh responses to load the newest 100 logs directly from SQLite,
+  independent of snapshot boundaries.
+- Removed `replace_logs`, the in-memory recent-log cache, and the `GameStorage` update mutex while
+  retaining the useful in-memory `Game` cache.
 - Added migration, all-entity round-trip, snapshot parity, typed-authority, rollback, transaction
   atomicity, dump/restore, and recovery coverage in the local Durable Object suite.
 
 Not yet implemented:
 
-- Preprod deployment and validation of the unified migration and rollback path.
-- The new module format, dependency-aware import/export, and module provenance.
+- The new versioned module format, dependency-aware publication and installation, persistent
+  installation mappings, and in-place module updates.
 
 Current decisions and constraints:
 
@@ -91,15 +95,22 @@ Current decisions and constraints:
   have no folder representation.
 - Manual resource reordering is deferred. Catalog views sort resources for presentation while
   preserving the typed membership vectors in storage.
-- Piecemeal persistence will use a dedicated table for each entity type with one JSON blob per row.
+- Piecemeal persistence uses a dedicated table for each entity type with one JSON blob per row.
   It will not add a repository abstraction or fully normalize nested entity fields initially.
-- Current and historical entities will share those typed tables. `snapshot_idx = -1` identifies
+- Current and historical entities share those typed tables. `snapshot_idx = -1` identifies
   mutable current state; nonnegative indices identify immutable snapshots.
-- Rollback will be a storage/RPI operation rather than a core `Game` command. Restoring a point in
+- Rollback is a storage/RPI operation rather than a core `Game` command. Restoring a point in
   history will immediately create a new immutable snapshot before normal logging resumes.
-- The catalog-domain, typed-table, and snapshot-indexing changes have not established separate
-  deployed migration boundaries. They will ship as one migration directly from legacy
-  folder/monolithic storage to the final snapshot-indexed typed schema.
+- The catalog-domain, typed-table, and snapshot-indexing changes did not establish separate
+  deployed migration boundaries. They were deployed to preproduction as one migration directly
+  from legacy folder/monolithic storage to the final snapshot-indexed typed schema.
+- Modules use managed installations rather than one-time untracked copies. A persistent
+  per-installation mapping translates stable module resource IDs to stable game-local IDs.
+- Installing a newer release of the same module updates those local resources in place. A separate
+  installation of the same module is still possible through a new installation ID and mapping.
+- Every installed resource belongs to the installation's generated collection. Local edits are
+  detected from stored baselines and require overwrite or detach during an update; the first
+  version does not perform field-level merges.
 
 ## Implementation phases
 
@@ -140,7 +151,8 @@ Current decisions and constraints:
 - [x] Replace the local intermediate migration with the unified final-schema migration described
   in Phase 4.
 - [x] Make `GameStorage` compute and persist changed and deleted top-level entities.
-- [x] Temporarily dual-write typed tables, logs, and whole-game snapshots during local verification.
+- [x] Use temporary local dual-write storage to verify typed-table parity, then remove the
+  dual-write and monolithic snapshot path before committing the final unified migration.
 - [x] Add full reconstruction parity, atomicity, dump, restore, and recovery tests.
 - [x] Switch cold loading to the typed tables.
 
@@ -163,7 +175,7 @@ Current decisions and constraints:
   - continue logging from that new snapshot.
 - [x] Port the recent-history UI to Dioxus and add confirmed restore actions for individual log
   positions.
-- Validate the complete migration and rollback path in preprod before production deployment; do
+- [x] Validate the complete migration and rollback path in preprod before production deployment; do
   not deploy an intermediate ID-only typed schema or dual-write storage version.
 - [x] Stop writing monolithic snapshots and remove the legacy snapshot table as part of the unified
   migration after its transactional validation succeeds.
@@ -172,29 +184,40 @@ Current decisions and constraints:
 - [x] Remove `campaign` and normal-use folder code (completed during Phase 1).
 - [x] Remove folder UI (completed early during Phase 0).
 - [x] Remove legacy commands and logs from core replay (completed during Phase 1).
-- Consider removing the standalone `foldertree` crate if no other code uses it.
+- [ ] Remove the standalone `foldertree` crate after the Worker migration no longer needs it to
+  decode legacy games. It is not currently removable.
 
 ### Phase 5: Modules
 
-- Define the versioned typed module format.
-- Implement reference discovery and dependency classification.
-- Implement export preview and validation.
-- Implement ID remapping and transactional import.
-- Automatically create a collection for imported content.
-- Add round-trip and dependency-closure tests.
+- [ ] Define the versioned typed module format with stable module and per-resource identities.
+- [ ] Add snapshot-aware module publication and installation records.
+- [ ] Implement reference discovery and dependency classification.
+- [ ] Implement publication/export preview, validation, and successive version publishing.
+- [ ] Implement first-time installation with a persistent module-resource-to-local-resource ID map.
+- [ ] Implement atomic in-place updates that reuse the installation's local IDs.
+- [ ] Detect local modifications and resolve each conflict by explicit overwrite or detach; do not
+  attempt automatic field-level merging.
+- [ ] Preview additions, updates, removals, conflicts, and omitted optional links before mutation.
+- [ ] Automatically create and maintain a collection containing all resources in each installation.
+- [ ] Add Dioxus publication, installation, update-preview, conflict-resolution, and
+  install-another-copy flows.
+- [ ] Add publication, installation, update, conflict, round-trip, and dependency-closure tests.
 
 ## Deferred UI polish backlog
 
 Address these together after the main implementation phases unless one blocks testing:
 
-- Show the full collection name when hovering any truncated collection name, including names in
+- [ ] Reduce the visual emphasis of the `+ Collection` action.
+- [ ] Replace the `+ Resource` action with a resource-type menu.
+- [ ] Make the main panes resizable.
+- [ ] Add convenient navigation between scenes connected by scene links.
+- [ ] Remove redundant inner cards and headings from the Catalog, Players, and Invitations tabs.
+- [ ] Provide one easy, consistent way to rename resources and collections.
+
+Completed from this backlog:
+
+- [x] Show the full collection name when hovering truncated collection names, including names in
   the catalog collection list.
-- Reduce the visual emphasis of the `+ Collection` action.
-- Replace the `+ Resource` action with a resource-type menu.
-- Make the main panes resizable.
-- Add convenient navigation between scenes connected by scene links.
-- Remove redundant inner cards and headings from the Catalog, Players, and Invitations tabs.
-- Provide one easy, consistent way to rename resources and collections.
 
 ## Decision summary
 
@@ -202,8 +225,8 @@ Arpeggio will move toward three separate concepts:
 
 1. **Catalog**: all resources owned by a game, browsable primarily by resource type and search.
 2. **Collection**: an optional, non-nested grouping of resource IDs.
-3. **Module**: a portable set of complete resources that can be imported into or exported from a
-   game.
+3. **Module**: a versioned portable set of complete resources that can be published, installed,
+   and updated in place through a persistent installation mapping.
 
 These concepts replace the folder tree's current combination of navigation, ownership, permission
 scoping, and module boundaries.
@@ -218,8 +241,8 @@ The intended implementation order is:
    entity.
 5. Store mutable current state and immutable snapshots in the same typed tables, restore rollback,
    and retire monolithic snapshots.
-6. Implement dependency-aware module import and export against the final catalog and collection
-   model.
+6. Implement dependency-aware module publication, installation, and in-place update against the
+   final catalog and collection model.
 
 The old TypeScript UI and `arptypes/src/bin/gen-ts.rs` are effectively dead. They do not need to be
 updated as part of this work. New design and implementation work should target the Rust/Dioxus UI in
@@ -261,6 +284,8 @@ catalog. Collections only organize them. Modules only transfer them. Authorizati
 - Keep collections understandable by disallowing nested collections.
 - Make module export dependency-aware.
 - Preserve the ability to share systems, rules, scenes, creatures, items, notes, and adventures.
+- Allow successive versions of a published module to update an existing installation without
+  changing its game-local resource IDs.
 - Permit a UI-only experiment before committing to data migrations.
 - Keep the first domain implementation compatible with whole-game blob snapshots.
 - Make later typed-table persistence simpler than the proposed campaign adjacency-list design.
@@ -271,8 +296,9 @@ catalog. Collections only organize them. Modules only transfer them. Authorizati
 - Updating or reviving the old TypeScript UI.
 - Updating generated TypeScript declarations solely for this work.
 - Building a public module registry or marketplace.
-- Implementing automatic updates for imported modules in the first version.
+- Automatically merging local and published edits at the field level.
 - Designing a full package manager with dependency versions and overrides.
+- Sharing or deduplicating one installed dependency across multiple modules.
 - Making collections hierarchical.
 - Normalizing every resource field into relational SQL columns.
 
@@ -295,7 +321,7 @@ The initial catalog UI should provide built-in views such as:
   - Items
 - Notes
 - Collections
-- Imported content, if module provenance is later exposed
+- Installed modules and installed versions
 
 Creating a resource should not require choosing a location. A newly created resource immediately
 exists in its type view and can optionally be added to one or more collections.
@@ -389,33 +415,56 @@ Only the Worker migration has a private representation of that legacy field.
 
 ### Definition
 
-A module is a portable artifact containing complete resource values. It is not a live folder,
-collection, or mounted database.
+A module is a versioned portable artifact containing complete resource values. It is not a live
+folder, collection, or mounted database. A published module has a stable identity across releases,
+and a game records each installation so a later release can update its resources in place.
 
 A module should contain:
 
 - a format version;
 - a stable module ID;
+- a user-facing module version, monotonically increasing release index, and content identity;
 - a name;
 - optional descriptive metadata;
 - typed lists or maps of complete scenes, creatures, notes, items, abilities, and classes;
 - a typed root selection identifying what the user explicitly chose to export;
 - enough information to distinguish required dependencies from explicit roots;
-- optional provenance fields reserved for future update support.
+- stable typed resource IDs that remain unchanged when the same resource is republished.
 
 The serialized format should use typed fields rather than one heterogeneous resource list.
 
-The first module version is a copy-based format:
+Module format version and module release version are different:
 
-- imported resources become editable local resources;
-- all imported IDs are remapped when necessary;
-- all internal references are rewritten consistently;
-- importing the same module twice is allowed and creates another local copy;
-- no live relationship to the source module is required.
+- the format version controls how the artifact is parsed;
+- the module version labels a release for users;
+- the release index provides unambiguous ordering for updates and downgrade detection;
+- a content identity can distinguish exact artifacts and detect accidental reuse of a version.
 
-The manifest should nevertheless reserve stable module and resource-origin identifiers so that a
-future "install read-only module" or "update imported module" feature does not require another
-format replacement.
+Module resources remain editable after installation, but they are managed copies rather than
+untracked copies. The installation retains the relationship between each stable module resource ID
+and its game-local resource ID.
+
+There are three relevant identities:
+
+1. `ModuleID`: stable across every published version.
+2. Typed module resource ID: stable for one resource across module versions.
+3. Game-local resource ID: stable for the lifetime of one installation in one game.
+
+The same module may be installed more than once intentionally. Each installation therefore also
+has a distinct `ModuleInstallationID` and its own resource-ID mapping.
+
+### Publication
+
+The authoring game stores a snapshot-aware `ModulePublication` record containing at least:
+
+- the stable module ID;
+- its name and descriptive metadata;
+- the typed roots or source collection used for publication;
+- the latest published module version, release index, and content identity.
+
+The first publication creates the module ID. Publishing a new version reuses that module ID and the
+source resources' stable typed IDs. A resource deleted and recreated in the authoring game is a new
+module resource; renaming or editing an existing resource preserves its identity.
 
 ### Export
 
@@ -449,26 +498,82 @@ The exporter must:
 - handle cycles;
 - deduplicate resources;
 - validate that every required reference resolves;
+- include contextual contents by default;
+- remove optional or contextual references from exported values when their targets are omitted so
+  the artifact never contains dangling game-local IDs;
 - report optional references that will not be included;
 - produce a preview before download.
 
 An internal helper such as `dependencies()` or `references()` should live with each resource type so
 the export rules do not become one large, fragile match statement in the UI.
 
-### Import
+Game-owned notes may be published. Player-owned notes must not be exported in the initial format
+because their owner is meaningful only in the source game and their contents may be private.
 
-Module import should:
+### Installation
 
-1. Parse and validate the module format.
-2. Build a complete old-ID to new-ID mapping.
+The first installation of a module should:
+
+1. Parse and validate the module format and release identity.
+2. Generate a game-local ID for every module resource and persist the complete typed mapping.
 3. Rewrite all internal references.
 4. Validate required references after rewriting.
 5. Insert all resources atomically.
 6. Create a collection named after the module by default.
-7. Put all newly imported resources in that collection using its typed fields.
-8. Record provenance if the module supplies it.
+7. Put every installed resource, not only the explicit roots, in that collection.
+8. Store a baseline content hash of each rewritten local resource value so later local
+   modifications can be detected.
+9. Record the installed module version and content identity.
 
-The import destination is the game catalog; users do not choose a folder.
+The destination is the game catalog; users do not choose a folder. Importing the same module ID
+normally offers to update the existing installation. An explicit "install another copy" action
+creates a new installation ID and an independent local-ID mapping.
+
+### In-place update
+
+Updating an installation must preserve every existing game-local resource ID. The updater:
+
+1. Looks up the installation by installation ID and verifies that the artifact has the same module
+   ID.
+2. Reuses the existing mapping for resources present in both releases.
+3. Allocates local IDs for newly published resources before rewriting any references.
+4. Rewrites the incoming resource graph entirely through the resulting mapping.
+5. Compares each current local resource with its last-installed baseline to detect local edits.
+6. Produces a preview of additions, updates, removals, local-edit conflicts, and omitted optional
+   links.
+7. Applies the accepted update and installation metadata atomically.
+8. Updates the installation collection to contain the complete installed resource set without
+   removing unrelated resources that the user manually added to that collection.
+
+An unmodified installed resource can be replaced automatically. A locally modified resource
+requires an explicit choice:
+
+- **Overwrite** replaces it with the newly published value while preserving its local ID.
+- **Detach** preserves the edited value as ordinary local content, removes it from the installation
+  mapping, and allocates a new managed local resource if that module resource still exists in the
+  new release.
+
+The first version does not attempt field-level three-way merges.
+
+When a release removes a resource, an unmodified resource with no references from outside the
+installation may be deleted after confirmation. A modified or externally referenced resource is
+detached by default so an update cannot silently break local content. Removed or detached
+resources leave the installation collection.
+
+### Module UI
+
+The Dioxus UI should:
+
+- create a new publication from a collection or resource selection;
+- publish a successive version from an existing publication, preserving its module ID;
+- preview roots, required dependencies, contextual contents, and omitted optional links before
+  download;
+- recognize a matching module ID during import and offer to update an existing installation;
+- allow an explicit second installation with a new installation ID;
+- preview additions, updates, removals, and local-edit conflicts;
+- require overwrite or detach choices before applying conflicts;
+- show the installed version and available installation actions without making module provenance
+  the primary catalog navigation model.
 
 Existing folder-based `.arpeggiogame` and JSON modules do not need a compatibility adapter. There
 are no known module files in active use, and the new typed module format is expected to differ
@@ -502,7 +607,8 @@ and whether users miss hierarchical folders.
 - Are flat, non-nested collections sufficient for adventure and rules organization?
 - Does "Current scene" remove the need for much manual organization?
 - Is the distinction between removing from a collection and deleting a resource understandable?
-- When importing a module, is one automatically created collection a good default?
+- Is one automatically created collection a good default for installed content? The Phase 5 design
+  now answers yes and includes every managed resource in that collection.
 
 ### Experiment success criteria
 
@@ -527,7 +633,9 @@ Current collection commands include:
 - `AddResourcesToCollection`
 - `RemoveResourcesFromCollection`
 
-Resource creation commands no longer require a path. Future module work will add `ImportModule`.
+Resource creation commands no longer require a path. Module work will add commands and
+deterministic logs for creating publication identities, recording new published versions,
+installing modules, updating installations, and detaching managed resources.
 
 The exact command granularity should favor simple validation and deterministic logs. Separate typed
 fields should be used for bulk membership operations rather than public heterogeneous resource
@@ -537,9 +645,12 @@ Folder commands and their log variants are not part of the current domain. The u
 migration owns private legacy wire types, expands each old row into zero or more current logs, and
 renumbers the resulting rows before normal replay begins.
 
-`ImportModule` is allowed to affect many resources. It is rare and should be transactional. Its
-affected resources can be enumerated from the module rather than treated as an unknowable
-whole-game mutation.
+`InstallModule` and `UpdateModule` are allowed to affect many resources. Each command must produce
+a deterministic log containing the final rewritten resources, collection membership, installation
+mapping, baselines, removals, and detach decisions. Applying one of these logs must reproduce the
+same complete result without generating IDs or re-running conflict detection. The existing
+`ChangedGame` and `GameStorage::update_game` path then persists all affected entity rows and the log
+in one transaction.
 
 Rollback is a required storage capability, but it is not a core `Game` command: a materialized
 `Game` does not own its historical snapshots or logs. The Worker RPI/storage layer will select a
@@ -549,7 +660,7 @@ the start of a new linear history rather than a mutation of an old snapshot.
 
 ## Persistence plan
 
-### Storage entering Phase 4
+### Phase 3 verification and current Phase 4 storage
 
 Before Phase 3, each game Durable Object:
 
@@ -559,20 +670,24 @@ Before Phase 3, each game Durable Object:
 - writes another full snapshot after a log threshold;
 - reconstructs a cold game from the latest snapshot and subsequent logs.
 
-The locally implemented Phase 3 path now reconstructs cold games from typed current rows and
-persists entity deltas transactionally. It still dual-writes periodic monolithic snapshots only as
-a temporary verification mechanism.
+The local Phase 3 verification path reconstructed cold games from typed current rows, persisted
+entity deltas transactionally, and temporarily dual-wrote periodic monolithic snapshots to verify
+parity.
 
-The main cost is serializing the complete game for each snapshot. Because the Durable Object keeps
-the game cached while awake, piecemeal typed-table persistence is primarily valuable for smaller
-writes, simpler exports and debugging, and clearer resource-level storage—not for optimizing every
-read during normal play.
+The committed Phase 4 implementation has removed that dual-write path. It reconstructs cold games
+from typed current rows, persists entity deltas transactionally, creates immutable snapshots by
+copying typed rows, and no longer has a `game_snapshots` table.
+
+Typed snapshots still duplicate every entity blob at each checkpoint. Because the Durable Object
+keeps the game cached while awake, piecemeal typed-table persistence is primarily valuable for
+smaller current-state writes, simpler exports and debugging, and clearer resource-level
+storage—not for optimizing every read during normal play.
 
 ### Migration sequencing decision
 
-The implementation was developed in stages, but none of those intermediate storage shapes needs to
-become a deployed migration boundary. Before deployment, combine the existing catalog-domain and
-typed-table migration code with snapshot indexing into one atomic migration.
+The implementation was developed in stages, but none of those intermediate storage shapes became a
+deployed migration boundary. The catalog-domain conversion, typed-table creation, and snapshot
+indexing are now combined into one atomic migration.
 
 That migration goes directly from legacy folder-era monolithic snapshots and logs to the final
 snapshot-indexed typed schema. It must:
@@ -716,12 +831,30 @@ value and calculate a top-level delta:
 
 Persist that delta and append all corresponding logs in one transaction before replacing the
 in-memory cached game. This comparison must exhaustively cover every top-level `Game` field so that
-adding a new field cannot silently omit persistence. Module import uses the same path and may
-change many rows in one transaction.
+adding a new field cannot silently omit persistence. Module installation and update use the same
+path and may change many rows in one transaction.
 
 This deliberately derives persistence from the before-and-after materialized states rather than
 maintaining a second mapping from every `GameLog` variant to affected rows. Logs remain the
 deterministic history of the change, but they are not the source of truth for choosing SQL rows.
+
+### Module publication and installation storage
+
+Phase 5 adds snapshot-aware top-level `module_publications` and `module_installations` entity
+tables, following the same `(snapshot_idx, id, body)` design as the existing typed tables. Their
+current rows use `snapshot_idx = -1`, snapshot creation copies them, rollback restores them, and
+dumps include them.
+
+A `ModulePublication` stores author-side identity and release metadata. A
+`ModuleInstallation` stores consumer-side version, generated collection ID, typed module-to-local
+resource mappings, and last-installed baseline hashes. These records are game state but are not
+catalog resources and cannot be placed in collections.
+
+The top-level `Game` comparison, typed reconstruction, snapshot copy, migration, dump, and recovery
+code must be extended exhaustively for both entity types. Existing games begin with both tables
+empty; no legacy module conversion is required. If the initial typed schema is still unpublished
+to production when Phase 5 ships, create these tables in that same final migration rather than
+establishing an unnecessary production-only intermediate schema.
 
 ### Unified storage migration
 
@@ -816,17 +949,31 @@ and report malformed legacy data rather than assume it is valid.
 - Export includes required dependencies.
 - Export deduplicates shared and cyclic dependencies.
 - Optional links are reported correctly.
-- Import remaps every ID and internal reference.
-- Importing the same module twice succeeds.
-- Imported resources are placed in the generated collection.
-- Export followed by import produces equivalent resources apart from remapped IDs.
+- First installation assigns every module resource a local ID and rewrites every internal
+  reference through the persisted mapping.
+- A newer release reuses all existing local IDs and updates resources in place.
+- New module resources receive new local IDs before references are rewritten.
+- An explicit second installation of the same module receives a distinct installation ID and
+  independent local-ID mapping.
+- Local modifications are detected against stored baselines.
+- Overwrite and detach conflict resolutions produce the expected resources and mappings.
+- Removed modified or externally referenced resources are detached instead of silently deleted.
+- Installed resources are placed in the generated collection.
+- The installation collection is updated for added, removed, and detached resources.
+- Export followed by installation produces equivalent resources apart from the persistent local-ID
+  mapping.
+- Publishing successive versions preserves the module ID and stable resource identities.
 - Missing required dependencies fail before mutation.
+- Failed installation or update does not partially change resources, collections, or installation
+  metadata.
+- Install and update logs replay to the exact same game state without generating IDs.
 
 ### Persistence tests
 
 - Before-and-after comparison reports every changed and deleted entity row.
 - The top-level comparison is exhaustive over all `Game` fields.
-- Full-snapshot and typed-table loads produce identical `Game` values.
+- Legacy monolithic snapshots converted by the unified migration reproduce identical `Game`
+  values in typed storage.
 - Current writes only affect `snapshot_idx = -1` and cannot mutate historical rows.
 - Creating a typed snapshot reproduces the complete current `Game`.
 - The single migration expands every monolithic snapshot and converts every log before constructing
@@ -835,10 +982,12 @@ and report malformed legacy data rather than assume it is valid.
 - Rollback works within one snapshot, across snapshot boundaries, and after a previous rollback.
 - A rollback immediately produces a new immutable baseline and subsequent logs attach to it.
 - A failed multi-resource update does not partially persist.
-- Module import is atomic.
+- Module installation and update are atomic.
+- Publication and installation records survive typed snapshots, cold load, rollback, dump, and
+  recovery.
 - Cold load handles zero resources and zero collections.
 - Dumps reconstruct both current state and historical snapshots.
-- Local predeployment dual-write divergence is detected.
+- The temporary local dual-write stage established typed-table parity before its removal.
 
 ## Risks and safeguards
 
@@ -854,8 +1003,23 @@ preview what will be included.
 
 ### Stateful creatures and reusable templates may diverge
 
-Do not solve creature templates in this project. Modules initially copy complete creature values.
-A later template/instance distinction can build on module provenance if needed.
+Do not solve creature templates in this project. Modules initially publish complete creature
+values. Gameplay changes to an installed creature therefore count as local modifications and must
+surface as update conflicts rather than being silently overwritten. A later template/instance
+distinction can build on the persisted installation mapping if needed.
+
+### Local edits may conflict with module updates
+
+Store a baseline content hash for every managed resource and calculate conflicts before mutation.
+Do not silently overwrite a changed local value and do not attempt automatic field-level merging.
+The update preview must require overwrite or detach for each conflict. Detaching preserves local
+work while giving the new release a fresh managed local resource when necessary.
+
+### Module removals may be referenced by local content
+
+Use the same exhaustive reference discovery required by export to find references from outside the
+installation. Never automatically delete a removed module resource that was modified locally or is
+still externally referenced; detach it and report the result.
 
 ### Multiple collection membership was not representable during the UI prototype
 
@@ -883,11 +1047,11 @@ real game data makes duplication material.
 
 These do not block the next phase:
 
-- Should the automatically created import collection contain all imported resources or only the
-  module's explicit roots? The initial recommendation is all imported resources.
-- Which scene references are contextual contents versus optional links?
-- Should imported provenance be visible in the first catalog UI or merely stored?
-- When should a read-only installed module be introduced in addition to copy-based import?
+- Should the first publication UI support arbitrary manual typed roots, or begin with collections
+  and single-resource publication?
+- Should explicit downgrades be allowed behind confirmation, or rejected entirely?
+- Should uninstall default to detaching all resources, or offer deletion for unmodified,
+  unreferenced resources?
 - What snapshot retention policy, if any, is needed after typed rollback is deployed?
 
 ## Completion criteria
@@ -898,7 +1062,11 @@ This initiative is complete when:
 - resources can exist without collection membership;
 - resources can appear in multiple non-nested collections;
 - creating a resource requires no path;
-- modules import and export with validated dependency closure;
+- modules publish and install with validated dependency closure;
+- successive module releases update an installation in place while preserving its local resource
+  IDs;
+- local module edits and removed externally referenced resources cannot be silently overwritten or
+  deleted;
 - old folder-based games have a supported migration path;
 - the Rust/Dioxus UI implements the catalog and collections experience;
 - the TypeScript UI remains intentionally untouched;
