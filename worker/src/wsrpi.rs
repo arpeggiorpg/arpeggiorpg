@@ -127,7 +127,7 @@ impl GameSession {
                 let result = GameAndMetadata {
                     game: rpi_game.serialize_game()?,
                     metadata: self.metadata.clone(),
-                    logs: self.game_storage.recent_logs(),
+                    logs: self.game_storage.recent_logs()?,
                 };
                 Ok(serde_json::to_value(result)?)
             }
@@ -136,7 +136,7 @@ impl GameSession {
                 let result = PlayerGameAndMetadata {
                     game: player_game,
                     metadata: self.metadata.clone(),
-                    logs: self.game_storage.recent_logs(), // TODO: filter logs by player/scene relevance
+                    logs: self.game_storage.recent_logs()?, // TODO: filter logs by player/scene relevance
                 };
                 Ok(serde_json::to_value(result)?)
             }
