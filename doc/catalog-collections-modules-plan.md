@@ -2,18 +2,20 @@
 
 ## Status
 
-In progress. Phases 0 and 1 are complete and deployed. Phase 2 is implemented and verified locally
-but is not yet deployed. Module and granular-storage work has not started.
+In progress. Phases 0, 1, and 2 are complete, deployed to preproduction, and manually tested.
+The Phase 3 typed-table foundation is implemented and verified locally, but the final unified
+migration and snapshot-indexed schema are not yet implemented or deployed. Module work has not
+started.
 
 This is the canonical plan for replacing campaign folders with a resource catalog and collections,
 for importing and exporting modules, and for eventually moving from whole-game snapshots to
-granular blob persistence.
+piecemeal typed tables with one JSON blob per entity.
 
 It supersedes `doc/piecemeal sql storage.md`. The useful parts of that plan are incorporated here,
 but persistence work is deliberately sequenced after a UI experiment and the resource-model
 change.
 
-### Progress update — 2026-07-28
+### Progress update — 2026-07-29
 
 Completed in the Rust/Dioxus UI:
 
@@ -36,8 +38,8 @@ Completed in the Phase 1 domain model:
 - Added collection validation for stale references and duplicate membership within a collection;
   resources may belong to multiple collections.
 - Added deterministic folder-to-collection and embedded-note-to-top-level-note conversion.
-- Added storage migration version 2, which transactionally rewrites every existing snapshot and
-  log before a current `Game` is created or replay begins.
+- Implemented Worker-only catalog-domain conversion for every existing snapshot and log before a
+  current `Game` is created or replay begins.
 - Moved every folder-era wire type and conversion rule into a Worker-only migration module.
 - Removed `campaign`, folder commands, folder logs, and FolderTree dependencies from `arptypes`,
   `arpeggio`, and `arpui`.
@@ -57,10 +59,23 @@ Completed in Phase 2:
   collections deletes their resources.
 - Kept manual resource reordering deferred.
 
+Implemented locally in Phase 3:
+
+- Added separate JSONB tables for scenes, creatures, notes, items, abilities, classes, collections,
+  and players plus singleton game state.
+- Added a local transactional typed-table migration as an implementation step; it will be folded
+  together with catalog-domain conversion and snapshot indexing before deployment.
+- Switched `GameStorage` cold loading to the typed tables.
+- Made `GameStorage::update_game` transactionally persist before-and-after entity deltas and logs.
+- Kept periodic whole-game snapshots and logs as a temporary dual-written verification path
+  pending typed snapshots and rollback in Phase 4.
+- Added migration, all-entity round-trip, snapshot parity, typed-authority, transaction atomicity,
+  dump/restore, and recovery coverage in the local Durable Object suite.
+
 Not yet implemented:
 
+- Typed historical snapshots and storage-level rollback.
 - The new module format, dependency-aware import/export, and module provenance.
-- Repository abstraction, granular persistence, or dual-write work.
 
 Current decisions and constraints:
 
@@ -71,6 +86,15 @@ Current decisions and constraints:
   have no folder representation.
 - Manual resource reordering is deferred. Catalog views sort resources for presentation while
   preserving the typed membership vectors in storage.
+- Piecemeal persistence will use a dedicated table for each entity type with one JSON blob per row.
+  It will not add a repository abstraction or fully normalize nested entity fields initially.
+- Current and historical entities will share those typed tables. `snapshot_idx = -1` identifies
+  mutable current state; nonnegative indices identify immutable snapshots.
+- Rollback will be a storage/RPI operation rather than a core `Game` command. Restoring a point in
+  history will immediately create a new immutable snapshot before normal logging resumes.
+- The catalog-domain, typed-table, and snapshot-indexing changes have not established separate
+  deployed migration boundaries. They will ship as one migration directly from legacy
+  folder/monolithic storage to the final snapshot-indexed typed schema.
 
 ## Implementation phases
 
@@ -93,7 +117,8 @@ Current decisions and constraints:
 - [x] Add `Game.collections`.
 - [x] Add collection validation and helper methods.
 - [x] Continue storing whole-game snapshots.
-- [x] Add an explicit storage migration for legacy snapshots and logs.
+- [x] Implement Worker-only conversion logic for legacy snapshots and logs for use by the unified
+  storage migration.
 - [x] Remove folder compatibility from the core domain and replay path.
 
 ### Phase 2: Collection editing and Dioxus UI
@@ -104,19 +129,39 @@ Current decisions and constraints:
 - [x] Make catalog deletion explicitly different from collection removal.
 - [x] Replace the campaign tree as the normal UI (completed early during Phase 0).
 
-### Phase 3: Repository and granular blobs
+### Phase 3: Piecemeal typed-table storage
 
-- Add the repository boundary.
-- Implement it first with current snapshot storage.
-- Add generic resource, collection, and game-state blob tables.
-- Implement and test affected-entity projection.
-- Backfill and dual-write.
-- Add full parity and recovery tests.
-- Switch cold loading to granular blobs.
+- [x] Add one JSON-blob table per entity type plus singleton game-state storage.
+- Replace the local intermediate migration with the unified final-schema migration described in
+  Phase 4.
+- [x] Make `GameStorage` compute and persist changed and deleted top-level entities.
+- [x] Temporarily dual-write typed tables, logs, and whole-game snapshots during local verification.
+- [x] Add full reconstruction parity, atomicity, dump, restore, and recovery tests.
+- [x] Switch cold loading to the typed tables.
 
-### Phase 4: Cleanup
+### Phase 4: Typed snapshots, rollback, and cleanup
 
-- Stop writing full snapshots when recovery and rollback permit it.
+- Add `snapshot_idx` to every typed entity table, using `-1` for mutable current state and
+  nonnegative indices for immutable snapshots.
+- Store singleton game state and snapshot metadata by `snapshot_idx`.
+- Consolidate catalog-domain conversion, typed-table creation, and snapshot indexing into one
+  unpublished migration.
+- In that migration, convert every legacy monolithic snapshot and log into the final typed
+  historical representation before constructing a `Game`.
+- Create a snapshot transactionally by copying all current typed rows into a new immutable
+  generation.
+- Reintroduce rollback as a storage/RPI operation:
+  - load the selected typed snapshot;
+  - replay logs to the selected point;
+  - transactionally replace the current rows;
+  - immediately create a new immutable snapshot of the restored state;
+  - continue logging from that new snapshot.
+- Validate the complete migration and rollback path in preprod before production deployment; do
+  not deploy an intermediate ID-only typed schema or dual-write storage version.
+- Stop writing monolithic snapshots and remove the legacy snapshot table as part of the unified
+  migration after its transactional validation succeeds.
+- Update dumps and recovery tests for current rows, historical typed rows, snapshot metadata, logs,
+  and rollback.
 - [x] Remove `campaign` and normal-use folder code (completed during Phase 1).
 - [x] Remove folder UI (completed early during Phase 0).
 - [x] Remove legacy commands and logs from core replay (completed during Phase 1).
@@ -130,6 +175,19 @@ Current decisions and constraints:
 - Implement ID remapping and transactional import.
 - Automatically create a collection for imported content.
 - Add round-trip and dependency-closure tests.
+
+## Deferred UI polish backlog
+
+Address these together after the main implementation phases unless one blocks testing:
+
+- Show the full collection name when hovering any truncated collection name, including names in
+  the catalog collection list.
+- Reduce the visual emphasis of the `+ Collection` action.
+- Replace the `+ Resource` action with a resource-type menu.
+- Make the main panes resizable.
+- Add convenient navigation between scenes connected by scene links.
+- Remove redundant inner cards and headings from the Catalog, Players, and Invitations tabs.
+- Provide one easy, consistent way to rename resources and collections.
 
 ## Decision summary
 
@@ -149,9 +207,11 @@ The intended implementation order is:
 2. Add collections and top-level notes to the Rust domain model while retaining whole-game snapshot
    blobs.
 3. Replace folder-based commands with collection-oriented commands and complete the Dioxus UI.
-4. Introduce granular persistence using generic JSON blob rows, then remove remaining normal-use
-   folder code.
-5. Implement dependency-aware module import and export against the final catalog and collection
+4. Introduce piecemeal persistence using one typed table per entity type and one JSON blob per
+   entity.
+5. Store mutable current state and immutable snapshots in the same typed tables, restore rollback,
+   and retire monolithic snapshots.
+6. Implement dependency-aware module import and export against the final catalog and collection
    model.
 
 The old TypeScript UI and `arptypes/src/bin/gen-ts.rs` are effectively dead. They do not need to be
@@ -196,7 +256,7 @@ catalog. Collections only organize them. Modules only transfer them. Authorizati
 - Preserve the ability to share systems, rules, scenes, creatures, items, notes, and adventures.
 - Permit a UI-only experiment before committing to data migrations.
 - Keep the first domain implementation compatible with whole-game blob snapshots.
-- Make later granular persistence simpler than the proposed campaign adjacency-list design.
+- Make later typed-table persistence simpler than the proposed campaign adjacency-list design.
 - Preserve deterministic game logs and a safe migration path for existing games.
 
 ## Non-goals
@@ -208,7 +268,6 @@ catalog. Collections only organize them. Modules only transfer them. Authorizati
 - Designing a full package manager with dependency versions and overrides.
 - Making collections hierarchical.
 - Normalizing every resource field into relational SQL columns.
-- Implementing true rollback semantics as part of the first persistence change.
 
 ## Product model
 
@@ -467,22 +526,25 @@ The exact command granularity should favor simple validation and deterministic l
 fields should be used for bulk membership operations rather than public heterogeneous resource
 lists.
 
-Folder commands and their log variants are not part of the current domain. Storage migration
-version 2 owns private legacy wire types, expands each old row into zero or more current logs, and
+Folder commands and their log variants are not part of the current domain. The unified Worker
+migration owns private legacy wire types, expands each old row into zero or more current logs, and
 renumbers the resulting rows before normal replay begins.
 
 `ImportModule` is allowed to affect many resources. It is rare and should be transactional. Its
 affected resources can be enumerated from the module rather than treated as an unknowable
 whole-game mutation.
 
-Rollback is currently not a strong enough semantic guarantee to drive this design. Keep the
-existing logs and snapshots until rollback behavior is specified separately.
+Rollback is a required storage capability, but it is not a core `Game` command: a materialized
+`Game` does not own its historical snapshots or logs. The Worker RPI/storage layer will select a
+typed snapshot, replay logs to the requested point, replace current typed rows transactionally,
+and immediately checkpoint the restored state as a new immutable snapshot. This makes a rollback
+the start of a new linear history rather than a mutation of an old snapshot.
 
 ## Persistence plan
 
-### Current storage
+### Storage entering Phase 4
 
-Today, each game Durable Object:
+Before Phase 3, each game Durable Object:
 
 - keeps a complete `Game` in memory while awake;
 - stores a full game JSONB snapshot;
@@ -490,161 +552,217 @@ Today, each game Durable Object:
 - writes another full snapshot after a log threshold;
 - reconstructs a cold game from the latest snapshot and subsequent logs.
 
+The locally implemented Phase 3 path now reconstructs cold games from typed current rows and
+persists entity deltas transactionally. It still dual-writes periodic monolithic snapshots only as
+a temporary verification mechanism.
+
 The main cost is serializing the complete game for each snapshot. Because the Durable Object keeps
-the game cached while awake, granular persistence is primarily valuable for smaller writes, simpler
-exports and debugging, and clearer resource-level storage—not for optimizing every read during
-normal play.
+the game cached while awake, piecemeal typed-table persistence is primarily valuable for smaller
+writes, simpler exports and debugging, and clearer resource-level storage—not for optimizing every
+read during normal play.
 
-### Persistence sequencing decision
+### Migration sequencing decision
 
-Do not implement piecemeal SQL storage before the catalog and collection model is accepted.
+The implementation was developed in stages, but none of those intermediate storage shapes needs to
+become a deployed migration boundary. Before deployment, combine the existing catalog-domain and
+typed-table migration code with snapshot indexing into one atomic migration.
 
-During the UI experiment and the initial domain migration:
+That migration goes directly from legacy folder-era monolithic snapshots and logs to the final
+snapshot-indexed typed schema. It must:
 
-- keep `game_snapshots` unchanged;
-- keep whole-`Game` JSONB blobs;
-- keep current log append and replay unchanged;
-- transactionally rewrite existing snapshots and logs into the new domain shape before load;
-- keep all legacy deserialization and stateful folder interpretation inside Worker migration code.
+- keep all legacy deserialization and stateful folder interpretation inside Worker migration code;
+- transform all snapshots and logs before constructing or replaying a current `Game`;
+- create the final composite-key typed tables directly, without first deploying ID-only tables;
+- materialize mutable current state only after all historical data has been converted;
+- validate the converted representation before advancing the single storage version;
+- leave the original storage untouched if any conversion or validation fails.
 
-This isolates product-model risk from storage-migration risk.
+### Typed current and snapshot schema
 
-### Repository boundary
-
-Before switching authority away from full snapshots, introduce a repository boundary around durable
-storage. It should support:
-
-- loading materialized game state;
-- upserting and deleting a resource blob by kind and ID;
-- loading all resource blobs for a game;
-- loading and storing game-level state;
-- loading and storing collection blobs;
-- appending logs;
-- transactional import of a module;
-- retaining a whole-snapshot implementation as a migration adapter.
-
-The first interface should reflect actual call sites rather than attempt to define a repository
-method for every future resource operation.
-
-### Granular blob schema
-
-Once the domain shape is stable, prefer generic JSON blob rows:
+Use a separate table for each top-level entity type. Each row stores the entity ID and its complete
+Serde representation as a SQLite JSONB blob. Current and historical data use the same tables:
+`snapshot_idx = -1` is the mutable current generation, while nonnegative indices are immutable
+snapshots.
 
 ```sql
-CREATE TABLE resources (
-    kind TEXT NOT NULL,
+CREATE TABLE scenes (
+    snapshot_idx INTEGER NOT NULL,
     id TEXT NOT NULL,
     body BLOB NOT NULL,
-    PRIMARY KEY (kind, id)
+    PRIMARY KEY (snapshot_idx, id)
+);
+
+CREATE TABLE creatures (
+    snapshot_idx INTEGER NOT NULL,
+    id TEXT NOT NULL,
+    body BLOB NOT NULL,
+    PRIMARY KEY (snapshot_idx, id)
+);
+
+CREATE TABLE notes (
+    snapshot_idx INTEGER NOT NULL,
+    id TEXT NOT NULL,
+    body BLOB NOT NULL,
+    PRIMARY KEY (snapshot_idx, id)
+);
+
+CREATE TABLE items (
+    snapshot_idx INTEGER NOT NULL,
+    id TEXT NOT NULL,
+    body BLOB NOT NULL,
+    PRIMARY KEY (snapshot_idx, id)
+);
+
+CREATE TABLE abilities (
+    snapshot_idx INTEGER NOT NULL,
+    id TEXT NOT NULL,
+    body BLOB NOT NULL,
+    PRIMARY KEY (snapshot_idx, id)
+);
+
+CREATE TABLE classes (
+    snapshot_idx INTEGER NOT NULL,
+    id TEXT NOT NULL,
+    body BLOB NOT NULL,
+    PRIMARY KEY (snapshot_idx, id)
 );
 
 CREATE TABLE collections (
-    id TEXT PRIMARY KEY,
-    body BLOB NOT NULL
+    snapshot_idx INTEGER NOT NULL,
+    id TEXT NOT NULL,
+    body BLOB NOT NULL,
+    PRIMARY KEY (snapshot_idx, id)
+);
+
+CREATE TABLE players (
+    snapshot_idx INTEGER NOT NULL,
+    id TEXT NOT NULL,
+    body BLOB NOT NULL,
+    PRIMARY KEY (snapshot_idx, id)
 );
 
 CREATE TABLE game_state (
-    key TEXT PRIMARY KEY,
+    snapshot_idx INTEGER PRIMARY KEY,
     body BLOB NOT NULL
+);
+
+CREATE TABLE snapshots (
+    snapshot_idx INTEGER PRIMARY KEY CHECK (snapshot_idx >= 0),
+    created_at TEXT NOT NULL,
+    cause TEXT NOT NULL
 );
 ```
 
-The existing `logs` table remains.
+The `game_state` body contains the singleton fields that are not top-level entities:
+`current_combat`, `tile_system`, and `active_scene`. Normal cold loads and entity updates always
+filter on `snapshot_idx = -1`. The existing `logs` table remains keyed by snapshot and log index.
 
-Candidate `resources.kind` values are:
+Creating snapshot `N` is a single transaction that inserts the metadata row and copies the current
+rows in each table, for example:
 
-- `scene`
-- `creature`
-- `note`
-- `item`
-- `ability`
-- `class`
-- `player`, if players are later treated through the same repository
+```sql
+INSERT INTO scenes (snapshot_idx, id, body)
+SELECT ?1, id, body FROM scenes WHERE snapshot_idx = -1;
+```
 
-Combat, tile system, active scene, and other singleton values may live in one `game_state` blob or
-separate keyed blobs. Choose whichever makes affected-state tracking clearer; do not normalize
-their internal fields prematurely.
+The same copy is performed for each entity table and `game_state`. Snapshot rows are never updated
+in place.
 
-Collections remain typed Rust values serialized as one blob per collection. Collection membership
-does not require a join table initially. Editing a collection rewrites that small collection blob;
-merging rewrites the destination and deletes the source collection blobs.
+Do not initially normalize nested entity fields such as scene contents, creature inventories,
+class abilities, or collection membership. For example, editing a collection rewrites one
+collection row, merging collections rewrites the destination row and deletes the source row, and
+moving a creature can rewrite the affected creature and scene rows.
 
 Benefits of this schema:
 
-- one persistence path for all catalog resources;
-- granular writes without per-type schema migrations;
-- no `campaign_nodes` table;
-- no path or descendant rewrite operations;
-- easy module dump and import;
-- resource type safety remains in Rust and Serde;
-- typed tables can still be introduced later if real query requirements appear.
+- concrete SQL boundaries match the Rust domain types;
+- each entity can be inserted, replaced, loaded, or deleted independently;
+- current state and snapshots share one schema and one deserialization path;
+- snapshots preserve rollback checkpoints without serializing a monolithic `Game`;
+- table identity prevents mixing different resource kinds under one discriminator;
+- no `campaign_nodes` table or path rewrite operations;
+- dumps, debugging, module export, and future type-specific migrations are straightforward;
+- nested domain structures remain type-checked by Rust and Serde.
 
 Tradeoffs:
 
-- SQL cannot conveniently query arbitrary typed resource fields without JSON extraction;
-- corrupt or mismatched `kind` and `body` values are detected during deserialization rather than by
-  relational constraints;
-- application-level reference validation remains necessary.
+- SQL cannot conveniently query arbitrary nested fields without JSON extraction;
+- most referential integrity remains application-level;
+- adding a new top-level entity type requires a table and corresponding load/write code;
+- each snapshot initially duplicates every entity blob; content-addressing or copy-on-write can be
+  considered later if snapshot volume demonstrates a need.
 
-These tradeoffs are acceptable while each Durable Object owns one game and normally reconstructs
-the complete in-memory game on cold load.
+These tradeoffs are acceptable while each Durable Object owns one game and reconstructs the
+complete in-memory `Game` on cold load.
 
-### Affected entities
+### Changed-entity persistence
 
-Add an internal affected-entity projection for logs after the new domain commands stabilize.
+Keep `GameStorage` as the facade used by the Durable Object and game sessions. Do not add a separate
+repository abstraction.
 
-It should identify:
+When `GameStorage::update_game` receives a `ChangedGame`, compare the cached `Game` with the changed
+value and calculate a top-level delta:
 
-- resource blobs to upsert;
-- resource blobs to delete;
-- collection blobs to upsert or delete;
-- game-state blobs to rewrite;
-- bulk module imports.
+- current (`snapshot_idx = -1`) entity rows to insert or replace in each typed table;
+- current entity rows to delete from each typed table;
+- whether the current singleton `game_state` row changed.
 
-Most current logs already identify a creature, scene, item, class, ability, player, combat, or
-game-level field. Collection logs will identify their collection directly. Module import can
-enumerate all contained IDs.
+Persist that delta and append all corresponding logs in one transaction before replacing the
+in-memory cached game. This comparison must exhaustively cover every top-level `Game` field so that
+adding a new field cannot silently omit persistence. Module import uses the same path and may
+change many rows in one transaction.
 
-This projection must be exhaustively tested. It is a materialized-state projection and must not
-silently omit a new log variant.
+This deliberately derives persistence from the before-and-after materialized states rather than
+maintaining a second mapping from every `GameLog` variant to affected rows. Logs remain the
+deterministic history of the change, but they are not the source of truth for choosing SQL rows.
 
-Per-entity `apply_log` methods may still be a useful later refactor, but they are not required
-before granular blob persistence. Start with the explicit affected-entity mapping and evolve only
-if the duplication becomes costly.
+### Unified storage migration
 
-### Granular persistence migration
+Treat the existing catalog-domain and typed-table migrations as unpublished implementation pieces,
+not as sequential deployed versions. Replace them with one storage-version transition for each
+game Durable Object:
 
-For each game Durable Object:
+1. Create the final typed entity tables with composite `(snapshot_idx, id)` keys, plus versioned
+   `game_state` and snapshot metadata.
+2. Read every legacy monolithic snapshot into migration-only wire types, convert its folder-era
+   domain values, and write its resources and singleton state under the original nonnegative
+   snapshot index.
+3. Convert and renumber every legacy log into the current folder-free log representation while
+   preserving its snapshot association.
+4. Validate all converted typed snapshots and logs. Do not construct or replay a core `Game` until
+   this complete historical conversion has succeeded.
+5. Construct the authoritative current `Game` from the latest converted typed snapshot and its
+   subsequent converted logs.
+6. Write that materialized current state under `snapshot_idx = -1`.
+7. Validate typed historical reconstruction, current-state parity, and collection/reference
+   integrity.
+8. Remove the legacy monolithic snapshot table and advance the single storage version only when
+   the entire transaction succeeds.
 
-1. Add the new blob tables alongside `game_snapshots`.
-2. On first migration load, read the latest authoritative snapshot and replay its remaining logs.
-3. Require storage version 2, where all folder snapshots and logs have already been converted.
-4. Backfill `resources`, `collections`, and `game_state` in one transaction.
-5. Mark the granular representation with a schema or migration version.
-6. During a verification period, dual-write granular blobs and normal full snapshots.
-7. Add parity tests that load both representations and compare complete `Game` values.
-8. Switch cold load to granular blobs after parity is established.
-9. Continue keeping logs for history and debugging.
-10. Stop writing new full snapshots only after rollback and recovery requirements are settled.
-11. Drop old full snapshots only in a later, explicitly irreversible migration.
+After migration, cold loads use only current `-1` rows, snapshot creation uses transactional
+typed-row copies, and logs remain the history after each immutable baseline. There is no deployed
+ID-only typed-table version, no deployed dual-write period, and no follow-up snapshot-index
+migration.
 
-The Durable Object per game makes migration naturally incremental: each game can migrate when its
-object next wakes.
+The Durable Object per game makes this migration naturally incremental: each game migrates when
+its object next wakes.
 
 ### Dump and recovery
 
 Storage dumps should include:
 
 - schema and migration version;
-- all resource rows with `kind`, `id`, and decoded JSON body;
-- collection blobs;
-- game-state blobs;
-- logs;
-- any retained legacy snapshots during migration.
+- every typed entity table with snapshot indices, IDs, and decoded JSON bodies;
+- current and historical singleton game-state rows;
+- snapshot metadata;
+- logs.
 
 A recovery test should prove that a dump can reconstruct a `Game` identical to the in-memory value.
 
 ## Domain migration
+
+This conversion is an internal stage of the unified storage migration, not its own deployed storage
+version.
 
 The folder-to-collection migration should:
 
@@ -699,13 +817,21 @@ and report malformed legacy data rather than assume it is valid.
 
 ### Persistence tests
 
-- Every log variant reports the correct affected blobs.
-- Full-snapshot and granular-blob loads produce identical `Game` values.
+- Before-and-after comparison reports every changed and deleted entity row.
+- The top-level comparison is exhaustive over all `Game` fields.
+- Full-snapshot and typed-table loads produce identical `Game` values.
+- Current writes only affect `snapshot_idx = -1` and cannot mutate historical rows.
+- Creating a typed snapshot reproduces the complete current `Game`.
+- The single migration expands every monolithic snapshot and converts every log before constructing
+  a current `Game`.
+- No intermediate storage version is committed if any part of conversion or validation fails.
+- Rollback works within one snapshot, across snapshot boundaries, and after a previous rollback.
+- A rollback immediately produces a new immutable baseline and subsequent logs attach to it.
 - A failed multi-resource update does not partially persist.
 - Module import is atomic.
 - Cold load handles zero resources and zero collections.
-- Dumps reconstruct the complete game.
-- Dual-write divergence is detected.
+- Dumps reconstruct both current state and historical snapshots.
+- Local predeployment dual-write divergence is detected.
 
 ## Risks and safeguards
 
@@ -728,16 +854,23 @@ A later template/instance distinction can build on module provenance if needed.
 
 The final domain and Phase 2 UI now support multiple membership.
 
-### Generic blobs may become limiting
+### JSON entity bodies may become limiting
 
-Only introduce typed SQL tables or indexed columns in response to demonstrated queries. The
-repository boundary should allow that change without changing the domain or UI model.
+Only normalize entity fields or add indexed columns in response to demonstrated query or integrity
+requirements. Keeping one table per entity type allows those changes to be introduced for one type
+without redesigning storage for every other type.
 
 ### Old logs require stateful conversion
 
 Keep the frozen folder-era wire types and tree interpreter isolated in the Worker migration. The
 migration must rewrite both tables transactionally and fail without advancing the storage version
 if any snapshot or log cannot be converted. Core Arpeggio must never replay a folder-era log.
+
+### Typed snapshots duplicate entity blobs
+
+The initial design favors simple, transactional checkpoints over storage deduplication. Monitor
+snapshot size and count; introduce retention, content-addressed bodies, or copy-on-write only if
+real game data makes duplication material.
 
 ## Open design questions
 
@@ -748,7 +881,7 @@ These do not block the next phase:
 - Which scene references are contextual contents versus optional links?
 - Should imported provenance be visible in the first catalog UI or merely stored?
 - When should a read-only installed module be introduced in addition to copy-based import?
-- What rollback guarantee is actually desired once full snapshots stop being authoritative?
+- What snapshot retention policy, if any, is needed after typed rollback is deployed?
 
 ## Completion criteria
 
@@ -762,5 +895,9 @@ This initiative is complete when:
 - old folder-based games have a supported migration path;
 - the Rust/Dioxus UI implements the catalog and collections experience;
 - the TypeScript UI remains intentionally untouched;
-- granular blob persistence can reconstruct a `Game` exactly and is authoritative;
+- typed-table persistence can reconstruct a `Game` exactly and is authoritative;
+- immutable typed snapshots and logs can restore any supported rollback point without a monolithic
+  game blob;
+- current state remains writable without mutating historical snapshots;
+- new monolithic snapshots are no longer written;
 - obsolete folder persistence and UI code can be safely removed.
