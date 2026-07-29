@@ -4,6 +4,7 @@ members = [
     "indexed",
     "nonempty",
     "arpeggio",
+    "arpeggio-server",
     "worker",
     "arptypes",
     "worker-sqlite-dump",

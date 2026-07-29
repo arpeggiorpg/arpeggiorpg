@@ -1,0 +1,25 @@
+[package]
+name = "arpeggio-server"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+anyhow.workspace = true
+arpeggio = { path = "../arpeggio" }
+arptypes = { path = "../arptypes" }
+axum = { version = "0.8.9", features = ["ws"] }
+clap = { version = "4.6.1", features = ["derive"] }
+futures-util = "0.3"
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls"] }
+serde.workspace = true
+serde_json.workspace = true
+sqlx = { version = "0.8.6", features = ["runtime-tokio", "sqlite"] }
+tokio = { version = "1.52.3", features = ["full"] }
+tower-http = { version = "0.6.8", features = ["cors", "fs", "trace"] }
+tracing.workspace = true
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+uuid.workspace = true
+
+[dev-dependencies]
+axum-test = { version = "17.3.0", features = ["ws"] }
+tempfile = "3"

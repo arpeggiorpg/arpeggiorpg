@@ -115,3 +115,16 @@ that are expedient, uncertain, or likely to need revision do not disappear into 
   preventing platform adapters from reimplementing authorization and game behavior.
 - **Revisit when:** The protocol adopts request/response type pairing through traits or generated
   bindings, or a versioned response enum becomes useful for compatibility guarantees.
+
+## D010: Use direct HTTP PUTs for standalone image uploads
+
+- **Status:** provisional
+- **Phase:** 4
+- **Decision:** `RequestUploadImage` reserves a UUID-backed file and returns a same-server HTTP PUT
+  URL plus its final `/images/{id}` URL. Content type is stored beside the file; SQLite records the
+  image ID, purpose, and path.
+- **Reasoning:** This preserves the existing two-URL image response without imitating Cloudflare's
+  signed direct-upload API. UUID validation prevents path traversal, and the standalone server is
+  already intentionally unauthenticated and loopback-only by default.
+- **Revisit when:** Standalone authentication or public-network deployment requires expiring upload
+  capabilities, or image processing needs a richer metadata schema.

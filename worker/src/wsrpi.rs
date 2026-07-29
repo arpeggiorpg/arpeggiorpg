@@ -9,8 +9,8 @@ use worker::{State, WebSocket};
 use arpeggio::{
     game::GameExt,
     session::{
-        DispatchAction, ImageOperation, SessionUser, dispatch_game_request, gm_refresh,
-        player_refresh,
+        dispatch_game_request, gm_refresh, player_refresh, DispatchAction, ImageOperation,
+        SessionUser,
     },
     types::{ChangedGame, GMCommand, GameError, PlayerID},
 };
@@ -143,7 +143,7 @@ impl GameSession {
         };
         match dispatch_game_request(&game, &self.metadata, &recent_logs, &user, request)? {
             DispatchAction::Respond(payload) => Ok(payload),
-            DispatchAction::Change(changed_game) => self.change_game(changed_game).await,
+            DispatchAction::Change(changed_game) => self.change_game(*changed_game).await,
             DispatchAction::Rollback(game_index) => {
                 let restored_game = self.game_storage.rollback(game_index).await?;
                 self.broadcast_refresh_game(&restored_game, &[])?;

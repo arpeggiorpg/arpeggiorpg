@@ -1,14 +1,14 @@
 use std::collections::VecDeque;
 
 use arpeggio::session::{
-    DispatchAction, SessionUser, dispatch_game_request, gm_refresh, player_refresh,
+    dispatch_game_request, gm_refresh, player_refresh, DispatchAction, SessionUser,
 };
 use arptypes::{
-    GMCommand, Game, GameLog, PlayerCommand, PlayerID,
     protocol::{
         GameAndMetadata, GameIndex, GameMetadata, GameRequest, GameUpdate, PlayerGameAndMetadata,
         RpcRequest, RpcResponse,
     },
+    GMCommand, Game, GameLog, PlayerCommand, PlayerID,
 };
 
 struct TestSession {
@@ -55,24 +55,26 @@ impl TestSession {
                 id: parsed.id,
                 payload,
             },
-            Ok(DispatchAction::Change(Ok(changed))) => {
-                for log in &changed.logs {
-                    let index = GameIndex {
-                        game_idx: 0,
-                        log_idx: self.logs.len() + 1,
-                    };
-                    self.logs.push_back((index, log.clone()));
+            Ok(DispatchAction::Change(changed)) => match *changed {
+                Ok(changed) => {
+                    for log in &changed.logs {
+                        let index = GameIndex {
+                            game_idx: 0,
+                            log_idx: self.logs.len() + 1,
+                        };
+                        self.logs.push_back((index, log.clone()));
+                    }
+                    self.game = changed.game;
+                    RpcResponse::Success {
+                        id: parsed.id,
+                        payload: serde_json::to_value(Ok::<_, String>(changed.logs)).unwrap(),
+                    }
                 }
-                self.game = changed.game;
-                RpcResponse::Success {
+                Err(error) => RpcResponse::Success {
                     id: parsed.id,
-                    payload: serde_json::to_value(Ok::<_, String>(changed.logs)).unwrap(),
-                }
-            }
-            Ok(DispatchAction::Change(Err(error))) => RpcResponse::Success {
-                id: parsed.id,
-                payload: serde_json::to_value(Err::<Vec<GameLog>, _>(format!("{error:?}")))
-                    .unwrap(),
+                    payload: serde_json::to_value(Err::<Vec<GameLog>, _>(format!("{error:?}")))
+                        .unwrap(),
+                },
             },
             Ok(DispatchAction::Rollback(_)) | Ok(DispatchAction::Image(_)) => {
                 panic!("this protocol scenario does not use platform I/O")
@@ -121,10 +123,9 @@ fn one_gm_and_two_players_complete_a_serialized_protocol_session() {
     assert!(gm_game.game.players.contains_key(&bob_id));
 
     for player in [&alice, &bob] {
-        let player_game: PlayerGameAndMetadata = serde_json::from_value(payload(
-            session.request(player, GameRequest::PlayerGetGame),
-        ))
-        .unwrap();
+        let player_game: PlayerGameAndMetadata =
+            serde_json::from_value(payload(session.request(player, GameRequest::PlayerGetGame)))
+                .unwrap();
         assert_eq!(player_game.metadata.name, "Protocol Test");
     }
 

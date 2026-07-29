@@ -6,18 +6,18 @@
 use std::collections::VecDeque;
 
 use arptypes::{
-    ChangedGame, Game, GameError, GameLog, PlayerID,
     protocol::{
         GameAndMetadata, GameIndex, GameMetadata, GameRequest, GameUpdate, ImageType,
         PlayerGameAndMetadata, Role,
     },
+    ChangedGame, Game, GameError, GameLog, PlayerID,
 };
 use serde_json::Value;
 use thiserror::Error;
 
 use crate::{
     game::GameExt,
-    types::{RPIGame, serialize_player_game},
+    types::{serialize_player_game, RPIGame},
 };
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -51,7 +51,7 @@ impl SessionUser {
 #[derive(Debug)]
 pub enum DispatchAction {
     Respond(Value),
-    Change(Result<ChangedGame, GameError>),
+    Change(Box<Result<ChangedGame, GameError>>),
     Rollback(GameIndex),
     Image(ImageOperation),
 }
@@ -99,10 +99,10 @@ pub fn dispatch_game_request(
         }
         (Role::Player, PlayerCommand { command }) => {
             let player_id = user.required_player_id()?.clone();
-            DispatchAction::Change(game.perform_player_command(player_id, command))
+            DispatchAction::Change(Box::new(game.perform_player_command(player_id, command)))
         }
         (Role::GM, GMCommand { command }) => {
-            DispatchAction::Change(game.perform_gm_command(*command))
+            DispatchAction::Change(Box::new(game.perform_gm_command(*command)))
         }
         (Role::GM, GMRollback { game_index }) => DispatchAction::Rollback(game_index),
         (
@@ -158,10 +158,7 @@ pub fn dispatch_game_request(
     Ok(response)
 }
 
-pub fn gm_refresh(
-    game: &Game,
-    logs: &[(GameIndex, GameLog)],
-) -> Result<GameUpdate, SessionError> {
+pub fn gm_refresh(game: &Game, logs: &[(GameIndex, GameLog)]) -> Result<GameUpdate, SessionError> {
     Ok(GameUpdate::RefreshGame {
         game: RPIGame(game).serialize_game()?,
         logs: logs.to_vec(),
@@ -182,8 +179,8 @@ pub fn player_refresh(
 #[cfg(test)]
 mod tests {
     use arptypes::{
-        GMCommand, PlayerCommand,
         protocol::{GameAndMetadata, PlayerGameAndMetadata},
+        GMCommand, PlayerCommand,
     };
 
     use super::*;
@@ -193,7 +190,7 @@ mod tests {
         let DispatchAction::Change(result) = action else {
             panic!("expected a game change");
         };
-        result.expect("command should succeed").game
+        (*result).expect("command should succeed").game
     }
 
     #[test]
@@ -234,14 +231,9 @@ mod tests {
         assert!(gm_game.game.players.contains_key(&bob_id));
 
         for user in [&alice, &bob] {
-            let DispatchAction::Respond(payload) = dispatch_game_request(
-                &game,
-                &metadata,
-                &logs,
-                user,
-                GameRequest::PlayerGetGame,
-            )
-            .unwrap()
+            let DispatchAction::Respond(payload) =
+                dispatch_game_request(&game, &metadata, &logs, user, GameRequest::PlayerGetGame)
+                    .unwrap()
             else {
                 panic!("expected player game payload");
             };
@@ -261,8 +253,11 @@ mod tests {
             },
         )
         .unwrap();
-        let DispatchAction::Change(Ok(changed)) = changed else {
+        let DispatchAction::Change(changed) = changed else {
             panic!("expected Alice's chat to change the game");
+        };
+        let Ok(changed) = *changed else {
+            panic!("expected Alice's chat to succeed");
         };
         assert_eq!(changed.logs.len(), 1);
 

@@ -13,36 +13,39 @@ combat map that makes it easy for players and the Game Master to use their abili
 
 MIT-licensed: http://opensource.org/licenses/MIT
 
-# Building/running (for dev/test)
+# Building and running the standalone game
 
-## First-time setup
-
-First, create worker/.dev.vars with:
-
-```
-GOOGLE_CLIENT_SECRET=xyz
-GOOGLE_CLIENT_ID=abc (only if you're not me)
-FRONTEND_URL=http://127.0.0.1:8080/
-```
-
-Then run
+Run the native single-game server:
 
 ```shell
-just create-schema-local
+just standalone-server
 ```
 
-## Running
+In another terminal, run the standalone Dioxus UI:
 
-To start the backend, which is implemented as a CloudFlare worker written in Rust:
+```shell
+just standalone-ui
+```
+
+The UI reads its independently configured server URL from
+`arpui/index.standalone.html`. The server stores the game and uploaded images beneath
+`./arpeggio-data` and binds to loopback by default.
+
+Run the public Rust tests and WASM checks with:
+
+```shell
+cargo test
+cargo check --workspace --exclude arpeggio-server --target wasm32-unknown-unknown
+(cd arpui && cargo check --target wasm32-unknown-unknown --bin arpui)
+```
+
+## Hosted development
+
+The authenticated Cloudflare runtime remains available while the hosted repository split is in
+progress. Create `worker/.dev.vars` with the required Google and frontend configuration, initialize
+the local D1 schema with `just create-schema-local`, and then run:
 
 ```shell
 just worker
-```
-
-Then start the frontend:
-
-```shell
 just ui
 ```
-
-Hit it at http://localhost:5173/

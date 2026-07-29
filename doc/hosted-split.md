@@ -361,12 +361,12 @@ This provides production parity without making Wrangler part of the open-source 
 
 ### Phase 4: Add the native server
 
-- [ ] Add Axum HTTP and WebSocket endpoints.
-- [ ] Add the single-game actor and connection registry.
-- [ ] Add native SQLite persistence and rollback.
-- [ ] Add filesystem-backed image upload and serving.
-- [ ] Allow the server and UI origins to be configured independently.
-- [ ] Optionally serve the compiled Dioxus bundle from the native server.
+- [x] Add Axum HTTP and WebSocket endpoints.
+- [x] Add the single-game actor and connection registry.
+- [x] Add native SQLite persistence and rollback.
+- [x] Add filesystem-backed image upload and serving.
+- [x] Allow the server and UI origins to be configured independently.
+- [x] Optionally serve the compiled Dioxus bundle from the native server.
 
 ### Phase 5: Split repositories
 

@@ -16,6 +16,9 @@ standalone-ui:
     cd arpui; cp index.standalone.html index.html
     cd arpui; dx serve --bin arpui
 
+standalone-server:
+    cargo run -p arpeggio-server -- --data-dir ./arpeggio-data
+
 # This "ARP_LOCAL_DEV" is used in wrangler.toml (actually, worker/build.js)
 worker $ARP_LOCAL_DEV="--dev":
     cd worker; npm run dev
