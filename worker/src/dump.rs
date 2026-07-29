@@ -81,7 +81,7 @@ pub async fn test_full_storage_dump(state: &State) -> anyhow::Result<()> {
     )?;
     let large_blob = vec![0xAB; 256 * 1024];
     state.storage().sql().exec(
-        "INSERT INTO game_snapshots (snapshot_idx, game) VALUES (?, ?)",
+        "INSERT INTO items (snapshot_idx, id, body) VALUES (?, 'dump-large-blob', ?)",
         Some(vec![
             SqlStorageValue::Integer(999),
             SqlStorageValue::Blob(large_blob.clone()),
@@ -106,7 +106,7 @@ pub async fn test_full_storage_dump(state: &State) -> anyhow::Result<()> {
         .storage()
         .sql()
         .exec(
-            "SELECT count(*) AS count FROM game_snapshots WHERE game = ?",
+            "SELECT count(*) AS count FROM items WHERE body = ?",
             Some(vec![SqlStorageValue::Blob(large_blob)]),
         )?
         .one()?;

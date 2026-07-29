@@ -149,6 +149,11 @@ impl GameSession {
                 let changed_game = game.perform_gm_command(*command);
                 self.change_game(changed_game).await
             }
+            (Role::GM, GMRollback { game_index }) => {
+                let restored_game = self.game_storage.rollback(game_index).await?;
+                self.broadcast_refresh_game(&restored_game, &[])?;
+                Ok(serde_json::to_value(Vec::<GameLog>::new())?)
+            }
             (
                 _,
                 MovementOptions {

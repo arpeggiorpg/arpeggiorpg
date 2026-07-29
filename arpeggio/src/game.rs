@@ -1090,9 +1090,6 @@ impl GameExt for Game {
                 log: CombatLog::ForcePrevTurn,
             }),
             EndTurn => self.next_turn(),
-
-            // These are handled by the app before being passed to the Game:
-            Rollback { .. } => bug("Game Rollback"),
         }?;
         Ok(change)
     }
@@ -1697,11 +1694,6 @@ impl GameExt for Game {
                 );
                 self.scenes.insert(scene);
             }
-
-            // Things that are handled at the App level
-            Rollback { .. } => {
-                return bug("GameLog Rollback");
-            }
         }
         Ok(())
     }
@@ -2154,8 +2146,4 @@ impl ChangedGameExt for ChangedGame {
     fn done(self) -> (Game, Vec<GameLog>) {
         (self.game, self.logs)
     }
-}
-
-fn bug<T>(msg: &str) -> Result<T, GameError> {
-    Err(GameError::BuggyProgram(msg.to_string()))
 }

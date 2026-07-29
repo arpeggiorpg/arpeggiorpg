@@ -347,10 +347,4 @@ pub enum GMCommand {
     SetActiveScene {
         id: Option<SceneID>,
     },
-
-    /// Roll back to a specific snapshot + log index
-    Rollback {
-        snapshot_index: usize,
-        log_index: usize,
-    },
 }

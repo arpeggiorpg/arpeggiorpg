@@ -3,9 +3,8 @@
 ## Status
 
 In progress. Phases 0, 1, and 2 are complete, deployed to preproduction, and manually tested.
-The Phase 3 typed-table foundation is implemented and verified locally, but the final unified
-migration and snapshot-indexed schema are not yet implemented or deployed. Module work has not
-started.
+Phases 3 and 4 are implemented and verified locally but are not yet deployed to preproduction.
+Module work has not started.
 
 This is the canonical plan for replacing campaign folders with a resource catalog and collections,
 for importing and exporting modules, and for eventually moving from whole-game snapshots to
@@ -59,22 +58,28 @@ Completed in Phase 2:
   collections deletes their resources.
 - Kept manual resource reordering deferred.
 
-Implemented locally in Phase 3:
+Implemented locally in Phases 3 and 4:
 
 - Added separate JSONB tables for scenes, creatures, notes, items, abilities, classes, collections,
-  and players plus singleton game state.
-- Added a local transactional typed-table migration as an implementation step; it will be folded
-  together with catalog-domain conversion and snapshot indexing before deployment.
+  and players plus singleton game state, all keyed by `snapshot_idx`.
+- Reserved `snapshot_idx = -1` for mutable current state and nonnegative indices for immutable
+  snapshots.
+- Consolidated catalog-domain conversion, typed-table creation, and historical snapshot conversion
+  into one atomic storage migration.
+- Converted every legacy snapshot and log before constructing a current `Game`; the migration
+  removes `game_snapshots` and advances the storage version only after complete validation.
 - Switched `GameStorage` cold loading to the typed tables.
 - Made `GameStorage::update_game` transactionally persist before-and-after entity deltas and logs.
-- Kept periodic whole-game snapshots and logs as a temporary dual-written verification path
-  pending typed snapshots and rollback in Phase 4.
-- Added migration, all-entity round-trip, snapshot parity, typed-authority, transaction atomicity,
-  dump/restore, and recovery coverage in the local Durable Object suite.
+- Replaced periodic whole-game serialization with transactional copies of current typed rows.
+- Added storage/RPI rollback to an exact snapshot/log prefix, followed immediately by a new
+  immutable typed snapshot.
+- Removed rollback from core `GMCommand` and `GameLog`.
+- Added migration, all-entity round-trip, snapshot parity, typed-authority, rollback, transaction
+  atomicity, dump/restore, and recovery coverage in the local Durable Object suite.
 
 Not yet implemented:
 
-- Typed historical snapshots and storage-level rollback.
+- Preprod deployment and validation of the unified migration and rollback path.
 - The new module format, dependency-aware import/export, and module provenance.
 
 Current decisions and constraints:
@@ -132,8 +137,8 @@ Current decisions and constraints:
 ### Phase 3: Piecemeal typed-table storage
 
 - [x] Add one JSON-blob table per entity type plus singleton game-state storage.
-- Replace the local intermediate migration with the unified final-schema migration described in
-  Phase 4.
+- [x] Replace the local intermediate migration with the unified final-schema migration described
+  in Phase 4.
 - [x] Make `GameStorage` compute and persist changed and deleted top-level entities.
 - [x] Temporarily dual-write typed tables, logs, and whole-game snapshots during local verification.
 - [x] Add full reconstruction parity, atomicity, dump, restore, and recovery tests.
@@ -141,16 +146,16 @@ Current decisions and constraints:
 
 ### Phase 4: Typed snapshots, rollback, and cleanup
 
-- Add `snapshot_idx` to every typed entity table, using `-1` for mutable current state and
+- [x] Add `snapshot_idx` to every typed entity table, using `-1` for mutable current state and
   nonnegative indices for immutable snapshots.
-- Store singleton game state and snapshot metadata by `snapshot_idx`.
-- Consolidate catalog-domain conversion, typed-table creation, and snapshot indexing into one
+- [x] Store singleton game state and snapshot metadata by `snapshot_idx`.
+- [x] Consolidate catalog-domain conversion, typed-table creation, and snapshot indexing into one
   unpublished migration.
-- In that migration, convert every legacy monolithic snapshot and log into the final typed
+- [x] In that migration, convert every legacy monolithic snapshot and log into the final typed
   historical representation before constructing a `Game`.
-- Create a snapshot transactionally by copying all current typed rows into a new immutable
+- [x] Create a snapshot transactionally by copying all current typed rows into a new immutable
   generation.
-- Reintroduce rollback as a storage/RPI operation:
+- [x] Reintroduce rollback as a storage/RPI operation:
   - load the selected typed snapshot;
   - replay logs to the selected point;
   - transactionally replace the current rows;
@@ -158,10 +163,10 @@ Current decisions and constraints:
   - continue logging from that new snapshot.
 - Validate the complete migration and rollback path in preprod before production deployment; do
   not deploy an intermediate ID-only typed schema or dual-write storage version.
-- Stop writing monolithic snapshots and remove the legacy snapshot table as part of the unified
+- [x] Stop writing monolithic snapshots and remove the legacy snapshot table as part of the unified
   migration after its transactional validation succeeds.
-- Update dumps and recovery tests for current rows, historical typed rows, snapshot metadata, logs,
-  and rollback.
+- [x] Update dumps and recovery tests for current rows, historical typed rows, snapshot metadata,
+  logs, and rollback.
 - [x] Remove `campaign` and normal-use folder code (completed during Phase 1).
 - [x] Remove folder UI (completed early during Phase 0).
 - [x] Remove legacy commands and logs from core replay (completed during Phase 1).

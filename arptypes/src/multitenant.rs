@@ -116,6 +116,9 @@ pub enum RPIGameRequest {
     GMCommand {
         command: Box<GMCommand>,
     },
+    GMRollback {
+        game_index: GameIndex,
+    },
 
     // GM Commands for managing invitations happen here in the RPIGameRequest, but the check/accept
     // operations happen on regular HTTP endpoints, because you can't get a websocket to a game unless

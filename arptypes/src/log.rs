@@ -313,11 +313,6 @@ pub enum GameLog {
     RemoveCreatureFromCombat {
         creature_id: CreatureID,
     },
-    Rollback {
-        // This is purely informational?
-        snapshot_index: usize,
-        log_index: usize,
-    },
 }
 
 pub fn combat_logs_into_game_logs(ls: Vec<CombatLog>) -> Vec<GameLog> {

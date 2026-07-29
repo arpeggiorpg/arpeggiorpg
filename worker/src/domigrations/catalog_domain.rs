@@ -1,7 +1,8 @@
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 
+use arpeggio::game::GameExt;
 use arptypes::{
-    AbilityID, ClassID, Collection, CollectionID, CreatureID, GameLog, ItemID, Note, NoteID,
+    AbilityID, ClassID, Collection, CollectionID, CreatureID, Game, GameLog, ItemID, Note, NoteID,
     NoteOwner, NoteVisibility, PlayerID, ResourceRef, SceneID,
 };
 use foldertree::{FolderPath, FolderTree};
@@ -9,6 +10,8 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 use uuid::Uuid;
 use worker::{Error, SqlStorage};
+
+use crate::entity_storage;
 
 const MIGRATION_NAMESPACE: Uuid = Uuid::from_bytes([
     0x4e, 0x7f, 0x0e, 0xf4, 0x4b, 0x64, 0x4e, 0x1d, 0x9a, 0x6f, 0x75, 0x4a, 0x11, 0x9f, 0x86, 0x7b,
@@ -173,20 +176,87 @@ pub(super) fn migrate_catalog_domain(sql: &SqlStorage) -> worker::Result<()> {
         )));
     }
 
-    for (snapshot_idx, game_json) in migrated_snapshots {
-        sql.exec(
-            "UPDATE game_snapshots SET game = jsonb(?) WHERE snapshot_idx = ?",
-            Some(vec![game_json.into(), snapshot_idx.into()]),
-        )?;
+    if migrated_snapshots.is_empty() {
+        let game_json = serde_json::to_string(&Game::default()).map_err(|error| {
+            storage_migration_error(format!("Could not encode default game snapshot: {error}"))
+        })?;
+        migrated_snapshots.push((0, game_json));
     }
+
+    // Finish converting all legacy history before constructing any current-domain Game.
     sql.exec("DELETE FROM logs", None)?;
-    for (snapshot_idx, log_idx, game_log) in migrated_logs {
+    for (snapshot_idx, log_idx, game_log) in &migrated_logs {
         sql.exec(
             "INSERT INTO logs (snapshot_idx, log_idx, game_log)
              VALUES (?, ?, jsonb(?))",
-            Some(vec![snapshot_idx.into(), log_idx.into(), game_log.into()]),
+            Some(vec![
+                (*snapshot_idx).into(),
+                (*log_idx).into(),
+                game_log.as_str().into(),
+            ]),
         )?;
     }
+
+    entity_storage::initialize_tables(sql).map_err(|error| {
+        storage_migration_error(format!(
+            "Could not create snapshot-indexed typed tables: {error}"
+        ))
+    })?;
+
+    let mut current_game = None;
+    for (snapshot_idx, game_json) in &migrated_snapshots {
+        let snapshot_idx_usize = usize::try_from(*snapshot_idx).map_err(|_| {
+            storage_migration_error(format!("Invalid negative snapshot index {snapshot_idx}"))
+        })?;
+        let mut game: Game = serde_json::from_str(game_json).map_err(|error| {
+            storage_migration_error(format!(
+                "Could not decode migrated game snapshot {snapshot_idx}: {error}"
+            ))
+        })?;
+        entity_storage::replace_game_at_snapshot(sql, *snapshot_idx, &game).map_err(|error| {
+            storage_migration_error(format!(
+                "Could not store typed game snapshot {snapshot_idx}: {error}"
+            ))
+        })?;
+        entity_storage::record_snapshot(sql, snapshot_idx_usize, "migration").map_err(|error| {
+            storage_migration_error(format!(
+                "Could not record typed game snapshot {snapshot_idx}: {error}"
+            ))
+        })?;
+
+        let snapshot_logs: Vec<LogRow> = sql
+            .exec(
+                "SELECT snapshot_idx, log_idx, json(game_log) AS game_log
+                 FROM logs
+                 WHERE snapshot_idx = ?
+                 ORDER BY log_idx",
+                Some(vec![(*snapshot_idx).into()]),
+            )?
+            .to_array()?;
+        for log in snapshot_logs {
+            let game_log: GameLog = serde_json::from_str(&log.game_log).map_err(|error| {
+                storage_migration_error(format!(
+                    "Could not decode migrated log {}:{}: {error}",
+                    log.snapshot_idx, log.log_idx
+                ))
+            })?;
+            game = game.apply_log(&game_log).map_err(|error| {
+                storage_migration_error(format!(
+                    "Could not replay migrated log {}:{}: {error}",
+                    log.snapshot_idx, log.log_idx
+                ))
+            })?;
+        }
+        current_game = Some(game);
+    }
+
+    let current_game = current_game
+        .ok_or_else(|| storage_migration_error("Migration produced no current game"))?;
+    entity_storage::replace_game(sql, &current_game).map_err(|error| {
+        storage_migration_error(format!("Could not store migrated current game: {error}"))
+    })?;
+
+    sql.exec("DROP TABLE game_snapshots", None)?;
 
     Ok(())
 }
@@ -508,6 +578,9 @@ impl LegacyCatalog {
             "LoadModule" => Err(migration_error(
                 "Legacy LoadModule logs are unsupported; no production module imports are known",
             )),
+            // The old rollback log was informational and was never replayable by Game. Historical
+            // snapshots already contain the resulting state, so it has no current-domain log.
+            "Rollback" => Ok(vec![]),
             "CreateFolder" => {
                 let path = parse_path(&value, "path")?;
                 self.with_reconcile(|tree| {
@@ -1050,5 +1123,19 @@ mod tests {
             }))
             .unwrap_err();
         assert!(error.contains("unsupported"));
+    }
+
+    #[test]
+    fn drops_legacy_informational_rollback_logs() {
+        let item_id = ItemID::gen();
+        let (_, mut catalog) = LegacyCatalog::migrate_snapshot(legacy_snapshot(item_id)).unwrap();
+        assert!(catalog
+            .translate_log(serde_json::json!({
+                "t": "Rollback",
+                "snapshot_index": 0,
+                "log_index": 1
+            }))
+            .unwrap()
+            .is_empty());
     }
 }

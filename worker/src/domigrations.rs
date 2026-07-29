@@ -5,14 +5,13 @@ use worker::{wasm_bindgen::JsValue, Error, Result, SqlStorage, State, Storage, T
 use crate::sqlite::initialize_sqlite_tables;
 
 mod catalog_domain;
-mod typed_tables;
 
 const LEGACY_VERSION_KEY: &str = "DURABLEGAME_VERSION";
 const METADATA_TABLE: &str = "arpeggio_storage_metadata";
 const STORAGE_VERSION_KEY: &str = "storage_version";
 
 pub const BASELINE_STORAGE_VERSION: StorageVersion = StorageVersion(1);
-pub const CURRENT_STORAGE_VERSION: StorageVersion = StorageVersion(3);
+pub const CURRENT_STORAGE_VERSION: StorageVersion = StorageVersion(2);
 
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub struct StorageVersion(pub u32);
@@ -23,17 +22,12 @@ struct Migration {
     run: fn(&SqlStorage) -> Result<()>,
 }
 
-const CATALOG_DOMAIN_MIGRATION: Migration = Migration {
+const UNIFIED_STORAGE_MIGRATION: Migration = Migration {
     version: StorageVersion(2),
     run: catalog_domain::migrate_catalog_domain,
 };
 
-const TYPED_TABLES_MIGRATION: Migration = Migration {
-    version: StorageVersion(3),
-    run: typed_tables::migrate_typed_tables,
-};
-
-const MIGRATIONS: &[Migration] = &[CATALOG_DOMAIN_MIGRATION, TYPED_TABLES_MIGRATION];
+const MIGRATIONS: &[Migration] = &[UNIFIED_STORAGE_MIGRATION];
 
 #[derive(Debug, Deserialize)]
 struct CountRow {
@@ -418,6 +412,10 @@ pub async fn test_catalog_domain_migration(state: &State) -> Result<()> {
         .map_err(|error| migration_error(format!("Could not encode test game: {error}")))?;
     sql.exec(
         "INSERT INTO game_snapshots (snapshot_idx, game) VALUES (0, jsonb(?))",
+        Some(vec![legacy_json.clone().into()]),
+    )?;
+    sql.exec(
+        "INSERT INTO game_snapshots (snapshot_idx, game) VALUES (1, jsonb(?))",
         Some(vec![legacy_json.into()]),
     )?;
     let legacy_log = serde_json::json!({
@@ -434,6 +432,11 @@ pub async fn test_catalog_domain_migration(state: &State) -> Result<()> {
          VALUES (0, 0, jsonb(?))",
         Some(vec![legacy_log.to_string().into()]),
     )?;
+    sql.exec(
+        "INSERT INTO logs (snapshot_idx, log_idx, game_log)
+         VALUES (1, 0, jsonb(?))",
+        Some(vec![legacy_log.to_string().into()]),
+    )?;
     let migrated_item_id = arptypes::ItemID::gen();
     let legacy_create_item = serde_json::json!({
         "t": "CreateItem",
@@ -448,6 +451,11 @@ pub async fn test_catalog_domain_migration(state: &State) -> Result<()> {
          VALUES (0, 1, jsonb(?))",
         Some(vec![legacy_create_item.to_string().into()]),
     )?;
+    sql.exec(
+        "INSERT INTO logs (snapshot_idx, log_idx, game_log)
+         VALUES (1, 1, jsonb(?))",
+        Some(vec![legacy_create_item.to_string().into()]),
+    )?;
 
     let version = migrate_storage_to_current(storage).await?;
     if version != CURRENT_STORAGE_VERSION {
@@ -456,21 +464,10 @@ pub async fn test_catalog_domain_migration(state: &State) -> Result<()> {
         ));
     }
 
-    #[derive(Deserialize)]
-    struct MigratedSnapshot {
-        game: String,
-    }
-    let snapshot: MigratedSnapshot = state
-        .storage()
-        .sql()
-        .exec(
-            "SELECT json(game) AS game FROM game_snapshots WHERE snapshot_idx = 0",
-            None,
-        )?
-        .one()?;
-    let migrated_game: arptypes::Game = serde_json::from_str(&snapshot.game).map_err(|error| {
-        migration_error(format!("Could not decode migrated test game: {error}"))
-    })?;
+    let migrated_game = crate::entity_storage::load_game_at_snapshot(&state.storage().sql(), 0)
+        .map_err(|error| {
+            migration_error(format!("Could not decode migrated test game: {error}"))
+        })?;
 
     let note = migrated_game
         .notes
@@ -572,53 +569,32 @@ pub async fn test_catalog_domain_migration(state: &State) -> Result<()> {
             "Migrated path-bearing resource log did not replay with collection membership",
         ));
     }
+    if crate::entity_storage::load_game(&state.storage().sql()).map_err(|error| {
+        migration_error(format!("Could not load migrated current game: {error}"))
+    })? != replayed
+    {
+        return Err(migration_error(
+            "Unified migration did not materialize current state from the migrated history",
+        ));
+    }
+    if table_exists(&state.storage().sql(), "game_snapshots")? {
+        return Err(migration_error(
+            "Unified migration retained the monolithic snapshot table",
+        ));
+    }
 
     Ok(())
 }
 
 pub async fn test_typed_tables_migration(state: &State) -> Result<()> {
-    use arpeggio::game::GameExt;
-    use arptypes::{GMCommand, Game};
-
-    state.storage().delete_all().await?;
-    migrate_storage(
-        state.storage(),
-        StorageVersion(2),
-        &[CATALOG_DOMAIN_MIGRATION],
-    )
-    .await?;
-
-    let game = Game::default();
-    let changed_game = game
-        .perform_gm_command(GMCommand::CreateItem {
-            name: "Migrated typed item".to_string(),
-        })
-        .map_err(|error| migration_error(format!("Could not create migration fixture: {error}")))?;
-    let game_json = serde_json::to_string(&game)
-        .map_err(|error| migration_error(format!("Could not encode migration fixture: {error}")))?;
-    let sql = state.storage().sql();
-    sql.exec(
-        "INSERT INTO game_snapshots (snapshot_idx, game) VALUES (0, jsonb(?))",
-        Some(vec![game_json.into()]),
-    )?;
-    for (log_idx, log) in changed_game.logs.iter().enumerate() {
-        let game_log = serde_json::to_string(log).map_err(|error| {
-            migration_error(format!("Could not encode migration fixture log: {error}"))
-        })?;
-        sql.exec(
-            "INSERT INTO logs (snapshot_idx, log_idx, game_log) VALUES (0, ?, jsonb(?))",
-            Some(vec![(log_idx as i64).into(), game_log.into()]),
-        )?;
-    }
-
-    migrate_storage_to_current(state.storage()).await?;
+    test_catalog_domain_migration(state).await?;
     let sql = state.storage().sql();
     let typed_game = crate::entity_storage::load_game(&sql).map_err(|error| {
         migration_error(format!("Could not load typed migration result: {error}"))
     })?;
-    if typed_game != changed_game.game {
+    if typed_game.items.is_empty() || typed_game.notes.is_empty() {
         return Err(migration_error(
-            "Typed-table migration did not materialize snapshot plus logs",
+            "Unified migration did not materialize converted snapshots plus logs",
         ));
     }
     for table in [
@@ -631,12 +607,74 @@ pub async fn test_typed_tables_migration(state: &State) -> Result<()> {
         "collections",
         "players",
         "game_state",
+        "snapshots",
     ] {
         if !table_exists(&sql, table)? {
             return Err(migration_error(format!(
                 "Typed-table migration did not create {table}"
             )));
         }
+    }
+    #[derive(Deserialize)]
+    struct SnapshotCount {
+        count: i64,
+    }
+    let current: SnapshotCount = sql
+        .exec(
+            "SELECT count(*) AS count FROM game_state WHERE snapshot_idx = -1",
+            None,
+        )?
+        .one()?;
+    let historical: SnapshotCount = sql
+        .exec(
+            "SELECT count(*) AS count FROM game_state WHERE snapshot_idx >= 0",
+            None,
+        )?
+        .one()?;
+    if current.count != 1 || historical.count != 2 {
+        return Err(migration_error(
+            "Unified migration did not create current and historical typed generations",
+        ));
+    }
+    Ok(())
+}
+
+pub async fn test_unified_migration_failure_is_atomic(state: &State) -> Result<()> {
+    let storage = state.storage();
+    storage.delete_all().await?;
+    let sql = storage.sql();
+    initialize_sqlite_tables(&sql)?;
+    storage.put(LEGACY_VERSION_KEY, 1_u32).await?;
+
+    let invalid_legacy_snapshot = serde_json::to_string(&arptypes::Game::default())
+        .map_err(|error| migration_error(format!("Could not encode invalid fixture: {error}")))?;
+    sql.exec(
+        "INSERT INTO game_snapshots (snapshot_idx, game) VALUES (0, jsonb(?))",
+        Some(vec![invalid_legacy_snapshot.into()]),
+    )?;
+
+    if migrate_storage_to_current(storage).await.is_ok() {
+        return Err(migration_error(
+            "Invalid legacy snapshot unexpectedly migrated",
+        ));
+    }
+
+    let storage = state.storage();
+    let sql = storage.sql();
+    let snapshot_count: CountRow = sql
+        .exec(
+            "SELECT count(*) AS count FROM game_snapshots WHERE snapshot_idx = 0",
+            None,
+        )?
+        .one()?;
+    if snapshot_count.count != 1
+        || table_exists(&sql, "snapshots")?
+        || read_storage_version(&sql)?.is_some()
+        || storage.get::<u32>(LEGACY_VERSION_KEY).await? != Some(1)
+    {
+        return Err(migration_error(
+            "Failed unified migration changed legacy storage",
+        ));
     }
     Ok(())
 }
@@ -692,6 +730,14 @@ pub async fn test_untrusted_unversioned_storage_rejected(state: &State) -> Resul
     Ok(())
 }
 
+fn test_migration_three(sql: &SqlStorage) -> Result<()> {
+    sql.exec(
+        "CREATE TABLE migration_test_three (value INTEGER NOT NULL)",
+        None,
+    )?;
+    Ok(())
+}
+
 fn test_migration_four(sql: &SqlStorage) -> Result<()> {
     sql.exec(
         "CREATE TABLE migration_test_four (value INTEGER NOT NULL)",
@@ -700,51 +746,40 @@ fn test_migration_four(sql: &SqlStorage) -> Result<()> {
     Ok(())
 }
 
-fn test_migration_five(sql: &SqlStorage) -> Result<()> {
-    sql.exec(
-        "CREATE TABLE migration_test_five (value INTEGER NOT NULL)",
-        None,
-    )?;
-    Ok(())
-}
-
-fn test_migration_five_failure(sql: &SqlStorage) -> Result<()> {
-    test_migration_five(sql)?;
+fn test_migration_four_failure(sql: &SqlStorage) -> Result<()> {
+    test_migration_four(sql)?;
     Err(migration_error("Intentional migration failure"))
 }
 
-const TEST_MIGRATIONS_TO_FOUR: &[Migration] = &[
-    CATALOG_DOMAIN_MIGRATION,
-    TYPED_TABLES_MIGRATION,
+const TEST_MIGRATIONS_TO_THREE: &[Migration] = &[
+    UNIFIED_STORAGE_MIGRATION,
     Migration {
-        version: StorageVersion(4),
-        run: test_migration_four,
+        version: StorageVersion(3),
+        run: test_migration_three,
     },
 ];
 
 const TEST_MIGRATIONS_SUCCESS: &[Migration] = &[
-    CATALOG_DOMAIN_MIGRATION,
-    TYPED_TABLES_MIGRATION,
+    UNIFIED_STORAGE_MIGRATION,
+    Migration {
+        version: StorageVersion(3),
+        run: test_migration_three,
+    },
     Migration {
         version: StorageVersion(4),
         run: test_migration_four,
-    },
-    Migration {
-        version: StorageVersion(5),
-        run: test_migration_five,
     },
 ];
 
 const TEST_MIGRATIONS_FAILURE: &[Migration] = &[
-    CATALOG_DOMAIN_MIGRATION,
-    TYPED_TABLES_MIGRATION,
+    UNIFIED_STORAGE_MIGRATION,
     Migration {
-        version: StorageVersion(4),
-        run: test_migration_four,
+        version: StorageVersion(3),
+        run: test_migration_three,
     },
     Migration {
-        version: StorageVersion(5),
-        run: test_migration_five_failure,
+        version: StorageVersion(4),
+        run: test_migration_four_failure,
     },
 ];
 
@@ -752,7 +787,7 @@ pub async fn test_migration_chain_and_rollback(state: &State) -> Result<()> {
     state.storage().delete_all().await?;
     migrate_storage_to_current(state.storage()).await?;
 
-    if migrate_storage(state.storage(), StorageVersion(5), TEST_MIGRATIONS_FAILURE)
+    if migrate_storage(state.storage(), StorageVersion(4), TEST_MIGRATIONS_FAILURE)
         .await
         .is_ok()
     {
@@ -760,33 +795,34 @@ pub async fn test_migration_chain_and_rollback(state: &State) -> Result<()> {
     }
     let sql = state.storage().sql();
     if read_storage_version(&sql)? != Some(CURRENT_STORAGE_VERSION)
+        || table_exists(&sql, "migration_test_three")?
         || table_exists(&sql, "migration_test_four")?
-        || table_exists(&sql, "migration_test_five")?
     {
         return Err(migration_error("Failed migration chain was not atomic"));
     }
 
     let version =
-        migrate_storage(state.storage(), StorageVersion(4), TEST_MIGRATIONS_TO_FOUR).await?;
-    if version != StorageVersion(4) || !table_exists(&state.storage().sql(), "migration_test_four")?
+        migrate_storage(state.storage(), StorageVersion(3), TEST_MIGRATIONS_TO_THREE).await?;
+    if version != StorageVersion(3)
+        || !table_exists(&state.storage().sql(), "migration_test_three")?
     {
-        return Err(migration_error("Immediate migration to version 4 failed"));
+        return Err(migration_error("Immediate migration to version 3 failed"));
     }
 
     let version =
-        migrate_storage(state.storage(), StorageVersion(5), TEST_MIGRATIONS_SUCCESS).await?;
-    if version != StorageVersion(5) || !table_exists(&state.storage().sql(), "migration_test_five")?
+        migrate_storage(state.storage(), StorageVersion(4), TEST_MIGRATIONS_SUCCESS).await?;
+    if version != StorageVersion(4) || !table_exists(&state.storage().sql(), "migration_test_four")?
     {
-        return Err(migration_error("Retry from version 4 failed"));
+        return Err(migration_error("Retry from version 3 failed"));
     }
 
     state.storage().delete_all().await?;
     migrate_storage_to_current(state.storage()).await?;
     let version =
-        migrate_storage(state.storage(), StorageVersion(5), TEST_MIGRATIONS_SUCCESS).await?;
-    if version != StorageVersion(5)
+        migrate_storage(state.storage(), StorageVersion(4), TEST_MIGRATIONS_SUCCESS).await?;
+    if version != StorageVersion(4)
+        || !table_exists(&state.storage().sql(), "migration_test_three")?
         || !table_exists(&state.storage().sql(), "migration_test_four")?
-        || !table_exists(&state.storage().sql(), "migration_test_five")?
     {
         return Err(migration_error("Skipped-version migration failed"));
     }

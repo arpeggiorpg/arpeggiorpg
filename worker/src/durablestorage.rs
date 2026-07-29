@@ -81,7 +81,7 @@ impl GameStorage {
 
         let rows: Vec<SnapshotIndexRow> = sql
             .exec(
-                "SELECT snapshot_idx FROM game_snapshots ORDER BY snapshot_idx DESC LIMIT 1",
+                "SELECT snapshot_idx FROM snapshots ORDER BY snapshot_idx DESC LIMIT 1",
                 None,
             )?
             .to_array()?;
@@ -90,24 +90,25 @@ impl GameStorage {
 
     fn load_latest_game_snapshot(sql: &SqlStorage) -> anyhow::Result<Option<(Game, usize)>> {
         #[derive(serde::Deserialize)]
-        struct GameRow {
-            game: String, // can't figure out how to just make this `Game`
+        struct SnapshotRow {
             snapshot_idx: usize,
         }
 
-        let rows: Vec<GameRow> = sql
+        let rows: Vec<SnapshotRow> = sql
             .exec(
-                "SELECT json(game) as game, snapshot_idx FROM game_snapshots \
-                WHERE snapshot_idx = (SELECT MAX(snapshot_idx) FROM game_snapshots)",
+                "SELECT snapshot_idx
+                 FROM snapshots
+                 ORDER BY snapshot_idx DESC
+                 LIMIT 1",
                 None,
             )?
             .to_array()?;
 
         match rows.into_iter().next() {
-            Some(GameRow { game, snapshot_idx }) => {
-                let game = serde_json::from_str(&game)?;
-                Ok(Some((game, snapshot_idx)))
-            }
+            Some(SnapshotRow { snapshot_idx }) => Ok(Some((
+                entity_storage::load_game_at_snapshot(sql, snapshot_idx as i64)?,
+                snapshot_idx,
+            ))),
             None => Ok(None),
         }
     }
@@ -136,17 +137,51 @@ impl GameStorage {
         Ok(game)
     }
 
-    fn store_game_snapshot(
-        sql: &SqlStorage,
-        snapshot_idx: usize,
-        game: &Game,
-    ) -> anyhow::Result<()> {
-        let game_json = serde_json::to_string(game)?;
-        sql.exec(
-            "INSERT OR REPLACE INTO game_snapshots (snapshot_idx, game) VALUES (?, jsonb(?))",
-            Some(vec![(snapshot_idx as i64).into(), game_json.into()]),
-        )?;
-        Ok(())
+    fn load_game_at_index(sql: &SqlStorage, index: GameIndex) -> anyhow::Result<Game> {
+        #[derive(serde::Deserialize)]
+        struct LogRow {
+            log_idx: i64,
+            game_log: String,
+        }
+
+        let mut game =
+            entity_storage::load_game_at_snapshot(sql, index.game_idx as i64).map_err(|error| {
+                anyhow!(
+                    "Could not load snapshot {} for rollback: {error}",
+                    index.game_idx
+                )
+            })?;
+        let logs: Vec<LogRow> = sql
+            .exec(
+                "SELECT log_idx, json(game_log) AS game_log
+                 FROM logs
+                 WHERE snapshot_idx = ? AND log_idx < ?
+                 ORDER BY log_idx",
+                Some(vec![
+                    (index.game_idx as i64).into(),
+                    (index.log_idx as i64).into(),
+                ]),
+            )?
+            .to_array()?;
+        anyhow::ensure!(
+            logs.len() == index.log_idx
+                && logs
+                    .iter()
+                    .enumerate()
+                    .all(|(expected, row)| row.log_idx == expected as i64),
+            "Rollback target {}/{} does not identify a complete log prefix",
+            index.game_idx,
+            index.log_idx
+        );
+        for row in logs {
+            let log = serde_json::from_str(&row.game_log)?;
+            game = game.apply_log(&log)?;
+        }
+        Ok(game)
+    }
+
+    fn store_game_snapshot(sql: &SqlStorage, snapshot_idx: usize) -> anyhow::Result<()> {
+        entity_storage::create_snapshot_from_current(sql, snapshot_idx, "periodic")
     }
 
     fn load_recent_logs(
@@ -285,7 +320,7 @@ impl GameStorage {
                             new_snapshot_idx,
                             log_count = next_log_idx
                         );
-                        Self::store_game_snapshot(&sql, new_snapshot_idx, &new_game_for_write)
+                        Self::store_game_snapshot(&sql, new_snapshot_idx)
                             .map_err(crate::rust_error)?;
                     }
                     Ok(())
@@ -307,6 +342,38 @@ impl GameStorage {
         recent_logs.extend(logs_with_indices.iter().cloned());
 
         Ok(logs_with_indices)
+    }
+
+    pub async fn rollback(&self, index: GameIndex) -> anyhow::Result<Game> {
+        let _update_guard = self.update_lock.lock().await;
+        let sql = self.state.storage().sql();
+        let restored_game = Self::load_game_at_index(&sql, index)?;
+        let new_snapshot_idx = self.current_snapshot_idx.get() + 1;
+        let cause = format!("rollback:{}/{}", index.game_idx, index.log_idx);
+        let storage = self.state.storage();
+        let restored_game_for_write = restored_game.clone();
+
+        storage
+            .transaction(move |_transaction| {
+                let sql = sql.clone();
+                async move {
+                    entity_storage::replace_game(&sql, &restored_game_for_write)
+                        .map_err(crate::rust_error)?;
+                    entity_storage::create_snapshot_from_current(&sql, new_snapshot_idx, &cause)
+                        .map_err(crate::rust_error)?;
+                    Ok(())
+                }
+            })
+            .await
+            .map_err(crate::anydbg)?;
+
+        let sql = self.state.storage().sql();
+        let (recent_logs, next_log_idx) = Self::load_recent_logs(&sql, new_snapshot_idx)?;
+        *self.cached_game.borrow_mut() = restored_game.clone();
+        *self.recent_logs.borrow_mut() = recent_logs;
+        self.current_snapshot_idx.set(new_snapshot_idx);
+        self.next_log_idx.set(next_log_idx);
+        Ok(restored_game)
     }
 
     pub fn create_invitation(&self) -> anyhow::Result<InvitationID> {
@@ -471,6 +538,86 @@ pub async fn test_snapshot_creation_multilog(state: Rc<State>) -> anyhow::Result
         .filter(|(gi, _gl)| gi.game_idx == 1)
         .count();
     assert_eq!(new_snapshot_logs, 0);
+    Ok(())
+}
+
+#[tracing::instrument(skip(state))]
+pub async fn test_typed_rollback(state: Rc<State>) -> anyhow::Result<()> {
+    test_init(&state).await?;
+    let game_storage = GameStorage::load(state.clone())?;
+
+    let first = game_storage
+        .game()
+        .perform_gm_command(GMCommand::CreateItem {
+            name: "Keep after rollback".to_string(),
+        })?;
+    game_storage.update_game(first).await?;
+    let rollback_target = GameIndex {
+        game_idx: 0,
+        log_idx: 1,
+    };
+
+    let second = game_storage
+        .game()
+        .perform_gm_command(GMCommand::CreateItem {
+            name: "Remove by rollback".to_string(),
+        })?;
+    game_storage.update_game(second).await?;
+    assert_eq!(game_storage.game().items.len(), 2);
+
+    let restored = game_storage.rollback(rollback_target).await?;
+    assert_eq!(restored.items.len(), 1);
+    assert!(restored
+        .items
+        .values()
+        .any(|item| item.name == "Keep after rollback"));
+    assert_eq!(game_storage.current_snapshot_idx.get(), 1);
+    assert_eq!(game_storage.next_log_idx.get(), 0);
+
+    #[derive(serde::Deserialize)]
+    struct SnapshotCause {
+        cause: String,
+    }
+    let cause: SnapshotCause = state
+        .storage()
+        .sql()
+        .exec("SELECT cause FROM snapshots WHERE snapshot_idx = 1", None)?
+        .one()?;
+    assert_eq!(cause.cause, "rollback:0/1");
+    assert_eq!(
+        entity_storage::load_game_at_snapshot(&state.storage().sql(), 1)?,
+        restored
+    );
+
+    let third = game_storage
+        .game()
+        .perform_gm_command(GMCommand::CreateItem {
+            name: "Added after rollback".to_string(),
+        })?;
+    game_storage.update_game(third).await?;
+    assert_eq!(game_storage.game().items.len(), 2);
+    assert_eq!(
+        entity_storage::load_game_at_snapshot(&state.storage().sql(), 1)?,
+        restored,
+        "current writes mutated the immutable rollback snapshot"
+    );
+
+    let fresh_storage = GameStorage::load(state.clone())?;
+    assert_eq!(fresh_storage.current_snapshot_idx.get(), 1);
+    assert_eq!(fresh_storage.game(), game_storage.game());
+
+    let restored_default = game_storage
+        .rollback(GameIndex {
+            game_idx: 0,
+            log_idx: 0,
+        })
+        .await?;
+    assert!(restored_default.items.is_empty());
+    assert_eq!(game_storage.current_snapshot_idx.get(), 2);
+    assert_eq!(
+        entity_storage::load_game_at_snapshot(&state.storage().sql(), 2)?,
+        restored_default
+    );
     Ok(())
 }
 
