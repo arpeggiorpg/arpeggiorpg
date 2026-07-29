@@ -1,8 +1,4 @@
-use std::{
-    cell::RefCell,
-    collections::{HashMap, VecDeque},
-    rc::Rc,
-};
+use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 use anyhow::format_err;
 use dioxus::prelude::*;
@@ -16,8 +12,9 @@ use wasm_cookies::CookieOptions;
 
 use crate::{GAME_LOGS, GAME_SOURCE, GameSource};
 use arptypes::{
-    Game, GameLog, SerializedGame, SerializedPlayerGame,
-    multitenant::{self, CopyToPreprodResult, GameID, GameIndex, RPIGameRequest, Role},
+    Game,
+    hosted::{CopyToPreprodResult, GameList, InvitationCheck, InvitationID},
+    protocol::{GameID, GameUpdate, Role, RpcRequest, RpcResponse},
 };
 
 pub static AUTH_TOKEN: GlobalSignal<String> = Signal::global(String::new);
@@ -68,7 +65,7 @@ pub struct CurrentUser {
     pub is_superuser: bool,
 }
 
-pub async fn list_games() -> Result<multitenant::GameList, anyhow::Error> {
+pub async fn list_games() -> Result<GameList, anyhow::Error> {
     rpi_get("g/list").await
 }
 
@@ -97,18 +94,16 @@ pub async fn delete_preprod_copy(game_id: &str) -> Result<(), anyhow::Error> {
     Ok(())
 }
 
-pub use arptypes::multitenant::InvitationCheck;
-
 pub async fn check_invitation(
     game_id: GameID,
-    invitation_id: multitenant::InvitationID,
+    invitation_id: InvitationID,
 ) -> Result<InvitationCheck, anyhow::Error> {
     rpi_get(&format!("g/invitations/{game_id}/{invitation_id}")).await
 }
 
 pub async fn accept_invitation(
     game_id: GameID,
-    invitation_id: multitenant::InvitationID,
+    invitation_id: InvitationID,
     profile_name: String,
 ) -> Result<(), anyhow::Error> {
     let _resp: serde_json::Value = rpi_post(
@@ -158,12 +153,12 @@ pub fn Connector(
 
             while let Some(ui_req) = rx.next().await {
                 let request_id = uuid::Uuid::new_v4();
-                let request = serde_json::json!({
-                  "id": request_id.to_string(),
-                  "request": &ui_req.game_request
-                });
+                let request = RpcRequest {
+                    id: request_id.to_string(),
+                    request: ui_req.game_request,
+                };
                 let cmd_json = serde_json::to_string(&request)
-                    .expect("must be able to serialize RPIGameRequests");
+                    .expect("must be able to serialize RPC requests");
                 if let Some(callback) = ui_req.callback {
                     response_handlers.borrow_mut().insert(request_id, callback);
                 }
@@ -190,28 +185,24 @@ async fn ws_receiver(
         match message {
             Message::Text(text) => {
                 let json: serde_json::Value = serde_json::from_str(&text)?;
-                if let Some(id_val) = json
-                    .as_object()
-                    .ok_or(format_err!("json must be an object"))?
-                    .get("id")
-                {
-                    let id: uuid::Uuid = id_val
-                        .as_str()
-                        .ok_or(format_err!("id is not a string"))?
-                        .parse()?;
-                    // TODO: handle "error" in response
+                if json.get("id").is_some() {
+                    let response: RpcResponse<serde_json::Value> =
+                        serde_json::from_value(json.clone())?;
+                    let (id, result) = match response {
+                        RpcResponse::Success { id, payload } => (id, Ok(payload)),
+                        RpcResponse::Error { id, error } => (id, Err(anyhow::anyhow!(error))),
+                    };
+                    let id: uuid::Uuid = id.parse()?;
                     if let Some(handler) = receiver_response_handlers.borrow_mut().remove(&id) {
-                        let payload = json.get("payload").ok_or(format_err!(
-                            "any response with an id must also have a payload"
-                        ))?;
-                        if let Err(response) = handler.send(Ok(payload.clone())) {
+                        if let Err(response) = handler.send(result) {
                             error!(?id, ?response, "Response handler disappeared");
                         }
                     } else {
                         warn!(?id, ?json, "Got result for unexpected ID");
                     }
                 } else {
-                    handle_unsolicited(json, player_id.clone())?;
+                    let update: GameUpdate = serde_json::from_value(json)?;
+                    handle_unsolicited(update, player_id.clone())?;
                 }
             }
             Message::Binary(vecu8) => info!(?vecu8, "WS Binary Message"),
@@ -221,39 +212,20 @@ async fn ws_receiver(
 }
 
 fn handle_unsolicited(
-    json: serde_json::Value,
+    update: GameUpdate,
     player_id: Option<arptypes::PlayerID>,
 ) -> anyhow::Result<()> {
-    if json.get("t") == Some(&serde_json::Value::String("refresh_game".to_string())) {
-        let game_json = json
-            .get("game")
-            .ok_or(anyhow::anyhow!("no game in refresh_game message"))?;
-        let game: SerializedGame = serde_json::from_value(game_json.clone())?;
-        let logs_json = json
-            .get("logs")
-            .ok_or(anyhow::anyhow!("no logs in refresh_game message"))?;
-        let mut logs: VecDeque<(GameIndex, GameLog)> = serde_json::from_value(logs_json.clone())?;
-        let game = Game::from_serialized_game(game);
-        *GAME_SOURCE.write() = GameSource::GM(game);
-        GAME_LOGS.write().append(&mut logs);
-    } else if json.get("t")
-        == Some(&serde_json::Value::String(
-            "refresh_player_game".to_string(),
-        ))
-    {
-        let game_json = json
-            .get("game")
-            .ok_or(anyhow::anyhow!("No game in refresh_player_game message"))?;
-        let game: SerializedPlayerGame = serde_json::from_value(game_json.clone())?;
-        let logs_json = json
-            .get("logs")
-            .ok_or(anyhow::anyhow!("no logs in refresh_game message"))?;
-        let mut logs: VecDeque<(GameIndex, GameLog)> = serde_json::from_value(logs_json.clone())?;
-        let player_id = player_id.unwrap_or(arptypes::PlayerID(String::new()));
-        *GAME_SOURCE.write() = GameSource::Player { player_id, game };
-        GAME_LOGS.write().append(&mut logs);
-    } else {
-        warn!(?json, "Unknown unsolicited message");
+    match update {
+        GameUpdate::RefreshGame { game, logs } => {
+            let game = Game::from_serialized_game(game);
+            *GAME_SOURCE.write() = GameSource::GM(game);
+            GAME_LOGS.write().extend(logs);
+        }
+        GameUpdate::RefreshPlayerGame { game, logs } => {
+            let player_id = player_id.unwrap_or(arptypes::PlayerID(String::new()));
+            *GAME_SOURCE.write() = GameSource::Player { player_id, game };
+            GAME_LOGS.write().extend(logs);
+        }
     }
     Ok(())
 }
@@ -280,7 +252,7 @@ async fn connect_coroutine(role: Role, game_id: GameID) -> anyhow::Result<WebSoc
 }
 
 pub struct UIRequest {
-    game_request: RPIGameRequest,
+    game_request: serde_json::Value,
     callback: Option<Sender<anyhow::Result<serde_json::Value>>>,
 }
 
@@ -289,12 +261,12 @@ pub fn use_ws() -> Coroutine<UIRequest> {
 }
 
 pub async fn send_request<T: serde::de::DeserializeOwned>(
-    req: RPIGameRequest,
+    req: impl serde::Serialize,
     coro: Coroutine<UIRequest>,
 ) -> anyhow::Result<T> {
     let (sender, receiver) = oneshot::channel::<anyhow::Result<serde_json::Value>>();
     let ui_req = UIRequest {
-        game_request: req,
+        game_request: serde_json::to_value(req)?,
         callback: Some(sender),
     };
     coro.send(ui_req);

@@ -11,8 +11,10 @@ use arpeggio::{
     types::{serialize_player_game, ChangedGame, GMCommand, GameError, PlayerID, RPIGame},
 };
 use arptypes::{
-    multitenant::{
-        GameAndMetadata, GameIndex, GameMetadata, PlayerGameAndMetadata, RPIGameRequest, Role,
+    hosted::HostedGameRequest,
+    protocol::{
+        GameAndMetadata, GameIndex, GameMetadata, GameRequest, GameUpdate, PlayerGameAndMetadata,
+        Role, RpcRequest, RpcResponse,
     },
     Game, GameLog,
 };
@@ -23,13 +25,14 @@ use crate::{
     images::CFImageService,
 };
 
-/// A representation of a request received from a websocket. It has an ID so we can send a response
-/// and the client can match them up.
 #[derive(Deserialize, Debug)]
-struct WSRequest {
-    request: RPIGameRequest,
-    id: String,
+#[serde(untagged)]
+enum SessionRequest {
+    Game(GameRequest),
+    Hosted(HostedGameRequest),
 }
+
+type WSRequest = RpcRequest<SessionRequest>;
 
 pub struct GameSession {
     image_service: CFImageService,
@@ -90,38 +93,45 @@ impl GameSession {
                 info!(event = "handling-request", ?request);
                 let response = self.handle_request(request).await;
                 match response {
-                    Ok(result) => self.send(&json!({"id": request_id, "payload": &result}))?,
+                    Ok(payload) => self.send(&RpcResponse::Success {
+                        id: request_id,
+                        payload,
+                    })?,
                     Err(e) => {
                         error!(event = "error-handling-request", ?e);
-                        self.send(&json!({"id": request_id, "error": format!("{e:?}")}))?
+                        self.send(&RpcResponse::<serde_json::Value>::Error {
+                            id: request_id,
+                            error: format!("{e:?}"),
+                        })?
                     }
                 }
             }
             Err(e) => {
-                // This is a little involved because we try to send the request ID back with the error
-                // response, so we have to retry parsing it as a Value.
-                let error_response =
-                    json!({"error": format!("Couldn't parse as a WSRequest: {e}")});
-                let mut error_response = error_response.as_object().unwrap().clone();
-                if let Ok(value) =
-                    serde_json::from_str::<serde_json::Map<String, serde_json::Value>>(&text)
-                {
-                    error_response.insert(
-                        "id".to_string(),
-                        value.get("id").unwrap_or(&serde_json::Value::Null).clone(),
-                    );
+                let error = format!("Couldn't parse as a WSRequest: {e}");
+                if let Ok(request) = serde_json::from_str::<RpcRequest<serde_json::Value>>(&text) {
+                    self.send(&RpcResponse::<serde_json::Value>::Error {
+                        id: request.id,
+                        error,
+                    })?;
+                } else {
+                    self.send(&json!({"error": error}))?;
                 }
-                error!(event = "error-response", ?error_response);
-                self.send(&error_response)?;
             }
         }
         Ok(())
     }
 
     async fn handle_request(&self, request: WSRequest) -> anyhow::Result<serde_json::Value> {
+        match request.request {
+            SessionRequest::Game(request) => self.handle_game_request(request).await,
+            SessionRequest::Hosted(request) => self.handle_hosted_request(request),
+        }
+    }
+
+    async fn handle_game_request(&self, request: GameRequest) -> anyhow::Result<serde_json::Value> {
         let game = self.game_storage.game();
-        use RPIGameRequest::*;
-        match (self.ws_user.role, request.request) {
+        use GameRequest::*;
+        match (self.ws_user.role, request) {
             (Role::GM, GMGetGame) => {
                 let rpi_game = RPIGame(&game);
                 let result = GameAndMetadata {
@@ -192,19 +202,6 @@ impl GameSession {
                 let result = game.preview_volume_targets(scene, creature_id, ability_id, point)?;
                 Ok(serde_json::to_value(result)?)
             }
-
-            (Role::GM, GMGenerateInvitation) => {
-                let invitation_id = self.game_storage.create_invitation()?;
-                Ok(serde_json::to_value(invitation_id)?)
-            }
-            (Role::GM, GMListInvitations) => {
-                let invitations = self.game_storage.list_invitations()?;
-                Ok(serde_json::to_value(invitations)?)
-            }
-            (Role::GM, GMDeleteInvitation { invitation_id }) => {
-                let invitations = self.game_storage.delete_invitation(invitation_id)?;
-                Ok(serde_json::to_value(invitations)?)
-            }
             (_, UploadImageFromURL { url, purpose }) => {
                 let url = self.image_service.upload_from_url(&url, purpose).await?;
                 self.game_storage.register_image(&url, purpose)?;
@@ -226,6 +223,28 @@ impl GameSession {
                 Err(anyhow!("GMs should use GMGetGame instead of PlayerGetGame"))
             }
             _ => Err(anyhow!("You can't run that command as that role.")),
+        }
+    }
+
+    fn handle_hosted_request(
+        &self,
+        request: HostedGameRequest,
+    ) -> anyhow::Result<serde_json::Value> {
+        use HostedGameRequest::*;
+        match (self.ws_user.role, request) {
+            (Role::GM, GMGenerateInvitation) => {
+                let invitation_id = self.game_storage.create_invitation()?;
+                Ok(serde_json::to_value(invitation_id)?)
+            }
+            (Role::GM, GMListInvitations) => {
+                let invitations = self.game_storage.list_invitations()?;
+                Ok(serde_json::to_value(invitations)?)
+            }
+            (Role::GM, GMDeleteInvitation { invitation_id }) => {
+                let invitations = self.game_storage.delete_invitation(invitation_id)?;
+                Ok(serde_json::to_value(invitations)?)
+            }
+            _ => Err(anyhow!("You can't run that hosted command as that role.")),
         }
     }
 
@@ -257,11 +276,10 @@ impl GameSession {
         // Get GM WebSockets
         let gm_websockets = self.state.get_websockets_with_tag("role:GM");
         for ws in gm_websockets {
-            let message = json!({
-                "t": "refresh_game",
-                "game": full_game,
-                "logs": logs_with_indices
-            });
+            let message = GameUpdate::RefreshGame {
+                game: full_game.clone(),
+                logs: logs_with_indices.to_vec(),
+            };
             if let Err(e) = self.send_to_websocket(&ws, &message) {
                 error!(event = "gm-broadcast-error", ?e);
             }
@@ -275,11 +293,10 @@ impl GameSession {
                 let player_id = PlayerID(player_id_str);
 
                 if let Ok(player_game) = serialize_player_game(&player_id, game) {
-                    let message = json!({
-                        "t": "refresh_player_game",
-                        "game": player_game,
-                        "logs": logs_with_indices
-                    });
+                    let message = GameUpdate::RefreshPlayerGame {
+                        game: player_game,
+                        logs: logs_with_indices.to_vec(),
+                    };
                     if let Err(e) = self.send_to_websocket(&ws, &message) {
                         error!(event = "player-broadcast-error", ?e, player_id = ?player_id);
                     }

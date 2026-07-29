@@ -1,8 +1,7 @@
 //! Functions for interacting with the CloudFlare Images API.
 
 use anyhow::anyhow;
-use arptypes::multitenant::GameID;
-use arptypes::multitenant::ImageType;
+use arptypes::protocol::{GameID, ImageType};
 use serde_json::json;
 use tracing::info;
 use uuid::Uuid;

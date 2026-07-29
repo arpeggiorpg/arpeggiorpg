@@ -2,7 +2,10 @@ use serde::Deserialize;
 use worker::Env;
 
 use arpeggio::types::PlayerID;
-use arptypes::multitenant::{GameID, GameMetadata, GameProfile, Role, UserID};
+use arptypes::{
+    hosted::{GameProfile, UserID},
+    protocol::{GameID, GameMetadata, Role},
+};
 
 pub async fn check_superuser(env: &Env, user_id: &UserID) -> worker::Result<bool> {
     let db = env.d1("DB")?;
@@ -43,7 +46,7 @@ pub async fn list_all_games_from_binding(
 pub async fn list_games_with_names(env: &Env, user_id: UserID) -> worker::Result<Vec<GameInfo>> {
     let db = env.d1("DB")?;
     let statement = db.prepare(
-        "SELECT UG.user_id, UG.game_id, UG.profile_name, UG.role, meta.name
+        "SELECT UG.game_id, UG.profile_name, UG.role, meta.name
     FROM user_games UG, game_metadata meta
     WHERE UG.game_id = meta.game_id AND user_id = ?",
     );
@@ -70,7 +73,6 @@ pub async fn get_game_metadata_from_binding(
 
 #[derive(Deserialize)]
 pub struct GameInfo {
-    pub user_id: UserID,
     pub game_id: GameID,
     pub profile_name: PlayerID,
     pub role: Role,

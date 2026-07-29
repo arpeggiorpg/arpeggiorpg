@@ -79,6 +79,7 @@ dependencies = [
  "num-traits",
  "serde",
  "serde_derive",
+ "serde_json",
  "strum 0.25.0",
  "thiserror 1.0.69",
  "ts-rs",

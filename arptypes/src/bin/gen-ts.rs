@@ -2,21 +2,23 @@ use std::{fs::File, io::prelude::*};
 use ts_rs::TS;
 
 use arptypes as T;
-use arptypes::multitenant as MT;
+use arptypes::{hosted as H, protocol as P};
 
 pub fn main() -> Result<(), anyhow::Error> {
     let mut file = File::create("../ui/src/bindings/bindings.ts")?;
     let decls = vec![
-        <MT::GameID as TS>::decl(),
-        <MT::GameIndex as TS>::decl(),
-        <MT::GameList as TS>::decl(),
-        <MT::GameMetadata as TS>::decl(),
-        <MT::GameProfile as TS>::decl(),
-        <MT::InvitationID as TS>::decl(),
-        <MT::Role as TS>::decl(),
-        <MT::RPIGameRequest as TS>::decl(),
-        <MT::UserID as TS>::decl(),
-        <MT::ImageType as TS>::decl(),
+        <P::GameID as TS>::decl(),
+        <P::GameIndex as TS>::decl(),
+        <H::GameList as TS>::decl(),
+        <P::GameMetadata as TS>::decl(),
+        <H::GameProfile as TS>::decl(),
+        <H::GameSummary as TS>::decl(),
+        <H::InvitationID as TS>::decl(),
+        <P::Role as TS>::decl(),
+        <P::GameRequest as TS>::decl(),
+        <H::HostedGameRequest as TS>::decl(),
+        <H::UserID as TS>::decl(),
+        <P::ImageType as TS>::decl(),
         <T::AABB as TS>::decl(),
         <T::Ability as TS>::decl(),
         <T::AbilityCreation as TS>::decl(),

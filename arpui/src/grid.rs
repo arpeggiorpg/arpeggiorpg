@@ -8,7 +8,7 @@ use crate::{
     grid::svg_pan_zoom::SVGPanZoom,
     rpi::{send_request, use_ws},
 };
-use arptypes::{multitenant::RPIGameRequest, *};
+use arptypes::{protocol::GameRequest, *};
 
 const TILE_SIZE: f64 = 100.0; // our SVG units are just centimeters, and each tile represents 1 meter.
 const CORNER_RADIUS: f64 = 5.0;
@@ -92,7 +92,7 @@ pub fn SceneGrid(
                             on_tile_click: move |destination| async move {
                                 *MOVEMENT_OPTIONS.write() = None;
                                 let ws = use_ws();
-                                let request = RPIGameRequest::PlayerCommand {
+                                let request = GameRequest::PlayerCommand {
                                     command: PlayerCommand::PathCreature {
                                         creature_id,
                                         destination,
@@ -438,22 +438,22 @@ impl CreatureMenuAction {
         scene_id: SceneID,
         creature_id: CreatureID,
         destination: Point3,
-    ) -> RPIGameRequest {
+    ) -> GameRequest {
         match self {
-            CreatureMenuAction::PlayerWalk => RPIGameRequest::PlayerCommand {
+            CreatureMenuAction::PlayerWalk => GameRequest::PlayerCommand {
                 command: PlayerCommand::PathCreature {
                     creature_id,
                     destination,
                 },
             },
-            CreatureMenuAction::GMWalk => RPIGameRequest::GMCommand {
+            CreatureMenuAction::GMWalk => GameRequest::GMCommand {
                 command: Box::new(GMCommand::PathCreature {
                     scene_id,
                     creature_id,
                     destination,
                 }),
             },
-            CreatureMenuAction::Teleport => RPIGameRequest::GMCommand {
+            CreatureMenuAction::Teleport => GameRequest::GMCommand {
                 command: Box::new(GMCommand::SetCreaturePos {
                     scene_id,
                     creature_id,
@@ -472,7 +472,7 @@ impl CreatureMenuAction {
             CreatureMenuAction::PlayerWalk => {
                 // Request movement options from server
                 let ws = use_ws();
-                let request = RPIGameRequest::MovementOptions {
+                let request = GameRequest::MovementOptions {
                     scene_id,
                     creature_id,
                 };

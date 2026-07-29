@@ -2,7 +2,10 @@
 
 use std::rc::Rc;
 
-use arptypes::multitenant::{CopyToPreprodResult, GameID, GameMetadata, UserID};
+use arptypes::{
+    hosted::{CopyToPreprodResult, UserID},
+    protocol::{GameID, GameMetadata},
+};
 use serde::{Deserialize, Serialize};
 use worker::{Env, Error, State};
 use worker_sqlite_dump::{Dump, SqlOperation};

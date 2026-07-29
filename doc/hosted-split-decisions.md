@@ -88,3 +88,16 @@ that are expedient, uncertain, or likely to need revision do not disappear into 
   established.
 - **Revisit when:** LAN binding is tested for general use or a public-interface deployment is
   documented.
+
+## D008: Do not migrate the legacy TypeScript UI
+
+- **Status:** accepted
+- **Phase:** 1
+- **Decision:** Preserve `ui/` as a legacy hosted client but do not update its handwritten codecs or
+  request unions during Phases 1–4. The Dioxus UI is the supported client for the split.
+- **Reasoning:** The existing development command already labels this client `legacy-ui`, while the
+  split plan explicitly identifies the Dioxus UI as the reusable public UI. Maintaining a second
+  manually decoded protocol would add work to a client intended either for archival or movement to
+  `arpeggio-hosted` in Phase 5.
+- **Revisit when:** Phase 5 decides whether to archive the TypeScript UI or keep it buildable in the
+  hosted repository.

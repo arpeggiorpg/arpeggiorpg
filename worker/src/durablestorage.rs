@@ -13,7 +13,8 @@ use arpeggio::{
     types::{ChangedGame, Game, GameLog},
 };
 use arptypes::{
-    multitenant::{GameIndex, ImageType, InvitationID},
+    hosted::InvitationID,
+    protocol::{GameIndex, ImageType},
     GMCommand, ResourceRef,
 };
 

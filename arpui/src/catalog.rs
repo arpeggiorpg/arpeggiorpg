@@ -3,7 +3,7 @@ use std::collections::HashSet;
 use arptypes::{
     AABB, AbilityCreation, Action, ClassCreation, Collection, CollectionID, CollectionResources,
     CreatureCreation, CreatureEffect, CreatureTarget, Dice, Energy, GMCommand, Game,
-    NoteVisibility, ResourceRef, SceneCreation, SceneID, multitenant::RPIGameRequest, u32meter,
+    NoteVisibility, ResourceRef, SceneCreation, SceneID, protocol::GameRequest, u32meter,
 };
 use dioxus::prelude::*;
 
@@ -1268,7 +1268,7 @@ async fn send_catalog_command(
     command: GMCommand,
 ) -> anyhow::Result<()> {
     let result = send_request::<Result<Vec<arptypes::GameLog>, String>>(
-        RPIGameRequest::GMCommand {
+        GameRequest::GMCommand {
             command: Box::new(command),
         },
         ws,

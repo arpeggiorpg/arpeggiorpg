@@ -336,11 +336,11 @@ This provides production parity without making Wrangler part of the open-source 
 
 ### Phase 1: Establish boundaries inside the current repository
 
-- [ ] Split `multitenant.rs` into public protocol and hosted types.
-- [ ] Add typed RPC envelopes and refresh messages.
-- [ ] Separate core game requests from hosted requests.
-- [ ] Remove `UserID` from browser-facing game summaries.
-- [ ] Add protocol serialization and round-trip tests.
+- [x] Split `multitenant.rs` into public protocol and hosted types.
+- [x] Add typed RPC envelopes and refresh messages.
+- [x] Separate core game requests from hosted requests.
+- [x] Remove `UserID` from browser-facing game summaries.
+- [x] Add protocol serialization and round-trip tests.
 
 ### Phase 2: Make the Dioxus UI reusable
 

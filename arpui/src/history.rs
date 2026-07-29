@@ -1,6 +1,6 @@
 use arptypes::{
     CombatLog, CreatureID, CreatureLog, Game, GameLog, InventoryOwner, ResourceRef,
-    multitenant::{GameIndex, RPIGameRequest},
+    protocol::{GameIndex, GameRequest},
 };
 use dioxus::prelude::*;
 
@@ -27,7 +27,7 @@ pub fn HistoryPanel(game: Game) -> Element {
     let mut attempted_target = use_signal(|| None::<GameIndex>);
 
     let mut rollback_action = use_action(move |game_index: GameIndex| async move {
-        let _: Vec<GameLog> = send_request(RPIGameRequest::GMRollback { game_index }, ws).await?;
+        let _: Vec<GameLog> = send_request(GameRequest::GMRollback { game_index }, ws).await?;
         rollback_target.set(None);
         Ok::<(), anyhow::Error>(())
     });

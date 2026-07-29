@@ -1,6 +1,6 @@
 use anyhow::Context;
 use arp3d::{Creature3d, PickedObject, Scene3d, SceneCursor, SceneViewParams, TerrainTile3d};
-use arptypes::{CreatureID, GameLog, Point3, Scene, SceneID, multitenant::RPIGameRequest};
+use arptypes::{CreatureID, GameLog, Point3, Scene, SceneID, protocol::GameRequest};
 use dioxus::asset_resolver::read_asset_bytes;
 use dioxus::events::{TouchData, WheelData};
 use dioxus::prelude::*;
@@ -64,7 +64,7 @@ enum ClickResolution {
     KeepState,
     CloseMenu,
     OpenMenu(CreatureMenuState),
-    QueueRequest(RPIGameRequest),
+    QueueRequest(GameRequest),
 }
 
 #[derive(Clone, Copy)]
@@ -716,7 +716,7 @@ fn prepare_canvas_click(
     camera_yaw: f32,
     camera_top_down: bool,
     camera_pan: CameraPan,
-) -> Option<RPIGameRequest> {
+) -> Option<GameRequest> {
     if suppress_next_click() {
         suppress_next_click.set(false);
         return None;
@@ -1048,7 +1048,7 @@ fn CreatureMenuOverlay(
         async move {
             if action.requires_movement_options() {
                 let movement_options = send_request::<Vec<Point3>>(
-                    RPIGameRequest::MovementOptions {
+                    GameRequest::MovementOptions {
                         scene_id,
                         creature_id,
                     },

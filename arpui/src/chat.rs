@@ -1,6 +1,4 @@
-use arptypes::{
-    CreatureID, CreatureLog, GMCommand, GameLog, PlayerCommand, multitenant::RPIGameRequest,
-};
+use arptypes::{CreatureID, CreatureLog, GMCommand, GameLog, PlayerCommand, protocol::GameRequest};
 use dioxus::prelude::*;
 use tracing::warn;
 
@@ -222,12 +220,12 @@ fn chat_history_style(mode: &ChatMode) -> &'static str {
     }
 }
 
-fn chat_request(mode: &ChatMode, message: String) -> RPIGameRequest {
+fn chat_request(mode: &ChatMode, message: String) -> GameRequest {
     match mode {
-        ChatMode::Player => RPIGameRequest::PlayerCommand {
+        ChatMode::Player => GameRequest::PlayerCommand {
             command: PlayerCommand::ChatFromPlayer { message },
         },
-        ChatMode::GM => RPIGameRequest::GMCommand {
+        ChatMode::GM => GameRequest::GMCommand {
             command: Box::new(GMCommand::ChatFromGM { message }),
         },
     }

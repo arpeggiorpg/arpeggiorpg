@@ -1,6 +1,7 @@
 use arptypes::{
     Item, PlayerCommand, PlayerID, SerializedCreature, SerializedPlayerGame,
-    multitenant::{GameID, InvitationID, PlayerGameAndMetadata, RPIGameRequest, Role},
+    hosted::InvitationID,
+    protocol::{GameID, GameRequest, PlayerGameAndMetadata, Role},
 };
 use dioxus::prelude::*;
 
@@ -18,8 +19,9 @@ use crate::{
     },
     gfx::dioxus::Scene3dView,
     grid::{CreatureMenuAction, SceneGrid},
-    rpi::{self, Connector, InvitationCheck, send_request, use_ws},
+    rpi::{self, Connector, send_request, use_ws},
 };
+use arptypes::hosted::InvitationCheck;
 
 #[derive(Clone, Copy)]
 struct PlayerGameContext(Memo<SerializedPlayerGame>);
@@ -57,7 +59,7 @@ fn GameLoader(player_id: PlayerID) -> Element {
         async move {
             info!("fetching game state for player view");
             let response =
-                send_request::<PlayerGameAndMetadata>(RPIGameRequest::PlayerGetGame, ws).await?;
+                send_request::<PlayerGameAndMetadata>(GameRequest::PlayerGetGame, ws).await?;
             *GAME_SOURCE.write() = GameSource::Player {
                 player_id: player_id_for_load.clone(),
                 game: response.game.clone(),
@@ -308,7 +310,7 @@ fn Notes(player_id: PlayerID) -> Element {
                     }
                 };
 
-                let request = RPIGameRequest::PlayerCommand { command };
+                let request = GameRequest::PlayerCommand { command };
 
                 send_request::<()>(request, ws).await
             }
@@ -504,7 +506,7 @@ fn DropItemModal(
         let creature_id = creature.id.clone();
         let item_id = item.id.clone();
         move || async move {
-            let request = RPIGameRequest::PlayerCommand {
+            let request = GameRequest::PlayerCommand {
                 command: arptypes::PlayerCommand::DropItem {
                     creature_id,
                     item_id,
@@ -587,7 +589,7 @@ fn GiveItemModal(
                 return Ok(());
             };
             info!(?recipient_id, count = give_count(), "Async GIVING!");
-            let request = RPIGameRequest::PlayerCommand {
+            let request = GameRequest::PlayerCommand {
                 command: arptypes::PlayerCommand::GiveItem {
                     from_creature_id: giver_id,
                     to_creature_id: recipient_id,

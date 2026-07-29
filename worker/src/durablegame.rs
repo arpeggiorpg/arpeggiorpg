@@ -3,7 +3,7 @@ use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 use anyhow::anyhow;
 use arpeggio::types::PlayerID;
-use arptypes::multitenant::{GameID, GameMetadata, Role};
+use arptypes::protocol::{GameID, GameMetadata, Role};
 use futures_util::lock::Mutex;
 use serde_json::json;
 use tracing::{error, info};

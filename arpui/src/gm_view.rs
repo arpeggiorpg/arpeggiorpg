@@ -1,6 +1,7 @@
 use arptypes::{
     GMCommand, Game, GameLog, SceneID,
-    multitenant::{GameAndMetadata, GameID, InvitationID, RPIGameRequest, Role},
+    hosted::{HostedGameRequest, InvitationID},
+    protocol::{GameAndMetadata, GameID, GameRequest, Role},
 };
 use dioxus::prelude::*;
 use std::collections::HashSet;
@@ -67,7 +68,7 @@ fn GameLoader(game_id: GameID, initial_scene_path: Option<Vec<String>>) -> Eleme
     let ws = use_ws();
     let future: Resource<anyhow::Result<Game>> = use_resource(move || async move {
         info!("fetching game state for GM view");
-        let response = send_request::<GameAndMetadata>(RPIGameRequest::GMGetGame, ws).await?;
+        let response = send_request::<GameAndMetadata>(GameRequest::GMGetGame, ws).await?;
         let game = Game::from_serialized_game(response.game);
         *GAME_SOURCE.write() = GameSource::GM(game.clone());
         *GAME_LOGS.write() = response.logs;
@@ -327,7 +328,7 @@ fn PlayersTab(current_scene_id: Option<SceneID>) -> Element {
             let ws = ws;
             async move {
                 let result = send_request::<Result<Vec<GameLog>, String>>(
-                    RPIGameRequest::GMCommand {
+                    GameRequest::GMCommand {
                         command: Box::new(GMCommand::SetPlayerScene {
                             player_id,
                             scene_id,
@@ -527,7 +528,7 @@ fn GrantCreaturesModal(player_id: arptypes::PlayerID, on_close: EventHandler<()>
 
                 if !to_grant.is_empty() {
                     let result = send_request::<Result<Vec<GameLog>, String>>(
-                        RPIGameRequest::GMCommand {
+                        GameRequest::GMCommand {
                             command: Box::new(GMCommand::GiveCreaturesToPlayer {
                                 player_id: player_id.clone(),
                                 creature_ids: to_grant,
@@ -543,7 +544,7 @@ fn GrantCreaturesModal(player_id: arptypes::PlayerID, on_close: EventHandler<()>
 
                 if !to_remove.is_empty() {
                     let result = send_request::<Result<Vec<GameLog>, String>>(
-                        RPIGameRequest::GMCommand {
+                        GameRequest::GMCommand {
                             command: Box::new(GMCommand::RemoveCreaturesFromPlayer {
                                 player_id,
                                 creature_ids: to_remove,
@@ -720,7 +721,7 @@ fn Invitations(game_id: GameID) -> Element {
 
     // Load invitations on mount
     let _loader: Resource<()> = use_resource(move || async move {
-        match send_request::<Vec<InvitationID>>(RPIGameRequest::GMListInvitations, ws).await {
+        match send_request::<Vec<InvitationID>>(HostedGameRequest::GMListInvitations, ws).await {
             Ok(list) => {
                 invitations.set(Some(list));
             }
@@ -732,7 +733,8 @@ fn Invitations(game_id: GameID) -> Element {
     });
 
     let mut generate_action = use_action(move |_: ()| async move {
-        let new_id = send_request::<InvitationID>(RPIGameRequest::GMGenerateInvitation, ws).await?;
+        let new_id =
+            send_request::<InvitationID>(HostedGameRequest::GMGenerateInvitation, ws).await?;
         info!(?new_id, "Generated new invitation");
         let mut current = invitations().unwrap_or_default();
         current.push(new_id);
@@ -741,8 +743,11 @@ fn Invitations(game_id: GameID) -> Element {
     });
 
     let mut delete_action = use_action(move |invitation_id: InvitationID| async move {
-        send_request::<serde_json::Value>(RPIGameRequest::GMDeleteInvitation { invitation_id }, ws)
-            .await?;
+        send_request::<serde_json::Value>(
+            HostedGameRequest::GMDeleteInvitation { invitation_id },
+            ws,
+        )
+        .await?;
         info!(?invitation_id, "Deleted invitation");
         let current = invitations()
             .unwrap_or_default()

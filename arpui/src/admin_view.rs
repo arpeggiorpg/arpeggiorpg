@@ -1,6 +1,6 @@
 use std::collections::{HashMap, HashSet};
 
-use arptypes::multitenant::{CopyToPreprodResult, GameMetadata};
+use arptypes::{hosted::CopyToPreprodResult, protocol::GameMetadata};
 use dioxus::prelude::*;
 use serde::Deserialize;
 use tracing::info;

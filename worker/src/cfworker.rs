@@ -17,8 +17,9 @@ use crate::{
     restore::{DumpSource, RestoreFromSourceRequest},
     rust_error, storage,
 };
-use arptypes::multitenant::{
-    GameID, GameList, GameMetadata, GameProfile, InvitationCheck, Role, UserID,
+use arptypes::{
+    hosted::{GameList, GameSummary, InvitationCheck, UserID},
+    protocol::{GameID, GameMetadata, Role},
 };
 
 #[derive(Debug, Serialize)]
@@ -416,16 +417,11 @@ async fn list_games(_req: Request, env: Env, user_id: UserID) -> Result<Response
     let list = GameList {
         games: game_infos
             .into_iter()
-            .map(|r| {
-                (
-                    GameProfile {
-                        user_id: r.user_id,
-                        game_id: r.game_id,
-                        profile_name: r.profile_name,
-                        role: r.role,
-                    },
-                    GameMetadata { name: r.name },
-                )
+            .map(|r| GameSummary {
+                game_id: r.game_id,
+                profile_name: r.profile_name,
+                role: r.role,
+                metadata: GameMetadata { name: r.name },
             })
             .collect::<Vec<_>>(),
     };

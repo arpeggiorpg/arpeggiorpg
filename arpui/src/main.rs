@@ -4,7 +4,8 @@ use std::collections::VecDeque;
 
 use arptypes::{
     Game, GameLog, PlayerID, SerializedPlayerGame,
-    multitenant::{self, GameID, GameIndex, InvitationID, Role},
+    hosted::{GameList as HostedGameList, InvitationID},
+    protocol::{GameID, GameIndex, Role},
 };
 use dioxus::prelude::*;
 use js_sys::encode_uri_component;
@@ -270,19 +271,19 @@ fn GameListPage() -> Element {
 }
 
 #[component]
-fn GameList(list: multitenant::GameList) -> Element {
+fn GameList(list: HostedGameList) -> Element {
     let mut show_create_modal = use_signal(|| false);
 
     info!(create = ?show_create_modal(), "Showing create modal?");
     let gm_games_vec: Vec<_> = list
         .games
         .iter()
-        .filter(|(profile, _)| profile.role == Role::GM)
+        .filter(|summary| summary.role == Role::GM)
         .collect();
     let player_games_vec: Vec<_> = list
         .games
         .iter()
-        .filter(|(profile, _)| profile.role == Role::Player)
+        .filter(|summary| summary.role == Role::Player)
         .collect();
 
     rsx! {
@@ -314,17 +315,17 @@ fn GameList(list: multitenant::GameList) -> Element {
           } else {
             ul {
               class: "space-y-1",
-              for (profile, metadata) in &gm_games_vec {
+              for summary in &gm_games_vec {
                 li {
                   class: "px-3 py-2 rounded-md hover:bg-gray-100",
                   Link {
-                    to: Route::GMGamePage {id: profile.game_id},
+                    to: Route::GMGamePage {id: summary.game_id},
                     class: "text-blue-700 font-medium",
-                    "{metadata.name}"
+                    "{summary.metadata.name}"
                   }
                   span {
                     class: "text-sm text-gray-500 ml-4",
-                    "(as {profile.profile_name})"
+                    "(as {summary.profile_name})"
                   }
                 }
               }
@@ -347,17 +348,17 @@ fn GameList(list: multitenant::GameList) -> Element {
           } else {
             ul {
               class: "space-y-1",
-              for (profile, metadata) in &player_games_vec {
+              for summary in &player_games_vec {
                 li {
                   class: "px-3 py-2 rounded-md hover:bg-gray-100",
                   a {
-                    href: "/{profile.role.to_string().to_lowercase()}/{profile.game_id}/{profile.profile_name}",
+                    href: "/{summary.role.to_string().to_lowercase()}/{summary.game_id}/{summary.profile_name}",
                     class: "text-blue-700 font-medium",
-                    "{metadata.name}"
+                    "{summary.metadata.name}"
                   }
                   span {
                     class: "text-sm text-gray-500 ml-4",
-                    "(as {profile.profile_name})"
+                    "(as {summary.profile_name})"
                   }
                 }
               }
