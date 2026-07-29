@@ -6,4 +6,5 @@ pub mod creature;
 pub mod game;
 pub mod grid;
 pub mod scene;
+pub mod session;
 pub mod types;

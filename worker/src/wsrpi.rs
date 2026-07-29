@@ -8,14 +8,15 @@ use worker::{State, WebSocket};
 
 use arpeggio::{
     game::GameExt,
-    types::{serialize_player_game, ChangedGame, GMCommand, GameError, PlayerID, RPIGame},
+    session::{
+        DispatchAction, ImageOperation, SessionUser, dispatch_game_request, gm_refresh,
+        player_refresh,
+    },
+    types::{ChangedGame, GMCommand, GameError, PlayerID},
 };
 use arptypes::{
     hosted::HostedGameRequest,
-    protocol::{
-        GameAndMetadata, GameIndex, GameMetadata, GameRequest, GameUpdate, PlayerGameAndMetadata,
-        Role, RpcRequest, RpcResponse,
-    },
+    protocol::{GameIndex, GameMetadata, GameRequest, Role, RpcRequest, RpcResponse},
     Game, GameLog,
 };
 
@@ -130,86 +131,32 @@ impl GameSession {
 
     async fn handle_game_request(&self, request: GameRequest) -> anyhow::Result<serde_json::Value> {
         let game = self.game_storage.game();
-        use GameRequest::*;
-        match (self.ws_user.role, request) {
-            (Role::GM, GMGetGame) => {
-                let rpi_game = RPIGame(&game);
-                let result = GameAndMetadata {
-                    game: rpi_game.serialize_game()?,
-                    metadata: self.metadata.clone(),
-                    logs: self.game_storage.recent_logs()?,
-                };
-                Ok(serde_json::to_value(result)?)
+        let recent_logs = match &request {
+            GameRequest::GMGetGame | GameRequest::PlayerGetGame => {
+                self.game_storage.recent_logs()?
             }
-            (Role::Player, PlayerGetGame) => {
-                let player_game = serialize_player_game(&self.ws_user.player_id, &game)?;
-                let result = PlayerGameAndMetadata {
-                    game: player_game,
-                    metadata: self.metadata.clone(),
-                    logs: self.game_storage.recent_logs()?, // TODO: filter logs by player/scene relevance
-                };
-                Ok(serde_json::to_value(result)?)
-            }
-            (Role::Player, PlayerCommand { command }) => {
-                let changed_game =
-                    game.perform_player_command(self.ws_user.player_id.clone(), command);
-                self.change_game(changed_game).await
-            }
-            (Role::GM, GMCommand { command }) => {
-                let changed_game = game.perform_gm_command(*command);
-                self.change_game(changed_game).await
-            }
-            (Role::GM, GMRollback { game_index }) => {
+            _ => Default::default(),
+        };
+        let user = match self.ws_user.role {
+            Role::GM => SessionUser::gm(),
+            Role::Player => SessionUser::player(self.ws_user.player_id.clone()),
+        };
+        match dispatch_game_request(&game, &self.metadata, &recent_logs, &user, request)? {
+            DispatchAction::Respond(payload) => Ok(payload),
+            DispatchAction::Change(changed_game) => self.change_game(changed_game).await,
+            DispatchAction::Rollback(game_index) => {
                 let restored_game = self.game_storage.rollback(game_index).await?;
                 self.broadcast_refresh_game(&restored_game, &[])?;
                 Ok(serde_json::to_value(Vec::<GameLog>::new())?)
             }
-            (
-                _,
-                MovementOptions {
-                    scene_id,
-                    creature_id,
-                },
-            ) => {
-                let options = game.get_movement_options(scene_id, creature_id)?;
-                Ok(serde_json::to_value(options)?)
-            }
-            (_, CombatMovementOptions) => {
-                let options = game.get_combat()?.current_movement_options()?;
-                Ok(serde_json::to_value(options)?)
-            }
-            (
-                _,
-                TargetOptions {
-                    scene_id,
-                    creature_id,
-                    ability_id,
-                },
-            ) => {
-                let options = game.get_target_options(scene_id, creature_id, ability_id)?;
-                Ok(serde_json::to_value(options)?)
-            }
-            (
-                _,
-                PreviewVolumeTargets {
-                    scene_id,
-                    creature_id,
-                    ability_id,
-                    point,
-                },
-            ) => {
-                let scene = game.get_scene(scene_id)?;
-                let result = game.preview_volume_targets(scene, creature_id, ability_id, point)?;
-                Ok(serde_json::to_value(result)?)
-            }
-            (_, UploadImageFromURL { url, purpose }) => {
+            DispatchAction::Image(ImageOperation::UploadFromUrl { url, purpose }) => {
                 let url = self.image_service.upload_from_url(&url, purpose).await?;
                 self.game_storage.register_image(&url, purpose)?;
 
                 let response = json!({"image_url": url.to_string()});
                 Ok(serde_json::to_value(response)?)
             }
-            (_, RequestUploadImage { purpose }) => {
+            DispatchAction::Image(ImageOperation::RequestUpload { purpose }) => {
                 let pending_image = self.image_service.request_upload_image(purpose).await?;
                 self.game_storage
                     .register_image(&pending_image.final_url, purpose)?;
@@ -219,10 +166,6 @@ impl GameSession {
                 });
                 Ok(serde_json::to_value(response)?)
             }
-            (Role::GM, PlayerGetGame) => {
-                Err(anyhow!("GMs should use GMGetGame instead of PlayerGetGame"))
-            }
-            _ => Err(anyhow!("You can't run that command as that role.")),
         }
     }
 
@@ -270,17 +213,12 @@ impl GameSession {
         logs_with_indices: &[(GameIndex, GameLog)],
     ) -> anyhow::Result<()> {
         // Broadcast role-specific game data using hibernatable WebSocket API
-        let rpi_game = RPIGame(game);
-        let full_game = rpi_game.serialize_game()?;
+        let gm_message = gm_refresh(game, logs_with_indices)?;
 
         // Get GM WebSockets
         let gm_websockets = self.state.get_websockets_with_tag("role:GM");
         for ws in gm_websockets {
-            let message = GameUpdate::RefreshGame {
-                game: full_game.clone(),
-                logs: logs_with_indices.to_vec(),
-            };
-            if let Err(e) = self.send_to_websocket(&ws, &message) {
+            if let Err(e) = self.send_to_websocket(&ws, &gm_message) {
                 error!(event = "gm-broadcast-error", ?e);
             }
         }
@@ -292,11 +230,7 @@ impl GameSession {
             if let Some(player_id_str) = get_tag("player_id:", &self.state, &ws) {
                 let player_id = PlayerID(player_id_str);
 
-                if let Ok(player_game) = serialize_player_game(&player_id, game) {
-                    let message = GameUpdate::RefreshPlayerGame {
-                        game: player_game,
-                        logs: logs_with_indices.to_vec(),
-                    };
+                if let Ok(message) = player_refresh(game, &player_id, logs_with_indices) {
                     if let Err(e) = self.send_to_websocket(&ws, &message) {
                         error!(event = "player-broadcast-error", ?e, player_id = ?player_id);
                     }

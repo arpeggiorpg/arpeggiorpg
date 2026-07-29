@@ -101,3 +101,17 @@ that are expedient, uncertain, or likely to need revision do not disappear into 
   shipped.
 - **Revisit when:** Phase 5 decides whether to archive the TypeScript UI in either repository or
   remove it.
+
+## D009: Keep heterogeneous response serialization in the shared dispatcher
+
+- **Status:** provisional
+- **Phase:** 3
+- **Decision:** The shared dispatcher accepts a typed `GameRequest` and returns a small typed action
+  enum, but immediate query results are represented as `serde_json::Value`. Persistence changes,
+  rollback requests, and image operations remain distinct typed action variants.
+- **Reasoning:** Each request has a different response type, while the existing RPC protocol
+  correlates those responses dynamically and deserializes them into a type selected by the caller.
+  Keeping JSON only at that response boundary avoids a large duplicate response enum while still
+  preventing platform adapters from reimplementing authorization and game behavior.
+- **Revisit when:** The protocol adopts request/response type pairing through traits or generated
+  bindings, or a versioned response enum becomes useful for compatibility guarantees.

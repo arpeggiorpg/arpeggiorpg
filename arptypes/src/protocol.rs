@@ -51,7 +51,9 @@ pub enum Role {
     Player,
 }
 
-#[derive(Clone, Copy, Serialize, Deserialize, Debug, TS, strum::EnumString, strum::Display)]
+#[derive(
+    Clone, Copy, Eq, PartialEq, Serialize, Deserialize, Debug, TS, strum::EnumString, strum::Display,
+)]
 #[serde(tag = "t")]
 pub enum ImageType {
     BackgroundImage,

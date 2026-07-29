@@ -354,10 +354,10 @@ This provides production parity without making Wrangler part of the open-source 
 
 ### Phase 3: Extract shared game-session behavior
 
-- [ ] Move the platform-neutral request dispatcher out of the Worker.
-- [ ] Keep persistence and broadcasting behind the Worker adapter.
-- [ ] Verify that the existing Worker still handles the shared protocol.
-- [ ] Add end-to-end protocol tests covering one GM and at least two players.
+- [x] Move the platform-neutral request dispatcher out of the Worker.
+- [x] Keep persistence and broadcasting behind the Worker adapter.
+- [x] Verify that the existing Worker still handles the shared protocol.
+- [x] Add end-to-end protocol tests covering one GM and at least two players.
 
 ### Phase 4: Add the native server
 
