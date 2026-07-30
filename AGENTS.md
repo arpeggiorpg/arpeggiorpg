@@ -9,7 +9,7 @@ arpeggiorpg/
 ├── arptypes/           # Shared type definitions and commands
 ├── arpeggio/          # Core game logic and state management
 ├── arpui/             # Dioxus 0.7 frontend (WASM)
-├── worker/            # Cloudflare Worker backend
+├── arpeggio-server/   # Native Axum server
 ├── foldertree/        # Campaign folder management
 ├── indexed/           # Custom indexed collections
 └── nonempty/          # Non-empty collections
@@ -18,7 +18,7 @@ arpeggiorpg/
 ## Key Technologies
 
 - **Frontend**: Dioxus 0.7 (Rust WASM framework)
-- **Backend**: Cloudflare Workers (Rust)
+- **Backend**: Axum with SQLite-backed persistence
 - **Build Target**: `wasm32-unknown-unknown` (critical for compilation)
 - **Styling**: Tailwind CSS 3 (note: uses `/10` opacity syntax, not `bg-opacity-*`)
 - **Communication**: WebSocket via RPI (Arpeggio RPC Interface)

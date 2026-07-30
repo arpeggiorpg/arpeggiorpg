@@ -1,5 +1,4 @@
 pub mod command;
-pub mod hosted;
 pub mod log;
 pub mod protocol;
 pub mod types;

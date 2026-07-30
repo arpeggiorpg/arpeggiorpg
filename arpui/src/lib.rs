@@ -5,8 +5,6 @@ use std::collections::VecDeque;
 use arptypes::{Game, GameLog, PlayerID, SerializedPlayerGame, protocol::GameIndex};
 use dioxus::prelude::*;
 
-#[cfg(feature = "hosted")]
-pub mod admin_view;
 pub mod catalog;
 pub mod chat;
 pub mod components;
@@ -14,12 +12,6 @@ pub mod gfx;
 pub mod gm_view;
 pub mod grid;
 pub mod history;
-#[cfg(feature = "hosted")]
-pub mod hosted_app;
-#[cfg(feature = "hosted")]
-pub mod hosted_rpi;
-#[cfg(feature = "hosted")]
-pub mod hosted_views;
 pub mod player_view;
 pub mod rpi;
 pub mod standalone_app;

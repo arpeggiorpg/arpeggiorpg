@@ -11,7 +11,7 @@ combat map that makes it easy for players and the Game Master to use their abili
 
 # License
 
-MIT-licensed: http://opensource.org/licenses/MIT
+ArpeggioRPG is available under the [MIT License](LICENSE).
 
 # Building and running the standalone game
 
@@ -34,18 +34,9 @@ The UI reads its independently configured server URL from
 Run the public Rust tests and WASM checks with:
 
 ```shell
-cargo test
-cargo check --workspace --exclude arpeggio-server --target wasm32-unknown-unknown
-(cd arpui && cargo check --target wasm32-unknown-unknown --bin arpui)
+just test
+just check
 ```
 
-## Hosted development
-
-The authenticated Cloudflare runtime remains available while the hosted repository split is in
-progress. Create `worker/.dev.vars` with the required Google and frontend configuration, initialize
-the local D1 schema with `just create-schema-local`, and then run:
-
-```shell
-just worker
-just ui
-```
+The authenticated hosted service, account system, and deployment configuration live in the
+separate private `arpeggio-hosted` repository. This repository has no hosted-service dependency.

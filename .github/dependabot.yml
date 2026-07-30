@@ -23,21 +23,3 @@ updates:
         patterns:
           - "*"
     open-pull-requests-limit: 5
-
-  # UI npm dependencies
-  - package-ecosystem: "npm"
-    directory: "/ui"
-    schedule:
-      interval: "weekly"
-      day: "monday"
-    groups:
-      ui:   
-        patterns:
-          - "*"
-    open-pull-requests-limit: 5
-    ignore:
-      # Ignore major version updates for React to avoid breaking changes
-      - dependency-name: "react"
-        update-types: ["version-update:semver-major"]
-      - dependency-name: "react-dom"
-        update-types: ["version-update:semver-major"]

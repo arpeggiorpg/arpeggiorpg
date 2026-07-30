@@ -11,3 +11,7 @@ mprocs.yaml
 assets/*/*.png
 .DS_Store
 arpeggio.sqlite3
+
+# Local artifacts left behind by the retired hosted and legacy UI directories.
+/worker/
+/ui/

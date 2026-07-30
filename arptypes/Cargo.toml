@@ -21,7 +21,7 @@ strum.workspace = true
 thiserror.workspace = true
 ts-rs = { version = "7.0.0", features = ["serde-compat", "uuid-impl"] }
 uom.workspace = true
-uuid = { workspace = true, features = ["v4", "serde"] }
+uuid = { workspace = true, features = ["js", "v4", "serde"] }
 
 [dev-dependencies]
 serde_json.workspace = true

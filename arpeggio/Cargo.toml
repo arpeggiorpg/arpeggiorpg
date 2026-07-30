@@ -16,6 +16,7 @@ serde_yaml = "0.8"
 arptypes = { path = "../arptypes", version = "*" }
 bresenham = "0.1.1"
 derive_more.workspace = true
+getrandom = { workspace = true, features = ["js"] }
 indexed = { version = "*", path = "../indexed", features = ["serde"] }
 maplit = "1.0.2"
 ncollide3d = "0.33"
