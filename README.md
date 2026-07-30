@@ -31,7 +31,7 @@ The UI reads its independently configured server URL from
 `arpui/index.standalone.html`. The server stores the game and uploaded images beneath
 `./arpeggio-data` and binds to loopback by default.
 
-Run the public Rust tests and WASM checks with:
+Run the Rust tests and WASM checks with:
 
 ```shell
 just test
