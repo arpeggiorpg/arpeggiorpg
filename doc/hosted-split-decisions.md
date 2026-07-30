@@ -131,7 +131,7 @@ that are expedient, uncertain, or likely to need revision do not disappear into 
 
 ## D011: Pin the public repository as a hosted submodule
 
-- **Status:** provisional
+- **Status:** superseded by D012
 - **Phase:** 5
 - **Decision:** `arpeggio-hosted` contains the public `arpeggiorpg` repository as a submodule at
   `arpeggiorpg/`. Hosted crates use path dependencies into that pinned checkout. Hosted-only wire
@@ -146,3 +146,18 @@ that are expedient, uncertain, or likely to need revision do not disappear into 
   submodule updates becomes more expensive than consuming tagged Git or registry dependencies. The
   local absolute submodule URL must be replaced with the canonical public remote before the hosted
   repository is used from another machine.
+
+## D012: Import the public repository as a Git subtree
+
+- **Status:** accepted
+- **Phase:** 5
+- **Decision:** `arpeggio-hosted` contains the public `arpeggiorpg` repository as a non-squashed Git
+  subtree at `arpeggiorpg/`. Hosted crates continue to use path dependencies into that directory.
+  Changes can be synchronized in either direction with `git subtree pull` and `git subtree push`.
+- **Reasoning:** A subtree makes a hosted checkout complete without separate initialization and
+  lets hosted and public changes be committed together when that is useful. Retaining the public
+  commits rather than squashing them preserves ancestry for bidirectional synchronization and keeps
+  the public project history visible.
+- **Revisit when:** The public crates have stable published versions, or duplicating the public
+  history in the private repository becomes more expensive than consuming tagged Git or registry
+  dependencies.
