@@ -785,7 +785,7 @@ dependencies = [
 [[package]]
 name = "dioxus-attributes"
 version = "0.1.0"
-source = "git+https://github.com/DioxusLabs/components#4acbf53dd86b1b3dc8cd7e409002bf922f37b4e1"
+source = "git+https://github.com/DioxusLabs/components?rev=4acbf53dd86b1b3dc8cd7e409002bf922f37b4e1#4acbf53dd86b1b3dc8cd7e409002bf922f37b4e1"
 dependencies = [
  "dioxus-rsx",
  "proc-macro2",
@@ -1099,7 +1099,7 @@ dependencies = [
 [[package]]
 name = "dioxus-primitives"
 version = "0.0.1"
-source = "git+https://github.com/DioxusLabs/components#4acbf53dd86b1b3dc8cd7e409002bf922f37b4e1"
+source = "git+https://github.com/DioxusLabs/components?rev=4acbf53dd86b1b3dc8cd7e409002bf922f37b4e1#4acbf53dd86b1b3dc8cd7e409002bf922f37b4e1"
 dependencies = [
  "dioxus",
  "dioxus-attributes",
@@ -4095,6 +4095,7 @@ dependencies = [
  "getrandom 0.2.14",
  "serde",
  "sha1_smol",
+ "wasm-bindgen",
 ]
 
 [[package]]
