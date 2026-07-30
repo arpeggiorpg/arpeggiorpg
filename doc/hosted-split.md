@@ -2,8 +2,10 @@
 
 ## Status
 
-In progress. Implementation work covers Phases 1 through 4 before the physical repository split.
-Judgment calls and provisional implementation decisions are recorded in
+Phase 5 is complete in the local repositories. `arpeggiorpg` is the standalone public repository,
+and `arpeggio-hosted` contains the proprietary service with `arpeggiorpg` pinned as a submodule.
+No repositories have been pushed or deployed as part of the split. Judgment calls and provisional
+implementation decisions are recorded in
 [`hosted-split-decisions.md`](hosted-split-decisions.md).
 
 ## Core decision
@@ -373,13 +375,13 @@ This provides production parity without making Wrangler part of the open-source 
 
 ### Phase 5: Split repositories
 
-- [ ] Create `arpeggio` from the refactored public crates, UI, and native server.
-- [ ] Create `arpeggio-hosted` from the Worker, hosted UI shell, hosted storage, and deployment
+- [x] Create `arpeggio` from the refactored public crates, UI, and native server.
+- [x] Create `arpeggio-hosted` from the Worker, hosted UI shell, hosted storage, and deployment
   configuration.
-- [ ] Point `arpeggio-hosted` at a pinned public revision.
-- [ ] Give each repository an explicit license.
-- [ ] Update developer documentation and commands in both repositories.
-- [ ] Verify fresh checkouts can run their documented workflows independently.
+- [x] Point `arpeggio-hosted` at a pinned public revision.
+- [x] Give each repository an explicit license.
+- [x] Update developer documentation and commands in both repositories.
+- [x] Verify fresh checkouts can run their documented workflows independently.
 
 ### Phase 6: Data portability
 

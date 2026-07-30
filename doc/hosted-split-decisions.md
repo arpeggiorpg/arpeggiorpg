@@ -128,3 +128,21 @@ that are expedient, uncertain, or likely to need revision do not disappear into 
   already intentionally unauthenticated and loopback-only by default.
 - **Revisit when:** Standalone authentication or public-network deployment requires expiring upload
   capabilities, or image processing needs a richer metadata schema.
+
+## D011: Pin the public repository as a hosted submodule
+
+- **Status:** provisional
+- **Phase:** 5
+- **Decision:** `arpeggio-hosted` contains the public `arpeggiorpg` repository as a submodule at
+  `arpeggiorpg/`. Hosted crates use path dependencies into that pinned checkout. Hosted-only wire
+  types live in the private `arpeggio-hosted-types` crate, and the hosted Dioxus application imports
+  reusable game views from the public `arpui` crate. The deprecated TypeScript/React UI is retained
+  in the private repository as reference material only.
+- **Reasoning:** A submodule gives every hosted commit one explicit public-code revision while
+  keeping local development and atomic cross-repository testing straightforward. It also avoids
+  publishing the public crates before the split has settled. Keeping hosted identity types in a
+  separate private crate preserves the one-way dependency boundary.
+- **Revisit when:** The public crates have stable published versions, or maintaining coordinated
+  submodule updates becomes more expensive than consuming tagged Git or registry dependencies. The
+  local absolute submodule URL must be replaced with the canonical public remote before the hosted
+  repository is used from another machine.
