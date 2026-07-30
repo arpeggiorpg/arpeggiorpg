@@ -152,8 +152,10 @@ server is running on `localhost` or on the same origin.
 
 The initial standalone navigation model is one game per configured server:
 
-- `/` opens the GM view;
-- a `+ Player` button prompts for a player name;
+- `/` lists the registered players, links each one to `/Player/{name}`, provides a `+ Player`
+  action, and links to the GM view;
+- `/GM` opens the GM view;
+- the home page's `+ Player` button prompts for a player name;
 - confirming the dialog registers that player in the game;
 - the UI then navigates to `/Player/{name}`;
 - `/Player/{name}` opens `PlayerView` for that player.
@@ -185,7 +187,8 @@ The public UI library owns:
 The standalone public application owns:
 
 - the configured server URL;
-- the GM route;
+- the player-list home route;
+- the `/GM` route;
 - the `+ Player` flow;
 - the `/Player/{name}` route.
 
@@ -348,7 +351,7 @@ This provides production parity without making Wrangler part of the open-source 
 - [x] Move the hosted game list, invitation acceptance, and admin page into that shell.
 - [x] Make game views independent of the hosted route enum.
 - [x] Make the WebSocket connector accept connection information from the application shell.
-- [x] Add the standalone `/` GM route.
+- [x] Add the standalone `/` player-list route and `/GM` GM route.
 - [x] Add the `+ Player` dialog and player-registration action.
 - [x] Add the `/Player/{name}` route and direct-load behavior.
 

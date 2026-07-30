@@ -26,8 +26,8 @@ that are expedient, uncertain, or likely to need revision do not disappear into 
 
 - **Status:** accepted
 - **Phase:** 2
-- **Decision:** The standalone UI uses `/` for the GM and `/Player/{name}` for players. The native
-  server owns exactly one game.
+- **Decision:** The standalone UI uses `/` for a directory of players, `/GM` for the GM, and
+  `/Player/{name}` for players. The native server owns exactly one game.
 - **Reasoning:** The agreed route contains no game ID and the standalone experience deliberately
   excludes the hosted account-level game list. A single game also maps cleanly to the current
   Durable Object execution model.
@@ -38,8 +38,8 @@ that are expedient, uncertain, or likely to need revision do not disappear into 
 
 - **Status:** provisional
 - **Phase:** 2
-- **Decision:** Only the GM's `+ Player` action registers a player. Opening `/Player/{name}` for an
-  unknown player produces a clear not-found error.
+- **Decision:** Only the explicit `+ Player` action on the home page registers a player. Opening
+  `/Player/{name}` for an unknown player produces a clear not-found error.
 - **Reasoning:** Implicit creation on a GET-like navigation makes typos mutate game state and lets
   any visitor create arbitrary players. The explicit button is the flow requested in the plan.
 - **Revisit when:** Usability testing shows that shareable player URLs need a separate join flow.

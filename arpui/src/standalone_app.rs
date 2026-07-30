@@ -1,7 +1,10 @@
-use arptypes::{GMCommand, GameLog, PlayerID, protocol::GameRequest};
+use arptypes::{
+    GMCommand, Game, GameLog, PlayerID,
+    protocol::{GameAndMetadata, GameRequest},
+};
 use dioxus::prelude::*;
 use js_sys::encode_uri_component;
-use tracing::info;
+use tracing::{error, info};
 
 use crate::{
     components::{
@@ -10,15 +13,17 @@ use crate::{
     },
     gm_view::GMGameView,
     player_view::PlayerGameView,
-    rpi::{self, send_request, use_ws},
+    rpi::{self, Connector, send_request, use_ws},
 };
 
 #[derive(Clone, Routable, Debug, PartialEq)]
 #[rustfmt::skip]
 enum Route {
     #[route("/")]
+    HomePage {},
+    #[route("/GM")]
     GMPage {},
-    #[route("/scenes/:..scene_path")]
+    #[route("/GM/scenes/:..scene_path")]
     GMScenePage { scene_path: Vec<String> },
     #[route("/Player/:player_id")]
     PlayerPage { player_id: PlayerID },
@@ -34,6 +39,109 @@ pub fn App() -> Element {
 
 fn standalone_websocket_url(path: &str) -> anyhow::Result<String> {
     Ok(format!("{}/ws/{path}", rpi::websocket_base_url()?))
+}
+
+#[component]
+fn HomePage() -> Element {
+    let websocket_url = match standalone_websocket_url("GM") {
+        Ok(url) => url,
+        Err(error) => return rsx! { ConnectionConfigurationError { error: error.to_string() } },
+    };
+
+    rsx! {
+        Connector {
+            websocket_url,
+            player_id: None,
+            PlayerDirectory {}
+        }
+    }
+}
+
+#[component]
+fn PlayerDirectory() -> Element {
+    let ws = use_ws();
+    let game = use_resource(move || async move {
+        let response = send_request::<GameAndMetadata>(GameRequest::GMGetGame, ws).await?;
+        Ok::<Game, anyhow::Error>(Game::from_serialized_game(response.game))
+    });
+
+    rsx! {
+        main {
+            class: "mx-auto flex min-h-screen w-full max-w-2xl flex-col justify-center px-6 py-12",
+            h1 {
+                class: "mb-8 text-3xl font-bold text-gray-900",
+                "ArpeggioRPG"
+            }
+            section {
+                class: "rounded-lg border border-gray-200 bg-white p-6 shadow-sm",
+                div {
+                    class: "mb-5 flex items-center justify-between gap-4",
+                    h2 {
+                        class: "text-xl font-semibold text-gray-800",
+                        "Players"
+                    }
+                    div {
+                        class: "flex items-center gap-3",
+                        AddPlayerButton {}
+                        Link {
+                            to: Route::GMPage {},
+                            class: "text-sm font-medium text-blue-700 hover:text-blue-900 hover:underline",
+                            "GM View"
+                        }
+                    }
+                }
+                match &*game.read() {
+                    Some(Ok(game)) => {
+                        let mut player_ids: Vec<_> =
+                            game.players.iter().map(|player| player.player_id.clone()).collect();
+                        player_ids.sort_by(|a, b| a.0.cmp(&b.0));
+
+                        if player_ids.is_empty() {
+                            rsx! {
+                                p {
+                                    class: "text-sm italic text-gray-500",
+                                    "No registered players yet."
+                                }
+                            }
+                        } else {
+                            rsx! {
+                                ul {
+                                    class: "divide-y divide-gray-200",
+                                    for player_id in player_ids {
+                                        li {
+                                            key: "{player_id}",
+                                            Link {
+                                                to: Route::PlayerPage {
+                                                    player_id: player_id.clone(),
+                                                },
+                                                class: "block py-3 text-blue-700 hover:text-blue-900 hover:underline",
+                                                "{player_id}"
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    Some(Err(error)) => {
+                        error!(?error, "Standalone home page failed to load game state");
+                        rsx! {
+                            p {
+                                class: "text-sm text-red-600",
+                                "Unable to load players."
+                            }
+                        }
+                    }
+                    None => rsx! {
+                        p {
+                            class: "text-sm text-gray-500",
+                            "Loading players..."
+                        }
+                    },
+                }
+            }
+        }
+    }
 }
 
 #[component]
@@ -55,7 +163,6 @@ fn GMPage(#[props(default)] scene_path: Option<Vec<String>>) -> Element {
                     navigator.push(Route::GMPage {});
                 }
             },
-            toolbar: rsx! { AddPlayerButton {} },
         }
     }
 }
