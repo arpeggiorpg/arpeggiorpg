@@ -32,7 +32,7 @@ enum Route {
 pub fn App() -> Element {
     rsx! {
         document::Stylesheet { href: asset!("/assets/dx-components-theme.css") }
-        document::Stylesheet { href: asset!("/assets/tailwind.css") }
+        document::Stylesheet { href: "/assets/tailwind.css" }
         Router::<Route> {}
     }
 }
