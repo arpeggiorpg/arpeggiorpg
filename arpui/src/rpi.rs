@@ -2,10 +2,12 @@ use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 use dioxus::prelude::*;
 use futures::channel::oneshot::{self, Sender};
-use futures_util::{SinkExt, TryStreamExt, stream::StreamExt};
+use futures_util::{
+    SinkExt,
+    stream::{self, StreamExt},
+};
 use reqwest_websocket::{Message, RequestBuilderExt, WebSocket};
 use tracing::info;
-use wasm_bindgen_futures::spawn_local;
 
 use crate::{GAME_LOGS, GAME_SOURCE, GameSource};
 use arptypes::{
@@ -49,13 +51,12 @@ pub fn Connector(
 ) -> Element {
     // let connection_count = use_signal(|| 0);
     let mut error = use_signal(|| None);
-    let _coro = use_coroutine(move |mut rx: UnboundedReceiver<UIRequest>| {
+    let _coro = use_coroutine(move |rx: UnboundedReceiver<UIRequest>| {
         let player_id = player_id.clone();
         let websocket_url = websocket_url.clone();
         async move {
-            let response_handlers: ResponseHandlers = HashMap::new();
-            let response_handlers = Rc::new(RefCell::new(response_handlers));
-            let websocket = match connect_coroutine(websocket_url.clone()).await {
+            let response_handlers = Rc::new(RefCell::new(ResponseHandlers::new()));
+            let websocket = match connect_coroutine(websocket_url).await {
                 Ok(ws) => ws,
                 Err(e) => {
                     error.set(Some(e.to_string()));
@@ -63,33 +64,16 @@ pub fn Connector(
                 }
             };
 
-            let (mut websocket_tx, websocket_rx) = websocket.split();
-            let receiver_response_handlers = response_handlers.clone();
-            spawn_local(async move {
-                let result =
-                    ws_receiver(websocket_rx, receiver_response_handlers, player_id.clone()).await;
-                match result {
-                    Ok(r) => info!(?r, "ws_receiver completed"),
-                    Err(error) => error!(?error, "ws_receiver error"),
+            match run_connector(websocket, rx, player_id, response_handlers.clone()).await {
+                Ok(()) => {
+                    fail_pending_requests(&response_handlers, "WebSocket connector stopped");
                 }
-                info!("Websocket is now dead.");
-            });
-
-            while let Some(ui_req) = rx.next().await {
-                let request_id = uuid::Uuid::new_v4();
-                let request = RpcRequest {
-                    id: request_id.to_string(),
-                    request: ui_req.game_request,
-                };
-                let cmd_json = serde_json::to_string(&request)
-                    .expect("must be able to serialize RPC requests");
-                if let Some(callback) = ui_req.callback {
-                    response_handlers.borrow_mut().insert(request_id, callback);
+                Err(connection_error) => {
+                    error!(?connection_error, "WebSocket connector failed");
+                    let message = connection_error.to_string();
+                    fail_pending_requests(&response_handlers, &message);
+                    error.set(Some(message));
                 }
-                websocket_tx
-                    .send(Message::Text(cmd_json))
-                    .await
-                    .expect("Couldn't send command to websocket");
             }
         }
     });
@@ -100,39 +84,108 @@ pub fn Connector(
     }
 }
 
-async fn ws_receiver(
-    mut websocket_rx: futures::stream::SplitStream<WebSocket>,
-    receiver_response_handlers: Rc<RefCell<ResponseHandlers>>,
+fn fail_pending_requests(response_handlers: &Rc<RefCell<ResponseHandlers>>, message: &str) {
+    let pending = std::mem::take(&mut *response_handlers.borrow_mut());
+    for (_, handler) in pending {
+        let _ = handler.send(Err(anyhow::anyhow!(message.to_string())));
+    }
+}
+
+enum ConnectorEvent {
+    WebSocketMessage(Result<Message, reqwest_websocket::Error>),
+    WebSocketClosed,
+    UIRequest(UIRequest),
+    UIClosed,
+}
+
+async fn run_connector(
+    websocket: WebSocket,
+    rx: UnboundedReceiver<UIRequest>,
     player_id: Option<arptypes::PlayerID>,
+    response_handlers: Rc<RefCell<ResponseHandlers>>,
 ) -> anyhow::Result<()> {
-    while let Some(message) = websocket_rx.try_next().await? {
-        match message {
-            Message::Text(text) => {
-                let json: serde_json::Value = serde_json::from_str(&text)?;
-                if json.get("id").is_some() {
-                    let response: RpcResponse<serde_json::Value> =
-                        serde_json::from_value(json.clone())?;
-                    let (id, result) = match response {
-                        RpcResponse::Success { id, payload } => (id, Ok(payload)),
-                        RpcResponse::Error { id, error } => (id, Err(anyhow::anyhow!(error))),
-                    };
-                    let id: uuid::Uuid = id.parse()?;
-                    if let Some(handler) = receiver_response_handlers.borrow_mut().remove(&id) {
-                        if let Err(response) = handler.send(result) {
-                            error!(?id, ?response, "Response handler disappeared");
-                        }
-                    } else {
-                        warn!(?id, ?json, "Got result for unexpected ID");
-                    }
-                } else {
-                    let update: GameUpdate = serde_json::from_value(json)?;
-                    handle_unsolicited(update, player_id.clone())?;
-                }
+    let (mut websocket_tx, websocket_rx) = websocket.split();
+    let websocket_events = websocket_rx
+        .map(ConnectorEvent::WebSocketMessage)
+        .chain(stream::iter([ConnectorEvent::WebSocketClosed]));
+    let ui_events = rx
+        .map(ConnectorEvent::UIRequest)
+        .chain(stream::iter([ConnectorEvent::UIClosed]));
+    let events = stream::select(websocket_events, ui_events);
+    futures::pin_mut!(events);
+
+    while let Some(event) = events.next().await {
+        match event {
+            ConnectorEvent::WebSocketMessage(Ok(message)) => {
+                handle_websocket_message(message, &response_handlers, &player_id)?;
             }
-            Message::Binary(vecu8) => info!(?vecu8, "WS Binary Message"),
+            ConnectorEvent::WebSocketMessage(Err(websocket_error)) => {
+                return Err(anyhow::anyhow!(websocket_error));
+            }
+            ConnectorEvent::WebSocketClosed => {
+                return Err(anyhow::anyhow!("WebSocket connection closed"));
+            }
+            ConnectorEvent::UIRequest(ui_request) => {
+                send_ui_request(&mut websocket_tx, &response_handlers, ui_request).await?;
+            }
+            ConnectorEvent::UIClosed => return Ok(()),
         }
     }
+
     Ok(())
+}
+
+fn handle_websocket_message(
+    message: Message,
+    response_handlers: &Rc<RefCell<ResponseHandlers>>,
+    player_id: &Option<arptypes::PlayerID>,
+) -> anyhow::Result<()> {
+    match message {
+        Message::Text(text) => {
+            let json: serde_json::Value = serde_json::from_str(&text)?;
+            if json.get("id").is_some() {
+                let response: RpcResponse<serde_json::Value> =
+                    serde_json::from_value(json.clone())?;
+                let (id, result) = match response {
+                    RpcResponse::Success { id, payload } => (id, Ok(payload)),
+                    RpcResponse::Error { id, error } => (id, Err(anyhow::anyhow!(error))),
+                };
+                let id: uuid::Uuid = id.parse()?;
+                if let Some(handler) = response_handlers.borrow_mut().remove(&id) {
+                    if let Err(response) = handler.send(result) {
+                        error!(?id, ?response, "Response handler disappeared");
+                    }
+                } else {
+                    warn!(?id, ?json, "Got result for unexpected ID");
+                }
+            } else {
+                let update: GameUpdate = serde_json::from_value(json)?;
+                handle_unsolicited(update, player_id.clone())?;
+            }
+        }
+        Message::Binary(vecu8) => info!(?vecu8, "WS Binary Message"),
+    }
+    Ok(())
+}
+
+async fn send_ui_request(
+    websocket_tx: &mut futures::stream::SplitSink<WebSocket, Message>,
+    response_handlers: &Rc<RefCell<ResponseHandlers>>,
+    ui_request: UIRequest,
+) -> anyhow::Result<()> {
+    let request_id = uuid::Uuid::new_v4();
+    let request = RpcRequest {
+        id: request_id.to_string(),
+        request: ui_request.game_request,
+    };
+    let message = serde_json::to_string(&request)?;
+    if let Some(callback) = ui_request.callback {
+        response_handlers.borrow_mut().insert(request_id, callback);
+    }
+    websocket_tx
+        .send(Message::Text(message))
+        .await
+        .map_err(|error| anyhow::anyhow!("WebSocket send failed: {error}"))
 }
 
 fn handle_unsolicited(
@@ -188,4 +241,26 @@ pub async fn send_request<T: serde::de::DeserializeOwned>(
     coro.send(ui_req);
     let response = receiver.await??;
     Ok(serde_json::from_value(response)?)
+}
+
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn failing_pending_requests_notifies_waiter_and_clears_handler() {
+        let response_handlers = Rc::new(RefCell::new(ResponseHandlers::new()));
+        let (sender, receiver) = oneshot::channel();
+        response_handlers
+            .borrow_mut()
+            .insert(uuid::Uuid::new_v4(), sender);
+
+        fail_pending_requests(&response_handlers, "connection closed");
+
+        assert!(response_handlers.borrow().is_empty());
+        let result = futures::executor::block_on(receiver).expect("callback must be notified");
+        assert_eq!(result.unwrap_err().to_string(), "connection closed");
+    }
 }
