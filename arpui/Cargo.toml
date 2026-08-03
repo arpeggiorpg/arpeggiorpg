@@ -16,8 +16,8 @@ futures-util = { version = "*" }
 # need to enable the "js" feature. Since arpui is not a workspace member, pin the compatible
 # version here as well.
 getrandom = { version = "0.2.9", features = ["js"] }
-reqwest = { version = "0.12.3", features = ["json"] }
-reqwest-websocket = { version = "0.3" }
+reqwest = { version = "0.13.4", features = ["json"] }
+reqwest-websocket = { version = "0.6" }
 serde = { version = "*" }
 serde_json = { version = "*" }
 tracing = "0.1.41"
