@@ -5,27 +5,27 @@ mod storage;
 use std::{path::PathBuf, sync::Arc};
 
 use actor::{GameActor, GameChanged};
-use arpeggio::session::{SessionUser, gm_refresh, player_refresh};
+use arpeggio::session::{gm_refresh, player_refresh, SessionUser};
 use arptypes::{
-    PlayerID,
     protocol::{GameRequest, RpcRequest, RpcResponse},
+    PlayerID,
 };
 use axum::{
-    Json, Router,
     body::Bytes,
     extract::{
-        DefaultBodyLimit, Path, State,
         ws::{Message, WebSocket, WebSocketUpgrade},
+        DefaultBodyLimit, Path, State,
     },
     http::{
-        HeaderMap, HeaderValue, Method, StatusCode,
         header::{CONTENT_TYPE, ORIGIN},
+        HeaderMap, HeaderValue, Method, StatusCode,
     },
     response::{IntoResponse, Response},
     routing::{get, put},
+    Json, Router,
 };
 use images::ImageStore;
-use serde_json::{Value, json};
+use serde_json::{json, Value};
 use storage::NativeStorage;
 use tower_http::{
     cors::{Any, CorsLayer},
@@ -183,6 +183,10 @@ async fn connection(mut socket: WebSocket, actor: GameActor, user: SessionUser) 
                     }
                     Err(tokio::sync::broadcast::error::RecvError::Lagged(skipped)) => {
                         warn!(skipped, "websocket lagged behind game refreshes");
+                        if let Err(error) = socket.send(Message::Close(None)).await {
+                            error!(?error, "failed to send lagged websocket close frame");
+                        }
+                        break;
                     }
                     Err(tokio::sync::broadcast::error::RecvError::Closed) => break,
                 }
@@ -289,8 +293,8 @@ async fn get_image(State(state): State<AppState>, Path(image_id): Path<String>) 
 #[cfg(test)]
 mod tests {
     use arptypes::{
-        GMCommand, GameLog,
         protocol::{GameAndMetadata, GameUpdate, ImageType, PlayerGameAndMetadata},
+        GMCommand, GameLog,
     };
     use axum_test::TestServer;
 
