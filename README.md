@@ -28,8 +28,8 @@ just standalone-ui
 ```
 
 The UI reads its independently configured server URL from
-`arpui/index.standalone.html`. The server stores the game and uploaded images beneath
-`./arpeggio-data` and binds to loopback by default.
+`arpui/index.standalone.html`. The server stores the game and uploaded images
+beneath `./arpeggio-data`.
 
 Run the Rust tests and WASM checks with:
 
@@ -37,6 +37,3 @@ Run the Rust tests and WASM checks with:
 just test
 just check
 ```
-
-The authenticated hosted service, account system, and deployment configuration live in the
-separate private `arpeggio-hosted` repository. This repository has no hosted-service dependency.
