@@ -16,8 +16,8 @@ futures-util = { version = "*" }
 # need to enable the "js" feature. Since arpui is not a workspace member, pin the compatible
 # version here as well.
 getrandom = { version = "0.2.9", features = ["js"] }
-reqwest = { version = "0.12.3", features = ["json"] }
-reqwest-websocket = { version = "0.3" }
+reqwest = { version = "0.13.5", features = ["json"] }
+reqwest-websocket = { version = "0.6" }
 serde = { version = "*" }
 serde_json = { version = "*" }
 tracing = "0.1.41"
@@ -30,7 +30,7 @@ js-sys = "0.3.69"
 dioxus-primitives = { git = "https://github.com/DioxusLabs/components", rev = "4acbf53dd86b1b3dc8cd7e409002bf922f37b4e1", version = "0.0.1", default-features = false }
 dioxus-logger = "0.7.1"
 arp3d = { path = "../arp3d", version = "*" }
-wgpu = { version = "26.0.1", features = ["webgl"] }
+wgpu = { version = "30.0.0", features = ["webgl"] }
 
 [dependencies.web-sys]
 version = "0.3.69"
